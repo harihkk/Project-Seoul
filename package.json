@@ -1,0 +1,18 @@
+{
+  "name": "project-seoul-harness",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "Project Seoul development harness - a Manifest V3 browser-control runtime slice.",
+  "scripts": {
+    "clean": "node scripts/build-extension.mjs --clean-only",
+    "build": "node scripts/build-extension.mjs",
+    "validate": "node scripts/validate-extension.mjs",
+    "test": "node --test apps/browser-harness/tests/protocol.test.mjs apps/browser-harness/tests/validation.test.mjs apps/browser-harness/tests/task-machine.test.mjs apps/browser-harness/tests/task-store.test.mjs apps/browser-harness/tests/session.test.mjs apps/browser-harness/tests/sidepanel-ui.test.mjs",
+    "check": "tsc --noEmit -p tsconfig.json && npm run build && npm run validate && npm test"
+  },
+  "devDependencies": {
+    "typescript": "6.0.3",
+    "@types/chrome": "0.2.0"
+  }
+}

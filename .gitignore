@@ -1,25 +1,26 @@
 # macOS
 .DS_Store
 
-# Editors / IDEs
-.vscode/
-.idea/
-*.swp
+# Node / build output
+node_modules/
+dist/
 
-# Claude Code — ignore personal overrides, keep shared project settings
-.claude/settings.local.json
+# Local working directories
+.local/
+
+# Logs
+*.log
+logs/
 
 # Environment / secrets
 .env
 .env.*
 !.env.example
+*.pem
+*.key
+secrets/
 
-# Logs
-*.log
-
-# Dependencies / build output (uncomment once the stack is chosen)
-# node_modules/
-# dist/
-# build/
-# __pycache__/
-# .venv/
+# Editors / IDEs
+.vscode/
+.idea/
+*.swp
