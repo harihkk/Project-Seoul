@@ -10,13 +10,34 @@ Plain ASCII.
 ## Switch workspace
 - Trigger: user selects another workspace (click/keyboard/gesture).
 - Visible: the tab area swaps to the target workspace's tabs; active indicator moves.
-- Model: `SetActiveWorkspaceForWindow(window_key, id)`.
-- Persistence: window active mapping persisted (coalesced write).
-- Focus: focus moves to the target workspace's last-active tab.
-- Accessibility: announce "Workspace <name> active"; expose active state on the item.
+- Model: `SwitchWorkspaceForWindow(window, target)` - transactional; activates a projected tab before committing active workspace.
+- Projection: `WindowProjectionController` publishes updated `WindowProjection`; `VerticalPresentationFilter` refreshes vertical tab visibility.
+- Persistence: window active mapping persisted (coalesced write) only after successful switch.
+- Focus: focus moves to the target workspace's selected projected tab (pinned → retained → temporary priority).
+- Accessibility: announce "Workspace <name> active"; expose active state on the item; hidden tabs excluded from traversal.
 - Reduced motion: no slide animation; instant swap.
-- Failure: archived target -> `kArchivedWorkspaceCannotActivate`; UI keeps the
-  current workspace and surfaces a non-blocking message.
+- Failure: archived target → `ProjectionError::kArchivedWorkspace`; activation failure preserves prior workspace; UI surfaces non-blocking message.
+- Empty workspace: explicit empty state from `ProjectionStatus::kEmptyWorkspace`; no fabricated tab.
+
+## Projection consumption (V0 shell contract)
+
+The future shell reads projection state from `ProjectionService` / `WindowProjectionController`:
+
+| Surface | Source |
+| --- | --- |
+| Workspace selector | `OrganizationModel` workspaces + per-window `active_workspace` |
+| Tab list | `WindowProjection.tabs` ordered by projected order |
+| Workspace-pinned | `TabRole::kPinned` within projection |
+| Temporary / retained | `TabRole` within projection |
+| Essentials | profile-global `EssentialRecord` (not per-workspace duplicated tabs) |
+| Splits | `WindowProjection.splits` when both panes projected |
+| Empty workspace | `projection.empty_workspace` |
+| Degraded / fail-open | `ProjectionStatus` (`kDegraded`, `kFailOpen`, `kReconciliationRequired`) |
+| Keyboard navigation | projected tabs only; hidden tabs not focusable |
+| Focus restoration | last projected active tab per window/workspace |
+| Accessibility | announce workspace switch; live region for degraded state |
+
+Vertical-tab mode required for V0 projection visibility. Horizontal strip does not filter in V0.
 
 ## View global Essentials
 - Trigger: Essentials surface is always visible across workspaces.
