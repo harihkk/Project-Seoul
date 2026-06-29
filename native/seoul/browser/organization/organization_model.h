@@ -1,0 +1,199 @@
+// Project Seoul native organization engine.
+// The pure, in-memory organization domain model. It has NO Chromium browser
+// dependencies (no Browser, no TabStripModel, no Profile) and only uses //base.
+// It is deterministic, fully validated, and unit-testable without a browser.
+// The future Chromium event bridge and the KeyedService wrap this model; they
+// do not live inside it.
+//
+// Invariants enforced here (see docs/product/seoul-organization-v0.md):
+//  - exactly one default workspace once initialized; the default cannot be
+//  deleted
+//  - workspace ids never change; names are not ids
+//  - an archived workspace cannot be active
+//  - removing the active workspace selects a deterministic fallback
+//  - a tab_key belongs to at most one workspace (one membership) in this model
+//  - a split belongs to exactly one workspace and references only its tabs
+//  - a tab cannot be both archived and live
+//  - a protected temporary tab is never auto-archived
+//  - mutations are atomic: validation happens before any state change
+//  - no mutation silently succeeds when it changed nothing due to invalid state
+
+#ifndef SEOUL_BROWSER_ORGANIZATION_ORGANIZATION_MODEL_H_
+#define SEOUL_BROWSER_ORGANIZATION_ORGANIZATION_MODEL_H_
+
+#include <map>
+#include <string>
+#include <string_view>
+#include <vector>
+
+#include "base/observer_list.h"
+#include "base/time/time.h"
+#include "seoul/browser/organization/organization_errors.h"
+#include "seoul/browser/organization/organization_ids.h"
+#include "seoul/browser/organization/organization_observer.h"
+#include "seoul/browser/organization/organization_types.h"
+
+namespace seoul {
+
+class OrganizationModel {
+ public:
+  // A clock injection point so tests are deterministic; defaults to
+  // base::Time::Now.
+  using Clock = base::RepeatingCallback<base::Time()>;
+
+  OrganizationModel();
+  explicit OrganizationModel(Clock clock);
+  OrganizationModel(const OrganizationModel&) = delete;
+  OrganizationModel& operator=(const OrganizationModel&) = delete;
+  ~OrganizationModel();
+
+  // --- Initialization ---
+  // Creates exactly one default workspace if none exists. Idempotent: calling
+  // it again never creates a second default. Returns kNoOpRejected only if the
+  // model is mid-notification (reentrancy); creating-when-present is a success
+  // no-op.
+  MutationStatus EnsureDefaultWorkspace();
+
+  // --- Workspaces ---
+  MutationResult<WorkspaceId> CreateWorkspace(std::string_view name);
+  MutationStatus RenameWorkspace(const WorkspaceId& id, std::string_view name);
+  MutationStatus ReorderWorkspace(const WorkspaceId& id, int new_order);
+  MutationStatus ArchiveWorkspace(const WorkspaceId& id);
+  MutationStatus RestoreWorkspace(const WorkspaceId& id);
+  MutationStatus DeleteWorkspace(const WorkspaceId& id);
+  MutationStatus SetActiveWorkspaceForWindow(std::string_view window_key,
+                                             const WorkspaceId& id);
+  // Forget a window's active-workspace projection (e.g. the window closed). The
+  // workspace itself and its memberships are preserved.
+  MutationStatus ForgetWindow(std::string_view window_key);
+
+  // --- Tab membership ---
+  MutationResult<TabMembershipId> AddTabMembership(
+      const WorkspaceId& workspace_id,
+      std::string_view tab_key,
+      TabRole role);
+  MutationStatus RemoveTabMembership(const TabMembershipId& id);
+  MutationStatus MoveTabToWorkspace(const TabMembershipId& id,
+                                    const WorkspaceId& target_workspace);
+  MutationStatus MarkTabTemporary(const TabMembershipId& id);
+  MutationStatus RetainTab(const TabMembershipId& id);
+  MutationStatus PinTab(const TabMembershipId& id,
+                        std::string_view saved_root_url);
+  MutationStatus UnpinTab(const TabMembershipId& id);
+  // Record that a tab was activated (updates its last-active time). Used by the
+  // lifecycle bridge on a genuine user activation; does not change
+  // role/workspace.
+  MutationStatus TouchTabActivated(const TabMembershipId& id);
+  // Update a membership's deterministic ordering metadata (intra-window move).
+  MutationStatus ReorderTabMembership(const TabMembershipId& id, int order);
+
+  // --- Essentials (profile-global; single identity, never duplicated) ---
+  // When id is invalid, creates a new Essential; otherwise updates the existing
+  // one. root_url is the saved destination, not a live tab.
+  MutationResult<EssentialId> CreateOrUpdateEssential(
+      const EssentialId& id,
+      std::string_view name,
+      std::string_view root_url);
+  MutationStatus RemoveEssential(const EssentialId& id);
+
+  // --- Splits (over Chromium's M149 split model) ---
+  MutationResult<SplitGroupId> CreateSplitGroup(
+      const WorkspaceId& workspace_id,
+      const std::vector<std::string>& pane_tab_keys,
+      double divider_ratio,
+      std::string_view upstream_split_token);
+  MutationStatus UpdateSplitLayout(const SplitGroupId& id,
+                                   double divider_ratio,
+                                   int active_pane_index);
+  MutationStatus DissolveSplitGroup(const SplitGroupId& id);
+
+  // --- Temporary-tab protection / auto-archive ---
+  // Returns the temporary memberships eligible for auto-archive: role ==
+  // kTemporary, inactive for at least `inactivity_threshold`, AND not protected
+  // by any live condition in `activity` (media, download, task, permission,
+  // split, devtools, unsaved form, loading). Pinned/retained tabs are never
+  // eligible. Pure query; does not mutate.
+  std::vector<TabMembershipId> EligibleForAutoArchive(
+      const std::map<std::string, TabLiveActivity>& activity,
+      base::Time now,
+      base::TimeDelta inactivity_threshold) const;
+
+  // --- Archive ---
+  MutationStatus ArchiveTab(const TabMembershipId& id);
+  MutationResult<TabMembershipId> RestoreArchivedTab(
+      const TabMembershipId& original_id,
+      std::string_view tab_key);
+
+  // --- Routing ---
+  MutationResult<RoutingRuleId> AddRoutingRule(const RoutingRule& rule);
+  MutationStatus RemoveRoutingRule(const RoutingRuleId& id);
+  // Deterministic, bounded, loop-safe. Always returns a result: an unmatched
+  // request yields the safe fallback (kCurrentTab) with used_fallback = true.
+  RoutingResolution EvaluateRouting(const RoutingRequest& request) const;
+
+  // --- Snapshot / load ---
+  OrganizationSnapshot ToSnapshot() const;
+  // Replaces all state with a validated snapshot. Strict: rejects
+  // cross-workspace splits, dangling references, duplicate default, oversize,
+  // etc., leaving the current state untouched on failure (atomic).
+  MutationStatus LoadSnapshot(const OrganizationSnapshot& snapshot);
+
+  // --- Read accessors (const) ---
+  size_t workspace_count() const { return workspaces_.size(); }
+  size_t membership_count() const { return memberships_.size(); }
+  size_t essential_count() const { return essentials_.size(); }
+  size_t split_count() const { return splits_.size(); }
+  size_t routing_rule_count() const { return routing_rules_.size(); }
+  size_t archived_count() const { return archived_.size(); }
+  WorkspaceId default_workspace() const { return default_workspace_; }
+  const WorkspaceRecord* FindWorkspace(const WorkspaceId& id) const;
+  const TabMembershipRecord* FindMembership(const TabMembershipId& id) const;
+  // O(log n) lookup from an opaque tab_key to its membership id (one tab
+  // belongs to at most one workspace). Returns an invalid id when the tab is
+  // untracked.
+  TabMembershipId FindMembershipIdByTabKey(std::string_view tab_key) const;
+  const EssentialRecord* FindEssential(const EssentialId& id) const;
+  const SplitGroupRecord* FindSplit(const SplitGroupId& id) const;
+  // Resolve an opaque upstream split token (the serialized
+  // split_tabs::SplitTabId) to its Seoul split id. Returns an invalid id when
+  // no split matches. Bounded by the split caps; the lifecycle bridge uses it
+  // instead of caching tokens.
+  SplitGroupId FindSplitIdByUpstreamToken(
+      std::string_view upstream_token) const;
+  WorkspaceId ActiveWorkspaceForWindow(std::string_view window_key) const;
+
+  void AddObserver(OrganizationModelObserver* observer);
+  void RemoveObserver(OrganizationModelObserver* observer);
+
+ private:
+  base::Time Now() const;
+  int NextWorkspaceOrder() const;
+  int NextOrderInWorkspace(const WorkspaceId& workspace_id) const;
+  // Deterministic fallback when the active workspace becomes unavailable: the
+  // lowest-order non-archived workspace, default first, then by order, then id.
+  WorkspaceId PickFallbackWorkspace(const WorkspaceId& excluded) const;
+  size_t MembershipsInWorkspace(const WorkspaceId& workspace_id) const;
+  size_t SplitsInWorkspace(const WorkspaceId& workspace_id) const;
+  void Notify(const OrganizationChange& change);
+  bool ValidName(std::string_view name) const;
+
+  Clock clock_;
+  bool notifying_ = false;  // reentrancy guard
+
+  std::map<WorkspaceId, WorkspaceRecord> workspaces_;
+  std::map<EssentialId, EssentialRecord> essentials_;
+  std::map<TabMembershipId, TabMembershipRecord> memberships_;
+  std::map<SplitGroupId, SplitGroupRecord> splits_;
+  std::map<RoutingRuleId, RoutingRule> routing_rules_;
+  std::map<std::string, WorkspaceId> window_active_;
+  std::map<TabMembershipId, ArchivedTabRecord> archived_;
+  // Index enforcing "a tab_key belongs to at most one live workspace".
+  std::map<std::string, TabMembershipId> tab_index_;
+  WorkspaceId default_workspace_;
+
+  base::ObserverList<OrganizationModelObserver> observers_;
+};
+
+}  // namespace seoul
+
+#endif  // SEOUL_BROWSER_ORGANIZATION_ORGANIZATION_MODEL_H_

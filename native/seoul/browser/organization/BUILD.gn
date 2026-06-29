@@ -1,0 +1,73 @@
+# Project Seoul native organization engine.
+# Materialized into the checkout at src/seoul/browser/organization/ by
+# native/scripts/materialize.sh. Two targets:
+#   organization_model  - the pure, Chromium-free domain model (deps: //base only)
+#   organization        - the profile-keyed service + factory (Chromium glue)
+#
+# The pure model is the centerpiece and is independently testable. The service and
+# factory are the minimal integration boundary; their exact cycle-free placement in
+# the //chrome/browser dependency graph is resolved at the build host (see the
+# RESEARCH REQUIRED note below and docs/product/native-architecture.md).
+
+source_set("organization_model") {
+  sources = [
+    "organization_errors.cc",
+    "organization_errors.h",
+    "organization_ids.h",
+    "organization_limits.h",
+    "organization_model.cc",
+    "organization_model.h",
+    "organization_observer.h",
+    "organization_store.cc",
+    "organization_store.h",
+    "organization_types.h",
+  ]
+
+  # Pure model: //base only. No Browser, no TabStripModel, no Profile.
+  deps = [ "//base" ]
+}
+
+source_set("organization") {
+  sources = [
+    "seoul_organization_service.cc",
+    "seoul_organization_service.h",
+    "seoul_organization_service_factory.cc",
+    "seoul_organization_service_factory.h",
+  ]
+
+  deps = [
+    ":organization_model",
+    "//base",
+    "//components/keyed_service/core",
+    "//components/pref_registry",
+    "//components/prefs",
+    "//content/public/browser",
+    "//seoul/browser/lifecycle",
+    "//seoul/browser/lifecycle:lifecycle_core",
+
+    # RESEARCH REQUIRED (resolve at the build host, cannot be verified without GN):
+    # the service references chrome/browser/profiles/profile.h and
+    # profile_selections.h. In Chromium these belong to //chrome/browser, so this
+    # source_set must be wired so it sees the Profile target without forming a
+    # //chrome/browser <-> //seoul cycle (for example by compiling these two files
+    # as part of //chrome/browser via the integration patch, rather than as a
+    # standalone library). The integration patch records both options.
+    # "//chrome/browser/profiles:profile",
+  ]
+}
+
+source_set("unit_tests") {
+  testonly = true
+  sources = [
+    "organization_model_unittest.cc",
+    "organization_routing_unittest.cc",
+    "organization_splits_unittest.cc",
+    "organization_store_unittest.cc",
+  ]
+  deps = [
+    ":organization_model",
+    "//base",
+    "//base/test:test_support",
+    "//testing/gtest",
+  ]
+}
