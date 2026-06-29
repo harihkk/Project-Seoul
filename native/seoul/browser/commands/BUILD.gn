@@ -1,0 +1,92 @@
+# Project Seoul outbound browser command layer.
+
+source_set("command_core") {
+  sources = [
+    "browser_command.h",
+    "chromium_mutation_adapter.h",
+    "command_completion_observer.h",
+    "command_confirmation_seam.cc",
+    "command_confirmation_seam.h",
+    "command_errors.cc",
+    "command_errors.h",
+    "command_executor.cc",
+    "command_executor.h",
+    "command_id.cc",
+    "command_id.h",
+    "command_types.h",
+    "expected_observation.h",
+    "expected_observation_registry.cc",
+    "expected_observation_registry.h",
+    "model_command_facade.cc",
+    "model_command_facade.h",
+    "target_resolver.h",
+    "url_policy.cc",
+    "url_policy.h",
+  ]
+
+  deps = [
+    "//base",
+    "//seoul/browser/lifecycle:lifecycle_core",
+    "//seoul/browser/organization:organization_model",
+    "//url",
+  ]
+}
+
+source_set("command_chromium") {
+  sources = [
+    "chromium_mutation_adapter_impl.cc",
+    "chromium_mutation_adapter_impl.h",
+    "live_target_resolver.cc",
+    "live_target_resolver.h",
+  ]
+
+  public_deps = [
+    ":command_core",
+    "//chrome/browser:browser_public_dependencies",
+  ]
+
+  deps = [
+    "//base",
+    "//chrome/browser/ui/browser_window",
+    "//chrome/browser/ui/tabs",
+    "//components/sessions/content",
+    "//components/sessions/core",
+    "//components/split_tabs",
+    "//components/tabs/public",
+    "//content/public/browser",
+    "//seoul/browser/lifecycle",
+    "//url",
+  ]
+}
+
+test("seoul_command_core_unittests") {
+  testonly = true
+  sources = [
+    "command_executor_unittest.cc",
+    "command_validation_unittest.cc",
+    "expected_observation_registry_unittest.cc",
+    "model_command_facade_unittest.cc",
+    "url_policy_unittest.cc",
+  ]
+  deps = [
+    ":command_core",
+    "//base",
+    "//base/test:test_support",
+    "//seoul/browser/lifecycle:lifecycle_core",
+    "//seoul/browser/organization:organization_model",
+    "//testing/gtest",
+    "//url",
+  ]
+}
+
+source_set("command_browser_tests") {
+  testonly = true
+  sources = [ "chromium_mutation_adapter_browsertest.cc" ]
+  deps = [
+    ":command_chromium",
+    "//chrome/browser:browser_public_dependencies",
+    "//chrome/test:test_support",
+    "//content/test:test_support",
+    "//testing/gtest",
+  ]
+}
