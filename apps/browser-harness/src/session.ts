@@ -6,13 +6,13 @@
 // directly.
 
 import type {
-  TaskRecord,
+  ControlSessionRecord,
   ProbeData,
-  TaskState,
+  ControlSessionState,
   StructuredError,
   AccessState,
 } from './protocol.ts';
-import { isTerminal } from './task-machine.ts';
+import { isTerminal } from './control-session-machine.ts';
 import { isValidDocumentToken } from './validation.ts';
 
 // --- Active-tab access resolution ---
@@ -92,9 +92,9 @@ export function resolveAccess(input: TabAccessInput): AccessResolution {
 // as a stable tie-break. Sessions for other tabs are never returned, and
 // timelines from separate sessions are never merged.
 export function pickLatestSessionForTab(
-  records: readonly TaskRecord[],
+  records: readonly ControlSessionRecord[],
   tabId: number,
-): TaskRecord | null {
+): ControlSessionRecord | null {
   const matches = records.filter((r) => r.tabId === tabId);
   if (matches.length === 0) return null;
   const sorted = [...matches].sort((a, b) => {
@@ -107,7 +107,7 @@ export function pickLatestSessionForTab(
 }
 
 export interface ActiveSessionClassification {
-  session: TaskRecord | null;
+  session: ControlSessionRecord | null;
   // Non-terminal session with no trusted live backing: it must be probed before
   // it can be shown, then recovered or stopped based on the probe result.
   needsProbe: boolean;
@@ -116,7 +116,7 @@ export interface ActiveSessionClassification {
 }
 
 export function classifyActiveSession(
-  session: TaskRecord | null,
+  session: ControlSessionRecord | null,
   isLive: boolean,
 ): ActiveSessionClassification {
   if (!session) return { session: null, needsProbe: false, live: false };
@@ -130,7 +130,7 @@ export function classifyActiveSession(
   return { session, needsProbe: true, live: false };
 }
 
-export function wasReconciled(session: TaskRecord | null): boolean {
+export function wasReconciled(session: ControlSessionRecord | null): boolean {
   return !!session && session.timeline.some((e) => e.type === 'RECONCILED_ON_STARTUP');
 }
 
@@ -148,7 +148,7 @@ export type ProbeOutcome = { outcome: 'recover' } | { outcome: 'stop'; reason: s
 // valid. Recovery succeeds only when the content script responds, is
 // initialized, reports the same session id, returns a well-formed document
 // token, and is still on a compatible origin.
-export function evaluateProbe(probe: ProbeData | null, record: TaskRecord): ProbeOutcome {
+export function evaluateProbe(probe: ProbeData | null, record: ControlSessionRecord): ProbeOutcome {
   if (!probe) {
     return { outcome: 'stop', reason: 'Content script did not respond to the recovery probe.' };
   }
@@ -175,7 +175,7 @@ export function evaluateProbe(probe: ProbeData | null, record: TaskRecord): Prob
 //
 // A successful probe proves the session and document are alive, but not the
 // outcome of an operation that was mid-flight when the worker terminated. The
-// stored task state therefore decides what is safe to restore:
+// stored control-session state therefore decides what is safe to restore:
 //   READY      -> recover to READY (SESSION_RECOVERED)
 //   STARTING   -> if the probe proves initialization, recover to READY; the
 //                 verdict==='stop' path already covers "init not proven"
@@ -188,14 +188,14 @@ export function evaluateProbe(probe: ProbeData | null, record: TaskRecord): Prob
 
 export interface RecoveryPlan {
   outcome: 'recover' | 'stop';
-  toState: TaskState;
+  toState: ControlSessionState;
   event: string;
   detail: string;
   clearSnapshot: boolean;
   error: StructuredError | null;
 }
 
-export function planRecovery(record: TaskRecord, verdict: ProbeOutcome): RecoveryPlan {
+export function planRecovery(record: ControlSessionRecord, verdict: ProbeOutcome): RecoveryPlan {
   // EXECUTING is decided by the action being in-flight, not by liveness: the
   // outcome is unknown whether or not the content script still answers.
   if (record.state === 'EXECUTING') {

@@ -3,7 +3,7 @@
   "name": "Project Seoul Development Harness",
   "version": "0.1.0",
   "minimum_chrome_version": "116",
-  "description": "Development-only harness that exercises Manifest V3 side panel integration, activeTab scripting, semantic page observation, typed browser actions, and persistent task state. Not a shipping product.",
+  "description": "Development-only harness that exercises Manifest V3 side panel integration, activeTab scripting, semantic page observation, typed browser actions, and persisted control-session state. Not a shipping product.",
   "background": {
     "service_worker": "background.js",
     "type": "module"

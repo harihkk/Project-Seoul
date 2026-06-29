@@ -24,3 +24,9 @@ secrets/
 .vscode/
 .idea/
 *.swp
+
+# Integration-test artifacts (written only on failure)
+apps/browser-harness/itest/artifacts/
+
+# local probe scripts
+_probe_*.mjs

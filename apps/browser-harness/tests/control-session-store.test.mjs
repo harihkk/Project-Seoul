@@ -2,7 +2,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 
 // Minimal in-memory chrome.storage.local mock with failure injection, installed
-// before importing the store. task-store only touches chrome.* inside its
+// before importing the store. control-session-store only touches chrome.* inside its
 // functions, so the global is read lazily at call time.
 const memory = { data: {}, failNextSet: false };
 globalThis.chrome = {
@@ -22,7 +22,7 @@ globalThis.chrome = {
   },
 };
 
-const store = await import('../src/task-store.ts');
+const store = await import('../src/control-session-store.ts');
 
 function reset() {
   memory.data = {};

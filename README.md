@@ -4,8 +4,9 @@ This repository currently contains a **development harness**, not the final
 Project Seoul browser. The harness is a runnable Manifest V3 Chrome extension
 used to prove a browser-control runtime slice: side-panel integration,
 user-gated tab access, semantic page observation, typed browser actions,
-restricted action execution, persistent task state, a visible action timeline,
-and deterministic tests for the protocol and task state machine.
+restricted action execution, persisted control-session state, a visible action
+timeline, and deterministic tests for the protocol and control-session state
+machine.
 
 The final product will later integrate equivalent capabilities natively into
 Project Seoul's Chromium build. This extension is a temporary harness.
@@ -43,8 +44,8 @@ npm test
 ```
 
 Runs the Node built-in test runner against the pure protocol, validation, and
-task-state-machine modules. To run type checking, build, static validation, and
-tests together:
+control-session-state-machine modules. To run type checking, build, static
+validation, and tests together:
 
 ```
 npm run check
@@ -52,6 +53,38 @@ npm run check
 
 Other scripts: `npm run validate` (static extension checks) and `npm run clean`
 (remove `dist/`).
+
+### Real-Chrome integration tests
+
+A separate suite drives the unchanged, built extension in real Chrome for Testing
+through Puppeteer, using only genuine action invocations (no test hooks, no extra
+permissions, no permanent content script, no direct background-handler calls):
+
+```
+npm run itest             # required stable gate, headless
+npm run itest:headful     # the same stable gate, visibly
+npm run itest:resilience  # optional forced-worker-loss resilience tests
+```
+
+The required stable gate covers, end to end through the genuine toolbar action and
+real `activeTab`: real action access and side-panel attachment; exact two-tab
+isolation and grant revocation on navigation; the full panel lifecycle including
+the sensitive-field refusal; navigation invalidation; and shipped-extension
+security assertions.
+
+The optional resilience suite injects a **forced** service-worker termination (CDP
+target close) to prove storage persistence, control-session reconstruction, and no
+action replay (`ACTION_OUTCOME_UNKNOWN`). Forced termination is not natural MV3
+idle shutdown and is not extension reload. Extension-level `chrome.runtime.reload()`
+is intentionally not part of any automated test, because the tested Puppeteer
+25.2.1 + Chrome for Testing 150 combination did not reliably reattach the unpacked
+extension after reload.
+
+Each run starts its own Node fixture server on an available port, installs the
+built extension, discovers its id dynamically, and tears down the browser, server,
+and temporary profile afterward. Failure artifacts are written only on failure,
+under the gitignored `apps/browser-harness/itest/artifacts/`. None of these suites
+are part of `npm run check`.
 
 ## Load the extension in Chrome
 
@@ -75,10 +108,21 @@ http://localhost:8765/interactive-page.html
 Open the side panel from the extension's toolbar action, start a session,
 inspect the page, and exercise the click / type / scroll / navigate actions.
 
+## Status
+
+This is a **frozen, temporary browser-control protocol harness**. It is not the
+final Seoul UI and it is not Seoul's user-task architecture; it implements only
+low-level browser-control sessions. The pure modules are unit-tested, the stable
+real-Chrome gate covers action access, tab isolation, panel lifecycle, and
+navigation invalidation, and the optional resilience suite covers forced
+service-worker loss (which is not natural idle and not extension reload). After
+this milestone the harness receives only critical correctness fixes; the next
+milestone is the reproducible native Chromium baseline.
+
 ## Current limitations
 
-- DOM behavior (observation, clicking, typing, scrolling) is verified manually
-  against the local fixture; only the pure modules have automated tests.
+- DOM behavior (observation, clicking, typing, scrolling) is covered by the
+  real-Chrome integration suite and by the pure-module unit tests.
 - A session is bound to a single active tab and ends after navigation; a new
   session must be started on the new page.
 - Typing into a field that already contains a value is rejected, because no

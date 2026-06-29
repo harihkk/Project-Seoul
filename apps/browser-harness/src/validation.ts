@@ -20,7 +20,7 @@ import type {
   ScrollDirection,
   RequestKind,
   ActionKind,
-  TimelineEvent,
+  SessionTimelineEvent,
 } from './protocol.ts';
 
 // Centralized, tested limits for bounded observation and persistence.
@@ -239,9 +239,9 @@ export function classifyTypeTarget(
 // --- Timeline ---
 
 export function truncateTimeline(
-  events: readonly TimelineEvent[],
+  events: readonly SessionTimelineEvent[],
   max: number = LIMITS.MAX_TIMELINE_EVENTS,
-): TimelineEvent[] {
+): SessionTimelineEvent[] {
   if (events.length <= max) return events.slice();
   return events.slice(events.length - max);
 }
@@ -356,8 +356,8 @@ export function parseRequest(
       return { ok: true, request: { kind: 'SESSION_STOP', id: r.id, sessionId: r.sessionId } };
     case 'OBSERVE_PAGE':
       return { ok: true, request: { kind: 'OBSERVE_PAGE', id: r.id, sessionId: r.sessionId } };
-    case 'GET_TASK_STATE':
-      return { ok: true, request: { kind: 'GET_TASK_STATE', id: r.id, sessionId: r.sessionId } };
+    case 'GET_SESSION_STATE':
+      return { ok: true, request: { kind: 'GET_SESSION_STATE', id: r.id, sessionId: r.sessionId } };
     case 'GET_PANEL_CONTEXT':
       // Deliberately ignore any tabId on the raw payload: the side panel must
       // not be able to choose the tab the context is computed for.

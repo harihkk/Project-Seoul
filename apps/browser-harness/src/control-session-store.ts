@@ -1,6 +1,6 @@
-// Project Seoul Development Harness - persistent task state.
+// Project Seoul Development Harness - persisted control-session state.
 //
-// Stores only non-sensitive task metadata in chrome.storage.local. Page text,
+// Stores only non-sensitive control-session metadata in chrome.storage.local. Page text,
 // semantic snapshots, typed text, input values, page HTML and any secrets are
 // never written here. The timeline is bounded to the most recent N events.
 //
@@ -8,12 +8,12 @@
 // read-modify-write cannot interleave with another and lose an update. A failed
 // write rejects rather than being swallowed.
 
-import type { StructuredError, TaskRecord, TaskState, TimelineEvent } from './protocol.ts';
+import type { StructuredError, ControlSessionRecord, ControlSessionState, SessionTimelineEvent } from './protocol.ts';
 import { LIMITS, truncateTimeline } from './validation.ts';
 
 const STORAGE_KEY = 'seoul.sessions.v1';
 
-type SessionMap = Record<string, TaskRecord>;
+type SessionMap = Record<string, ControlSessionRecord>;
 
 // Serialize every mutation. Each runs only after the previous settles, so reads
 // inside a mutation always see the prior mutation's committed write.
@@ -38,18 +38,18 @@ async function writeAll(map: SessionMap): Promise<void> {
   await chrome.storage.local.set({ [STORAGE_KEY]: map });
 }
 
-function pushEvent(rec: TaskRecord, event: TimelineEvent): void {
+function pushEvent(rec: ControlSessionRecord, event: SessionTimelineEvent): void {
   rec.timeline.push(event);
   rec.timeline = truncateTimeline(rec.timeline, LIMITS.MAX_TIMELINE_EVENTS);
 }
 
 // Reads are single atomic get() calls and do not need the lock.
-export async function getRecord(sessionId: string): Promise<TaskRecord | null> {
+export async function getRecord(sessionId: string): Promise<ControlSessionRecord | null> {
   const all = await readAll();
   return all[sessionId] ?? null;
 }
 
-export async function listRecords(): Promise<TaskRecord[]> {
+export async function listRecords(): Promise<ControlSessionRecord[]> {
   const all = await readAll();
   return Object.values(all);
 }
@@ -59,11 +59,11 @@ export async function createRecord(
   tabId: number,
   origin?: string,
   documentId?: string,
-): Promise<TaskRecord> {
+): Promise<ControlSessionRecord> {
   return withLock(async () => {
     const all = await readAll();
     const now = Date.now();
-    const record: TaskRecord = {
+    const record: ControlSessionRecord = {
       sessionId,
       tabId,
       origin,
@@ -84,11 +84,11 @@ export async function createRecord(
 // it (null), atomically with the state transition. Only the kind is stored.
 export async function setState(
   sessionId: string,
-  state: TaskState,
+  state: ControlSessionState,
   eventType: string,
   detail?: string,
   pending?: { action: string | null },
-): Promise<TaskRecord | null> {
+): Promise<ControlSessionRecord | null> {
   return withLock(async () => {
     const all = await readAll();
     const rec = all[sessionId];
@@ -142,11 +142,11 @@ export async function appendEvent(
 // terminal classification, so the event is not duplicated on panel refreshes.
 export async function applyRecovery(
   sessionId: string,
-  toState: TaskState,
+  toState: ControlSessionState,
   eventType: string,
   detail: string,
   error: StructuredError | null,
-): Promise<TaskRecord | null> {
+): Promise<ControlSessionRecord | null> {
   return withLock(async () => {
     const all = await readAll();
     const rec = all[sessionId];

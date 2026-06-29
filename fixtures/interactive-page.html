@@ -101,6 +101,12 @@
       <input type="text" class="hidden-display" value="hidden text input" />
     </section>
 
+    <section aria-label="Slow action">
+      <h2>Slow action (deterministic delay for worker-loss testing)</h2>
+      <button id="slow-button" type="button">Run slow action</button>
+      <p>Slow runs: <span id="slow-count">0</span></p>
+    </section>
+
     <div class="spacer" aria-hidden="true"></div>
 
     <footer>End of fixture. The page makes no network requests.</footer>
@@ -114,6 +120,21 @@
         event.preventDefault();
         document.getElementById('form-result').textContent = 'submitted locally';
       });
+      // Optional synchronous delay (?clickDelayMs=N) holds a click in flight so a
+      // test can observe EXECUTING before forcing worker loss. Fixture-only; the
+      // extension is unchanged. The counter proves the effect runs at most once.
+      (function () {
+        const delayMs = parseInt(new URLSearchParams(location.search).get('clickDelayMs') || '0', 10);
+        let runs = 0;
+        document.getElementById('slow-button').addEventListener('click', () => {
+          const end = Date.now() + delayMs;
+          while (Date.now() < end) {
+            /* deterministic synchronous hold */
+          }
+          runs += 1;
+          document.getElementById('slow-count').textContent = String(runs);
+        });
+      })();
     </script>
   </body>
 </html>

@@ -19,8 +19,8 @@ import { makeSuccess, makeError, errorOf } from './protocol.ts';
 import type {
   ProtocolResponse,
   ErrorCode,
-  TaskState,
-  TaskRecord,
+  ControlSessionState,
+  ControlSessionRecord,
   StructuredError,
   PageSnapshot,
   ContentRequest,
@@ -30,13 +30,13 @@ import type {
   SessionStopRequest,
   ObservePageRequest,
   ExecuteActionRequest,
-  GetTaskStateRequest,
+  GetSessionStateRequest,
   GetPanelContextRequest,
   PanelContextResult,
   AttachmentInfo,
 } from './protocol.ts';
 import { parseRequest, validateNavigationUrl } from './validation.ts';
-import { canTransition } from './task-machine.ts';
+import { canTransition } from './control-session-machine.ts';
 import {
   pickLatestSessionForTab,
   classifyActiveSession,
@@ -44,7 +44,7 @@ import {
   planRecovery,
   resolveAccess,
 } from './session.ts';
-import * as store from './task-store.ts';
+import * as store from './control-session-store.ts';
 
 interface LiveSession {
   sessionId: string;
@@ -220,8 +220,8 @@ async function handleRequest(message: unknown): Promise<ProtocolResponse> {
       return observePage(req);
     case 'EXECUTE_ACTION':
       return executeAction(req);
-    case 'GET_TASK_STATE':
-      return getTaskState(req);
+    case 'GET_SESSION_STATE':
+      return getSessionState(req);
     case 'GET_PANEL_CONTEXT':
       return getPanelContext(req);
   }
@@ -229,18 +229,18 @@ async function handleRequest(message: unknown): Promise<ProtocolResponse> {
 
 async function transition(
   sessionId: string,
-  to: TaskState,
+  to: ControlSessionState,
   eventType: string,
   detail?: string,
   pending?: { action: string | null },
-): Promise<{ ok: true; rec: TaskRecord } | { ok: false; error: StructuredError }> {
+): Promise<{ ok: true; rec: ControlSessionRecord } | { ok: false; error: StructuredError }> {
   const rec = await store.getRecord(sessionId);
   if (!rec) return { ok: false, error: errorOf('SESSION_NOT_FOUND', 'No such session.') };
   if (!canTransition(rec.state, to)) {
     return { ok: false, error: errorOf('INVALID_STATE', `Cannot move ${rec.state} -> ${to}.`) };
   }
   const updated = await store.setState(sessionId, to, eventType, detail, pending);
-  return { ok: true, rec: updated as TaskRecord };
+  return { ok: true, rec: updated as ControlSessionRecord };
 }
 
 function sendToContent(tabId: number, msg: ContentRequest): Promise<ContentResult> {
@@ -282,11 +282,11 @@ async function probeContent(tabId: number, sessionId: string): Promise<ProbeData
 // rehydration and by any request whose live backing was lost to a restart, so a
 // still-open panel recovers the same way a reopened one does.
 async function tryRecover(
-  rec: TaskRecord,
+  rec: ControlSessionRecord,
   tabId: number,
 ): Promise<
-  | { recovered: true; rec: TaskRecord }
-  | { recovered: false; rec: TaskRecord | null; error: StructuredError }
+  | { recovered: true; rec: ControlSessionRecord }
+  | { recovered: false; rec: ControlSessionRecord | null; error: StructuredError }
 > {
   const probe = await probeContent(tabId, rec.sessionId);
   const verdict = evaluateProbe(probe, rec);
@@ -316,7 +316,7 @@ async function tryRecover(
 
 async function ensureActiveSession(
   sessionId: string,
-): Promise<{ ok: true; rec: TaskRecord; tabId: number } | { ok: false; error: StructuredError }> {
+): Promise<{ ok: true; rec: ControlSessionRecord; tabId: number } | { ok: false; error: StructuredError }> {
   const rec = await store.getRecord(sessionId);
   if (!rec) return { ok: false, error: errorOf('SESSION_NOT_FOUND', 'No such session.') };
   if (rec.state === 'STOPPED' || rec.state === 'FAILED') {
@@ -361,7 +361,7 @@ async function startSession(req: SessionStartRequest): Promise<ProtocolResponse>
 
   const access = resolveAccess({ tabId: tab.id, url: tab.url, title: tab.title });
   if (access.access === 'ACCESS_REQUIRED') {
-    // No grant: never create a session record or a FAILED task for missing access.
+    // No grant: never create a session record or a FAILED control session for missing access.
     return makeError(req, errorOf('ACCESS_REQUIRED', access.reason ?? 'Access required.'), tab.id);
   }
   if (access.access !== 'GRANTED') {
@@ -388,7 +388,7 @@ async function startSession(req: SessionStartRequest): Promise<ProtocolResponse>
     if (!t.ok) return makeError(req, t.error, tab.id);
     return makeSuccess(
       req,
-      { state: 'READY' as TaskState, tabId: tab.id, url, title: tab.title ?? '' },
+      { state: 'READY' as ControlSessionState, tabId: tab.id, url, title: tab.title ?? '' },
       tab.id,
     );
   } catch (e) {
@@ -407,7 +407,7 @@ async function stopSession(req: SessionStopRequest): Promise<ProtocolResponse> {
   if (rec.state !== 'STOPPED' && rec.state !== 'FAILED') {
     await store.setState(req.sessionId, 'STOPPED', 'SESSION_STOPPED', 'Stopped by user.');
   }
-  return makeSuccess(req, { state: 'STOPPED' as TaskState }, rec.tabId);
+  return makeSuccess(req, { state: 'STOPPED' as ControlSessionState }, rec.tabId);
 }
 
 async function observePage(req: ObservePageRequest): Promise<ProtocolResponse> {
@@ -465,7 +465,7 @@ async function executeAction(req: ExecuteActionRequest): Promise<ProtocolRespons
     );
     return makeSuccess(
       req,
-      { navigated: true, state: 'STOPPED' as TaskState, restartRequired: true },
+      { navigated: true, state: 'STOPPED' as ControlSessionState, restartRequired: true },
       s.tabId,
     );
   }
@@ -510,7 +510,7 @@ async function executeAction(req: ExecuteActionRequest): Promise<ProtocolRespons
   return makeSuccess(req, { result: cr.data }, s.tabId);
 }
 
-async function getTaskState(req: GetTaskStateRequest): Promise<ProtocolResponse> {
+async function getSessionState(req: GetSessionStateRequest): Promise<ProtocolResponse> {
   const rec = await store.getRecord(req.sessionId);
   if (!rec) return makeError(req, errorOf('SESSION_NOT_FOUND', 'No such session.'));
   return makeSuccess(

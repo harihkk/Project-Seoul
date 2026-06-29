@@ -1,7 +1,7 @@
 // Project Seoul Development Harness - side panel controller.
 //
-// Separates panel view state, page attachment, and runtime task. On (re)open the
-// panel renders a neutral surface unless a genuinely active runtime task exists
+// Separates panel view state, page attachment, and control-session state. On (re)open the
+// panel renders a neutral surface unless a genuinely active control session exists
 // (none do in this harness). It never restores a prior selection, snapshot,
 // typed draft, error, or the previous operation log merely because an internal
 // page-control attachment exists. The attachment is kept internally so the user
@@ -14,10 +14,10 @@ import { validateNavigationUrl } from '../validation.ts';
 import type {
   ProtocolRequest,
   ProtocolResponse,
-  TaskState,
+  ControlSessionState,
   InteractiveElement,
   PageSnapshot,
-  TimelineEvent,
+  SessionTimelineEvent,
   StructuredError,
   PanelContextResult,
 } from '../protocol.ts';
@@ -61,8 +61,8 @@ interface SelectedElement {
   name?: string;
 }
 
-// Panel view state is separate from the page attachment and from any runtime
-// task. `attached` is the internal page-control binding for the active tab.
+// Panel view state is separate from the page attachment and from any control
+// session. `attached` is the internal page-control binding for the active tab.
 const session = {
   tabId: null as number | null,
   sessionId: null as string | null,
@@ -121,7 +121,7 @@ function setIndicator(label: string, cls: string): void {
   updateControls();
 }
 
-// Neutral panel indicator: reflects access and attachment, never a task.
+// Neutral panel indicator: reflects access and attachment, never a control session.
 function setNeutral(): void {
   if (accessGranted && session.attached) {
     setIndicator('ATTACHED', 'state--ready');
@@ -209,7 +209,7 @@ function renderText(blocks: string[]): void {
   }
 }
 
-function renderTimeline(events: TimelineEvent[]): void {
+function renderTimeline(events: SessionTimelineEvent[]): void {
   ui.timelineList.replaceChildren();
   for (const ev of [...events].reverse()) {
     const li = document.createElement('li');
@@ -227,10 +227,10 @@ function renderTimeline(events: TimelineEvent[]): void {
 // Refreshes the visible operation log of the current attachment after an action.
 // It only renders the timeline; it never changes the panel indicator or resurrects
 // a prior error.
-async function refreshTaskState(): Promise<void> {
+async function refreshSessionState(): Promise<void> {
   if (!session.sessionId) return;
-  const resp = await send<{ state: TaskState; timeline: TimelineEvent[] }>({
-    kind: 'GET_TASK_STATE',
+  const resp = await send<{ state: ControlSessionState; timeline: SessionTimelineEvent[] }>({
+    kind: 'GET_SESSION_STATE',
     id: newId(),
     sessionId: session.sessionId,
   });
@@ -374,7 +374,7 @@ async function startSession(): Promise<void> {
   clearSnapshot();
   const sessionId = newId();
   setIndicator('STARTING', 'state--starting');
-  const resp = await send<{ state: TaskState }>({
+  const resp = await send<{ state: ControlSessionState }>({
     kind: 'SESSION_START',
     id: newId(),
     sessionId,
@@ -384,13 +384,13 @@ async function startSession(): Promise<void> {
     session.sessionId = sessionId;
     session.attached = true;
     setNeutral();
-    await refreshTaskState();
+    await refreshSessionState();
   } else if (
     resp.error.code === 'ACCESS_REQUIRED' ||
     resp.error.code === 'UNSUPPORTED_PAGE' ||
     resp.error.code === 'TAB_MISMATCH'
   ) {
-    // Not a failed task: re-resolve and render the real access state.
+    // Not a failed control session: re-resolve and render the real access state.
     detach();
     await init();
   } else {
@@ -426,7 +426,7 @@ async function inspectPage(): Promise<void> {
   } else {
     handleOpError(resp.error);
   }
-  await refreshTaskState();
+  await refreshSessionState();
 }
 
 async function clickSelected(): Promise<void> {
@@ -444,7 +444,7 @@ async function clickSelected(): Promise<void> {
     },
   });
   if (!resp.success) handleOpError(resp.error);
-  await refreshTaskState();
+  await refreshSessionState();
 }
 
 async function typeIntoSelected(): Promise<void> {
@@ -463,7 +463,7 @@ async function typeIntoSelected(): Promise<void> {
     },
   });
   if (!resp.success) handleOpError(resp.error);
-  await refreshTaskState();
+  await refreshSessionState();
 }
 
 async function scroll(direction: 'up' | 'down'): Promise<void> {
@@ -476,7 +476,7 @@ async function scroll(direction: 'up' | 'down'): Promise<void> {
     action: { kind: 'SCROLL_PAGE', direction, amount: 600, documentToken: snap.documentToken },
   });
   if (!resp.success) handleOpError(resp.error);
-  await refreshTaskState();
+  await refreshSessionState();
 }
 
 async function navigate(): Promise<void> {

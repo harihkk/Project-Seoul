@@ -5,7 +5,7 @@
 // worker, the side panel, and the Node test runner (via type stripping), so it
 // must stay free of any browser-only globals.
 
-export const TASK_STATES = [
+export const CONTROL_SESSION_STATES = [
   'IDLE',
   'STARTING',
   'READY',
@@ -14,14 +14,14 @@ export const TASK_STATES = [
   'STOPPED',
   'FAILED',
 ] as const;
-export type TaskState = (typeof TASK_STATES)[number];
+export type ControlSessionState = (typeof CONTROL_SESSION_STATES)[number];
 
 export const REQUEST_KINDS = [
   'SESSION_START',
   'SESSION_STOP',
   'OBSERVE_PAGE',
   'EXECUTE_ACTION',
-  'GET_TASK_STATE',
+  'GET_SESSION_STATE',
   'GET_PANEL_CONTEXT',
 ] as const;
 export type RequestKind = (typeof REQUEST_KINDS)[number];
@@ -122,8 +122,8 @@ export interface ExecuteActionRequest {
   sessionId: string;
   action: BrowserAction;
 }
-export interface GetTaskStateRequest {
-  kind: 'GET_TASK_STATE';
+export interface GetSessionStateRequest {
+  kind: 'GET_SESSION_STATE';
   id: string;
   sessionId: string;
 }
@@ -140,7 +140,7 @@ export type ProtocolRequest =
   | SessionStopRequest
   | ObservePageRequest
   | ExecuteActionRequest
-  | GetTaskStateRequest
+  | GetSessionStateRequest
   | GetPanelContextRequest;
 
 // --- Responses (background -> side panel) ---
@@ -197,15 +197,15 @@ export interface PageSnapshot {
   snapshotId: string;
 }
 
-// --- Persisted task record (non-sensitive only) ---
+// --- Persisted control-session record (non-sensitive only) ---
 
-export interface TimelineEvent {
+export interface SessionTimelineEvent {
   at: number;
   type: string;
   detail?: string;
-  state?: TaskState;
+  state?: ControlSessionState;
 }
-export interface TaskRecord {
+export interface ControlSessionRecord {
   sessionId: string;
   tabId: number;
   // Origin the session started on, used to confirm a recovered document is
@@ -216,10 +216,10 @@ export interface TaskRecord {
   // action can be reported. Only the kind, never the payload, and cleared
   // atomically with the final state transition.
   pendingAction?: string;
-  state: TaskState;
+  state: ControlSessionState;
   createdAt: number;
   updatedAt: number;
-  timeline: TimelineEvent[];
+  timeline: SessionTimelineEvent[];
   lastError: StructuredError | null;
 }
 
@@ -233,7 +233,7 @@ export interface TaskRecord {
 export type AccessState = 'GRANTED' | 'ACCESS_REQUIRED' | 'UNSUPPORTED_PAGE' | 'NO_TAB';
 
 // Internal page-control attachment for the active tab. This is the live
-// content-script binding (a low-level browser-control session), not a user task.
+// content-script binding (a low-level browser-control session).
 // It is kept across panel reopen so the user can continue on a granted tab
 // without starting another control session.
 export interface AttachmentInfo {

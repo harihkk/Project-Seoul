@@ -1,7 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 
-import { TASK_STATES } from '../src/protocol.ts';
+import { CONTROL_SESSION_STATES } from '../src/protocol.ts';
 import {
   VALID_TRANSITIONS,
   canTransition,
@@ -9,14 +9,14 @@ import {
   isTerminal,
   reconcileOnStartup,
   InvalidTransitionError,
-  TaskMachine,
-} from '../src/task-machine.ts';
+  ControlSessionMachine,
+} from '../src/control-session-machine.ts';
 
 test('every declared valid transition is accepted by the machine', () => {
-  for (const from of TASK_STATES) {
+  for (const from of CONTROL_SESSION_STATES) {
     for (const to of VALID_TRANSITIONS[from]) {
       assert.equal(canTransition(from, to), true, `${from} -> ${to} should be valid`);
-      const machine = new TaskMachine(from);
+      const machine = new ControlSessionMachine(from);
       assert.equal(machine.to(to), to);
       assert.equal(machine.state, to);
     }
@@ -24,12 +24,12 @@ test('every declared valid transition is accepted by the machine', () => {
 });
 
 test('every transition not declared valid is rejected and throws a typed error', () => {
-  for (const from of TASK_STATES) {
-    for (const to of TASK_STATES) {
+  for (const from of CONTROL_SESSION_STATES) {
+    for (const to of CONTROL_SESSION_STATES) {
       if (VALID_TRANSITIONS[from].includes(to)) continue;
       assert.equal(canTransition(from, to), false, `${from} -> ${to} should be invalid`);
       assert.throws(() => assertTransition(from, to), InvalidTransitionError);
-      const machine = new TaskMachine(from);
+      const machine = new ControlSessionMachine(from);
       assert.throws(() => machine.to(to), (err) => {
         assert.ok(err instanceof InvalidTransitionError);
         assert.equal(err.from, from);
@@ -45,7 +45,7 @@ test('stop behavior: active states can stop, and STOPPED is terminal', () => {
     assert.equal(canTransition(from, 'STOPPED'), true);
   }
   assert.equal(isTerminal('STOPPED'), true);
-  const machine = new TaskMachine('STOPPED');
+  const machine = new ControlSessionMachine('STOPPED');
   assert.throws(() => machine.to('READY'), InvalidTransitionError);
 });
 
@@ -54,7 +54,7 @@ test('failure behavior: active states can fail, and FAILED is terminal', () => {
     assert.equal(canTransition(from, 'FAILED'), true);
   }
   assert.equal(isTerminal('FAILED'), true);
-  const machine = new TaskMachine('FAILED');
+  const machine = new ControlSessionMachine('FAILED');
   assert.throws(() => machine.to('STOPPED'), InvalidTransitionError);
 });
 
@@ -70,7 +70,7 @@ test('restored active sessions are reconciled to STOPPED on startup', () => {
 });
 
 test('a fresh machine starts IDLE and follows the happy path', () => {
-  const machine = new TaskMachine();
+  const machine = new ControlSessionMachine();
   assert.equal(machine.state, 'IDLE');
   machine.to('STARTING');
   machine.to('READY');
