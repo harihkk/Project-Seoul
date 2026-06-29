@@ -1,0 +1,11 @@
+# Project Seoul browser-native integration targets.
+
+group("browser") {
+  deps = [
+    "//seoul/browser/commands:command_chromium",
+    "//seoul/browser/lifecycle",
+    "//seoul/browser/organization",
+    "//seoul/browser/projection:projection_chromium",
+    "//seoul/browser/shell:shell_chromium",
+  ]
+}

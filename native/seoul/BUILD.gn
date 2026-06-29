@@ -1,0 +1,5 @@
+# Project Seoul native integration root.
+
+group("seoul") {
+  deps = [ "//seoul/browser" ]
+}

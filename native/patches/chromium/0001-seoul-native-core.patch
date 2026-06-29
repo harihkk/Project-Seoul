@@ -1,0 +1,174 @@
+diff --git a/chrome/browser/BUILD.gn b/chrome/browser/BUILD.gn
+index 63c2601cfc..fc90e7e1ca 100644
+--- a/chrome/browser/BUILD.gn
++++ b/chrome/browser/BUILD.gn
+@@ -295,6 +295,11 @@ static_library("browser") {
+   allow_circular_includes_from = [
+     # TODO(crbug.com/503408628): Remove this circular dependency.
+     "//chrome/browser/first_run:impl",
++    "//seoul/browser/lifecycle",
++    "//seoul/browser/organization",
++    "//seoul/browser/commands:command_chromium",
++    "//seoul/browser/projection:projection_chromium",
++    "//seoul/browser/shell:shell_chromium",
+ 
+     "//chrome/browser/browsing_data:impl",
+     "//chrome/browser/accessibility:impl",
+@@ -912,6 +917,7 @@ static_library("browser") {
+     "//chrome/browser/profiles:profile_io_data",
+     "//chrome/browser/profiles:profile_manager",
+     "//chrome/browser/profiles:profile_manager_impl",
++    "//seoul/browser/organization",
+     "//chrome/browser/profiles:profile_util",
+     "//chrome/browser/profiles:profile_util_impl",
+     "//chrome/browser/profiles:profiles_extra_parts",
+diff --git a/chrome/browser/profiles/chrome_browser_main_extra_parts_profiles.cc b/chrome/browser/profiles/chrome_browser_main_extra_parts_profiles.cc
+index 1aab47b6d0..0f491246f3 100644
+--- a/chrome/browser/profiles/chrome_browser_main_extra_parts_profiles.cc
++++ b/chrome/browser/profiles/chrome_browser_main_extra_parts_profiles.cc
+@@ -13,6 +13,7 @@
+ #include "build/chromeos_buildflags.h"
+ #include "chrome/browser/accessibility/accessibility_labels_service_factory.h"
+ #include "chrome/browser/accessibility/page_colors_controller_factory.h"
++#include "seoul/browser/organization/seoul_organization_service_factory.h"
+ #include "chrome/browser/accessibility_annotator/accessibility_annotator_backend_factory.h"
+ #include "chrome/browser/accessibility_annotator/accessibility_annotator_enablement_service_factory.h"
+ #include "chrome/browser/accessibility_annotator/accessibility_annotator_service_factory.h"
+@@ -1514,6 +1515,7 @@ void ChromeBrowserMainExtraPartsProfiles::
+ 
+   WebDataServiceFactory::GetInstance();
+   webrtc_event_logging::WebRtcEventLogManagerKeyedServiceFactory::GetInstance();
++  seoul::SeoulOrganizationServiceFactory::GetInstance();
+ }
+ 
+ void ChromeBrowserMainExtraPartsProfiles::PreProfileInit() {
+diff --git a/chrome/browser/ui/views/frame/vertical_tab_strip_region_view.cc b/chrome/browser/ui/views/frame/vertical_tab_strip_region_view.cc
+index 25ffbdf18e..a4c81e5994 100644
+--- a/chrome/browser/ui/views/frame/vertical_tab_strip_region_view.cc
++++ b/chrome/browser/ui/views/frame/vertical_tab_strip_region_view.cc
+@@ -49,6 +49,12 @@
+ #include "chrome/browser/ui/views/tabs/vertical/vertical_tab_strip_controller.h"
+ #include "chrome/browser/ui/views/tabs/vertical/vertical_tab_strip_top_container.h"
+ #include "chrome/browser/ui/views/tabs/vertical/vertical_tab_strip_view.h"
++#include "components/sessions/core/session_id.h"
++#include "seoul/browser/lifecycle/lifecycle_identity.h"
++#include "seoul/browser/organization/seoul_organization_service.h"
++#include "seoul/browser/organization/seoul_organization_service_factory.h"
++#include "seoul/browser/projection/projection_service.h"
++#include "seoul/browser/shell/shell_service.h"
+ #include "chrome/browser/ui/views/tabs/vertical/vertical_tab_view.h"
+ #include "chrome/browser/ui/views/tabs/vertical/vertical_unpinned_tab_container_view.h"
+ #include "chrome/browser/ui/web_applications/app_browser_controller.h"
+@@ -292,6 +298,27 @@ VerticalTabStripRegionView::~VerticalTabStripRegionView() {
+   hover_locks_.clear();
+ 
+   if (root_node_) {
++    if (browser_view_ && browser_view_->browser()) {
++      Profile* profile = browser_view_->browser()->profile();
++      if (seoul::SeoulOrganizationService* service =
++              seoul::SeoulOrganizationServiceFactory::GetForProfile(profile)) {
++        if (seoul::ProjectionService* projection =
++                service->projection_service()) {
++          const SessionID sid = browser_view_->browser()->session_id();
++          if (sid.is_valid()) {
++            projection->UnregisterVerticalRegion(
++                seoul::LiveWindowKey::FromSessionId(sid.id()));
++          }
++        }
++        if (seoul::ShellService* shell = service->shell_service()) {
++          const SessionID sid = browser_view_->browser()->session_id();
++          if (sid.is_valid()) {
++            shell->UnregisterVerticalRegion(
++                seoul::LiveWindowKey::FromSessionId(sid.id()));
++          }
++        }
++      }
++    }
+     root_node_->SetController(nullptr);
+   }
+ 
+@@ -505,6 +532,21 @@ void VerticalTabStripRegionView::Layout(PassKey) {
+ }
+ 
+ views::View* VerticalTabStripRegionView::GetDefaultFocusableChild() {
++  if (browser_view_ && browser_view_->browser()) {
++    Profile* profile = browser_view_->browser()->profile();
++    if (seoul::SeoulOrganizationService* service =
++            seoul::SeoulOrganizationServiceFactory::GetForProfile(profile)) {
++      if (seoul::ProjectionService* projection = service->projection_service()) {
++        const SessionID sid = browser_view_->browser()->session_id();
++        if (sid.is_valid()) {
++          if (views::View* child = projection->GetDefaultFocusableChildForWindow(
++                  seoul::LiveWindowKey::FromSessionId(sid.id()))) {
++            return child;
++          }
++        }
++      }
++    }
++  }
+   const int active_index = tab_strip_model_->active_index();
+   if (active_index != TabStripModel::kNoTab) {
+     return GetTabAnchorViewAt(active_index);
+@@ -630,6 +672,27 @@ void VerticalTabStripRegionView::InitializeTabStrip() {
+       base::BindRepeating(&VerticalTabStripRegionView::ClearTabStripView,
+                           base::Unretained(this)));
+ 
++  if (browser_view_ && browser_view_->browser()) {
++    Profile* profile = browser_view_->browser()->profile();
++    if (seoul::SeoulOrganizationService* service =
++            seoul::SeoulOrganizationServiceFactory::GetForProfile(profile)) {
++      if (seoul::ProjectionService* projection = service->projection_service()) {
++        const SessionID sid = browser_view_->browser()->session_id();
++        if (sid.is_valid()) {
++          projection->RegisterVerticalRegion(
++              seoul::LiveWindowKey::FromSessionId(sid.id()), this);
++        }
++      }
++      if (seoul::ShellService* shell = service->shell_service()) {
++        const SessionID sid = browser_view_->browser()->session_id();
++        if (sid.is_valid()) {
++          shell->RegisterVerticalRegion(
++              seoul::LiveWindowKey::FromSessionId(sid.id()), this);
++        }
++      }
++    }
++  }
++
+   std::unique_ptr<TabMenuModelFactory> tab_menu_model_factory;
+   if (browser_view_ && browser_view_->browser()->app_controller()) {
+     tab_menu_model_factory =
+@@ -1110,6 +1173,20 @@ void VerticalTabStripRegionView::OnCollapseStateChanged(
+     tab_strip_view_->SetCollapsedState(collapsed);
+   }
+ 
++  if (browser_view_ && browser_view_->browser()) {
++    Profile* profile = browser_view_->browser()->profile();
++    if (seoul::SeoulOrganizationService* service =
++            seoul::SeoulOrganizationServiceFactory::GetForProfile(profile)) {
++      if (seoul::ShellService* shell = service->shell_service()) {
++        const SessionID sid = browser_view_->browser()->session_id();
++        if (sid.is_valid()) {
++          shell->OnCollapseStateChanged(
++              seoul::LiveWindowKey::FromSessionId(sid.id()), collapsed);
++        }
++      }
++    }
++  }
++
+   if (state == tabs::VerticalTabStripCollapseState::kExpanded ||
+       state == tabs::VerticalTabStripCollapseState::kCollapsed) {
+     UpdateExpandOnHoverState();
+diff --git a/chrome/browser/ui/views/frame/vertical_tab_strip_region_view.h b/chrome/browser/ui/views/frame/vertical_tab_strip_region_view.h
+index 70c78e23c0..69ab335a20 100644
+--- a/chrome/browser/ui/views/frame/vertical_tab_strip_region_view.h
++++ b/chrome/browser/ui/views/frame/vertical_tab_strip_region_view.h
+@@ -187,6 +187,9 @@ class VerticalTabStripRegionView final
+   tabs::VerticalTabStripState target_collapse_state_for_testing() {
+     return target_collapse_state_;
+   }
++  views::View* GetSeoulShellSeparatorAnchor() { return top_button_separator_; }
++  views::View* GetSeoulShellFooterAnchor() { return bottom_button_container_; }
++  views::View* GetSeoulTabStripView() { return tab_strip_view_; }
+   void DisableTabStripEditingForTesting() override;
+   gfx::Rect GetLinkDropBoundsForTesting(
+       const BrowserRootView::DropIndex& drop_index,
