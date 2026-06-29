@@ -1,0 +1,83 @@
+# Project Seoul workspace projection engine V0.
+
+source_set("projection_core") {
+  sources = [
+    "projection_calculator.cc",
+    "projection_calculator.h",
+    "projection_errors.cc",
+    "projection_errors.h",
+    "projection_observer.h",
+    "projection_ordering.cc",
+    "projection_ordering.h",
+    "projection_service.cc",
+    "projection_service.h",
+    "projection_types.h",
+    "vertical_presentation_filter.cc",
+    "vertical_presentation_filter.h",
+    "window_projection_controller.cc",
+    "window_projection_controller.h",
+    "workspace_switcher.cc",
+    "workspace_switcher.h",
+  ]
+
+  deps = [
+    "//base",
+    "//seoul/browser/commands:command_core",
+    "//seoul/browser/lifecycle:lifecycle_core",
+    "//seoul/browser/organization:organization_model",
+    "//url",
+  ]
+}
+
+source_set("projection_chromium") {
+  sources = [
+    "vertical_presentation_adapter.cc",
+    "vertical_presentation_adapter.h",
+  ]
+
+  public_deps = [
+    ":projection_core",
+    "//chrome/browser:browser_public_dependencies",
+  ]
+
+  deps = [
+    "//base",
+    "//chrome/browser/ui/views/tabs/vertical",
+    "//seoul/browser/lifecycle",
+    "//ui/views",
+  ]
+}
+
+test("seoul_projection_core_unittests") {
+  testonly = true
+  sources = [
+    "projection_calculator_unittest.cc",
+    "projection_ordering_unittest.cc",
+    "vertical_presentation_filter_unittest.cc",
+    "workspace_switcher_unittest.cc",
+  ]
+  deps = [
+    ":projection_core",
+    "//base",
+    "//base/test:test_support",
+    "//seoul/browser/commands:command_core",
+    "//seoul/browser/lifecycle",
+    "//seoul/browser/lifecycle:lifecycle_core",
+    "//seoul/browser/organization:organization_model",
+    "//testing/gtest",
+    "//url",
+  ]
+}
+
+# Future browser/view tests; not executed in this milestone.
+source_set("projection_browser_tests") {
+  testonly = true
+  sources = [ "vertical_presentation_browsertest.cc" ]
+  deps = [
+    ":projection_chromium",
+    "//chrome/browser:browser_public_dependencies",
+    "//chrome/test:test_support",
+    "//content/test:test_support",
+    "//testing/gtest",
+  ]
+}
