@@ -1,0 +1,32 @@
+name: integration-capable-host
+
+# The real-Chrome integration suite drives the built extension through Puppeteer +
+# Chrome for Testing. It downloads a browser and is sensitive to the host
+# environment, so it is NOT a required gate in ci.yml. Run it manually, and only on
+# a runner that is known to support a headless Chrome for Testing download/launch.
+#
+# This is a capable-host gate, not a push gate. It performs no Chromium build.
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  integration:
+    # Self-hosted/capable runners only. Hosted runners are not guaranteed to be
+    # deterministic for this suite; prove the environment before relying on it.
+    runs-on: ${{ vars.SEOUL_ITEST_RUNNER || 'ubuntu-latest' }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "24"
+          cache: npm
+      - name: Install (lockfile)
+        run: npm ci
+      - name: Real-Chrome integration suite (headless)
+        run: npm run itest
+      - name: Forced-worker-loss resilience suite
+        run: npm run itest:resilience

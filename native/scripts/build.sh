@@ -1,9 +1,13 @@
 #!/usr/bin/env bash
-# Build only the `chrome` target with capped parallelism (-j 2) because this host
-# has limited memory. Records timing and output size. Does not build `all`,
-# unit tests or browser tests.
+# Build only the `chrome` target. Refuses to run unless the build-host gate passes,
+# so a build cannot start on an underpowered host (e.g. an 8 GiB Mac). Job count is
+# configurable (SEOUL_NINJA_JOBS) with a conservative memory-aware default. Records
+# timing and output size. Does not build `all`, unit tests, or browser tests.
 set -euo pipefail
 . "$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)/common.sh"
+
+stage "build-host gate"
+"$SEOUL_SCRIPT_DIR/build-host-check.sh" || die "build-host gate failed; refusing to build (this machine cannot build Chromium)"
 
 [ -d "$CHROMIUM_SRC/.git" ] || die "no Chromium checkout at $CHROMIUM_SRC (run fetch.sh + sync.sh first)"
 [ -f "$OUT_DIR/args.gn" ]   || die "build dir not generated; run gen.sh first"
@@ -11,9 +15,7 @@ set -euo pipefail
 REV="$(lock_chromium_revision)"
 use_depot_tools
 
-# -j 2 is a cautious LOCAL resource setting for an 8 GiB machine, not an upstream
-# requirement. Do not raise it merely to look faster.
-JOBS=2
+JOBS="$(resolve_jobs)"
 CAFF=""; command -v caffeinate >/dev/null 2>&1 && CAFF="caffeinate -dimsu"
 
 stage "build chrome (revision $REV, -j $JOBS)"

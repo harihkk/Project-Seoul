@@ -1,15 +1,35 @@
 # Project Seoul
 
-This repository currently contains a **development harness**, not the final
-Project Seoul browser. The harness is a runnable Manifest V3 Chrome extension
-used to prove a browser-control runtime slice: side-panel integration,
-user-gated tab access, semantic page observation, typed browser actions,
-restricted action execution, persisted control-session state, a visible action
-timeline, and deterministic tests for the protocol and control-session state
-machine.
+Project Seoul is becoming a real, premium Chromium-based browser. This repository
+is currently a **foundation**, not a completed browser. It contains three things:
 
-The final product will later integrate equivalent capabilities natively into
-Project Seoul's Chromium build. This extension is a temporary harness.
+1. A **frozen Manifest V3 browser-control harness** (`apps/browser-harness/`), a
+   protocol and safety reference only (described in the rest of this README).
+2. An **unmodified, pinned native Chromium baseline** (`native/`): the lock,
+   baseline GN args, and reproduction/verification scripts. The Chromium source and
+   build output live in an external, untracked checkout, never in this repo.
+3. The **tracked Seoul-owned native source scaffold** (`native/seoul/`) and an
+   ordered, reversible **Chromium integration patch series** (`native/patches/`),
+   currently empty of product code by design.
+
+Source-of-truth model: Seoul-owned code is tracked here (`native/seoul/`) and is
+materialized into the external checkout; unavoidable upstream edits are minimal,
+reversible patches (`native/patches/chromium/`) over a pinned Chromium revision.
+The modified checkout is disposable and is never the source of truth.
+
+**Not yet done / not verified on any machine:** GN generation, Chromium
+compilation, launch, smoke test, runtime vertical-tabs and split-view validation,
+packaging, signing, and notarization. The component-build development settings in
+`native/gn/` are for local iteration and are **not** the shipping configuration.
+
+See: `docs/native/chromium-baseline.md` (baseline + checkout state),
+`docs/native/remote-build-runbook.md` (how to build on a capable Mac),
+`docs/product/feature-matrix.md` and `docs/product/native-architecture.md`
+(product direction and subsystem design). The harness integrates a browser-control
+runtime slice (side panel, user-gated tab access, semantic page observation, typed
+actions, restricted execution, persisted control-session state, action timeline)
+and exists only as a temporary reference; the native product re-implements these
+capabilities properly.
 
 ## Prerequisites (verified on this machine)
 
@@ -25,8 +45,9 @@ Project Seoul's Chromium build. This extension is a temporary harness.
 npm install
 ```
 
-This installs exactly two development dependencies: `typescript` and
-`@types/chrome`.
+This installs the development dependencies pinned in `package-lock.json`:
+`typescript`, `@types/chrome`, and `puppeteer` (Puppeteer drives the optional
+real-Chrome integration suite; nothing is installed at runtime).
 
 ## Build
 

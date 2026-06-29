@@ -31,6 +31,9 @@ if [ "$VERIFY" -eq 1 ]; then
   exit 0
 fi
 
+stage "build-host gate"
+"$SEOUL_SCRIPT_DIR/build-host-check.sh" || die "build-host gate failed; refusing to run gn gen on this host"
+
 [ -d "$CHROMIUM_SRC/.git" ] || die "no Chromium checkout at $CHROMIUM_SRC (run fetch.sh + sync.sh first)"
 use_depot_tools
 

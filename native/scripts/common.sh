@@ -58,6 +58,18 @@ OUT_DIR="$CHROMIUM_SRC/out/$OUT_DIR_NAME"
 CHROMIUM_BINARY="$OUT_DIR/Chromium.app/Contents/MacOS/Chromium"
 EVIDENCE_DIR="$SEOUL_NATIVE_DIR/evidence"
 
+# Repository-owned Seoul native source and the Chromium integration patch series.
+SEOUL_SRC_DIR="$SEOUL_NATIVE_DIR/seoul"
+PATCHES_DIR="$SEOUL_NATIVE_DIR/patches/chromium"
+PATCH_MANIFEST="$SEOUL_NATIVE_DIR/patches/manifest.json"
+# Where Seoul-owned source is materialized inside the external checkout.
+SEOUL_OVERLAY_DEST="$CHROMIUM_SRC/seoul"
+
+# Build-host minimums (overridable). These gate gen/build only; the checkout
+# itself does not require them.
+SEOUL_MIN_RAM_GIB="${SEOUL_MIN_RAM_GIB:-16}"
+SEOUL_MIN_BUILD_FREE_GIB="${SEOUL_MIN_BUILD_FREE_GIB:-150}"
+
 # Read a dotted field from the lock file (no jq dependency).
 lock_field() {
   local path="$1"
@@ -99,4 +111,35 @@ free_gib_for() {
   local p="$1"
   while [ ! -e "$p" ] && [ "$p" != "/" ]; do p="$(dirname "$p")"; done
   df -k "$p" | awk 'NR==2 { printf "%d", $4/1024/1024 }'
+}
+
+# Physical RAM in whole GiB.
+mem_gib() { printf '%d' "$(( $(sysctl -n hw.memsize 2>/dev/null || echo 0) / 1024 / 1024 / 1024 ))"; }
+
+# A gclient checkout is intentionally NOT "git clean": gclient manages
+# dependencies as git submodule gitlinks (which show as " M third_party/...") and
+# as untracked dependency directories (which show as "?? ..."). Both are expected.
+# A real, blocking edit is a modified or deleted TRACKED, non-submodule file. This
+# helper returns success only when such a real edit exists.
+src_has_user_edits() {
+  [ -n "$(git -C "$CHROMIUM_SRC" status --porcelain --ignore-submodules=all --untracked-files=no 2>/dev/null)" ]
+}
+
+# Resolve the Ninja job count. SEOUL_NINJA_JOBS overrides (validated positive
+# integer). The default is conservative and memory-aware: about one job per 4 GiB
+# of RAM, floored at 2. There is no unconditional hard-coded value.
+resolve_jobs() {
+  local override="${SEOUL_NINJA_JOBS:-}"
+  if [ -n "$override" ]; then
+    case "$override" in
+      '' | *[!0-9]*) die "SEOUL_NINJA_JOBS must be a positive integer, got: '$override'" ;;
+    esac
+    [ "$override" -ge 1 ] || die "SEOUL_NINJA_JOBS must be >= 1"
+    [ "$override" -le 256 ] || die "SEOUL_NINJA_JOBS is unreasonably large: $override"
+    printf '%s\n' "$override"
+    return 0
+  fi
+  local jobs=$(( $(mem_gib) / 4 ))
+  [ "$jobs" -lt 2 ] && jobs=2
+  printf '%s\n' "$jobs"
 }

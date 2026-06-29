@@ -1,0 +1,41 @@
+name: ci
+
+# Repository-owned checks that run WITHOUT a Chromium checkout or build.
+# The real-Chrome integration suite is a separate, capable-host-only workflow
+# (integration-capable-host.yml) and is intentionally not a gate here, because it
+# downloads Chrome for Testing and is not deterministic on hosted runners.
+
+on:
+  push:
+    branches: [main, "native/**"]
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  checks:
+    runs-on: ubuntu-latest
+    steps:
+      # Action versions are pinned to a major tag; tighten to a full commit SHA
+      # when hardening the supply chain further.
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          # Node >= 23.6 is required for built-in TypeScript type stripping used by
+          # the unit tests and harness modules.
+          node-version: "24"
+          cache: npm
+      - name: Install (lockfile)
+        run: npm ci
+      - name: Type check, build, validate, unit tests
+        run: npm run check
+      - name: Shell script syntax (bash -n, every tracked .sh)
+        run: npm run check:scripts
+      - name: JSON parse/schema checks
+        run: npm run check:json
+      - name: Patch-manifest validation
+        run: npm run check:manifest
+      - name: Repository-boundary check
+        run: npm run check:boundary

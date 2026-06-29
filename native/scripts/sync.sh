@@ -7,15 +7,15 @@
 set -euo pipefail
 . "$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)/common.sh"
 
-VERIFY_ONLY=0
-[ "${1:-}" = "--verify-only" ] && VERIFY_ONLY=1
-
-# A gclient checkout is never "git clean": it always shows modified submodule
-# pointers and untracked dependency directories. "Dirty" for our safety purposes
-# means modified/deleted TRACKED, non-submodule files (i.e. real user edits).
-src_has_user_edits() {
-  [ -n "$(git -C "$CHROMIUM_SRC" status --porcelain --ignore-submodules=all --untracked-files=no 2>/dev/null)" ]
-}
+# --verify-only delegates to the read-only checkout verifier (lock schema, src and
+# depot_tools HEADs, .gclient structure, expected upstream paths, tracked-edit
+# guard, and gclient validate). The precise definition of an expected vs blocked
+# "dirty" state (gclient submodule gitlinks and untracked dependency dirs are
+# expected; tracked non-submodule edits are blocked) lives in common.sh's
+# src_has_user_edits.
+if [ "${1:-}" = "--verify-only" ]; then
+  exec "$SEOUL_SCRIPT_DIR/verify-checkout.sh"
+fi
 
 REV="$(lock_chromium_revision)"; [ -n "$REV" ] || die "no chromium.revision in lock file"
 log "locked chromium revision: $REV"
@@ -24,16 +24,6 @@ log "locked chromium revision: $REV"
 
 current="$(git_head_sha "$CHROMIUM_SRC")"
 log "checkout HEAD: ${current:-<unknown>}"
-
-if [ "$VERIFY_ONLY" -eq 1 ]; then
-  stage "verify-only"
-  if [ "$current" = "$REV" ]; then
-    ! src_has_user_edits || warn "checkout is at the locked revision but has local edits to tracked files"
-    log "OK: checkout is at the locked revision"
-    exit 0
-  fi
-  die "checkout HEAD ($current) does not match locked revision ($REV); run sync.sh to pin it"
-fi
 
 if src_has_user_edits; then
   die "checkout has uncommitted edits to tracked files; refusing to sync (will not reset your work)"

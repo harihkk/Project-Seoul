@@ -73,23 +73,27 @@ same small-file reason; a Thunderbolt/NVMe volume or a stronger Mac is preferabl
 
 ## Build readiness / why the build is deferred
 
-`doctor.sh` passes all hard prerequisites (arm64, APFS, full Xcode, SDK, git,
-python3). The build is nonetheless deferred to a stronger machine for observed
-reasons:
+Checkout readiness (`doctor.sh`) and build readiness are now separate.
+`doctor.sh` covers the checkout. Build readiness is a hard gate,
+`build-host-check.sh`, which `gen.sh` and `build.sh` require before running. On this
+machine `build-host-check.sh` FAILS, so a build cannot start here. Observed reasons:
 
-1. **8 GiB RAM.** Below Chromium's practical minimum (~16 GiB, 32 GiB comfortable).
-   The `chrome` link step is memory-hungry and will thrash or OOM even at `-j 2`.
+1. **8 GiB RAM.** Below the 16 GiB build minimum (32 GiB comfortable). The `chrome`
+   link step is memory-hungry and will thrash or OOM. RAM is a hard gate, not a
+   warning.
 2. **Disk.** ~72 GiB free after the checkout; a component `out/SeoulBaseline` adds
-   ~50-100 GiB, which does not fit safely.
-3. **Storage speed.** The only external volume is a USB SSD that stalls on Chromium's
-   small-file workload (checkout and build alike).
+   ~50-100 GiB, which does not fit safely (build minimum default 150 GiB).
+3. **Storage speed.** The only external volume is a USB SSD that stalls on
+   Chromium's small-file workload (checkout and build alike).
 
-On a machine with >= 16 GiB RAM (ideally 32) and >= 200 GiB free fast storage, the
-build is ready to run unchanged:
+On a machine with >= 16 GiB RAM (ideally 32) and >= 250 GiB free fast storage, the
+build runs unchanged (full procedure in `remote-build-runbook.md`):
 
 ```
-native/scripts/gen.sh       # gn gen out/SeoulBaseline
-native/scripts/build.sh     # autoninja -C out/SeoulBaseline -j 2 chrome
+native/scripts/verify-checkout.sh   # read-only checkout verification
+native/scripts/build-host-check.sh  # hard build gate (RAM/disk/Xcode/checkout)
+native/scripts/gen.sh               # gn gen out/SeoulBaseline
+native/scripts/build.sh             # build chrome (SEOUL_NINJA_JOBS configurable)
 node native/scripts/smoke.mjs
 ```
 
