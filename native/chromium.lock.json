@@ -1,0 +1,23 @@
+{
+  "schemaVersion": 1,
+  "chromium": {
+    "version": "149.0.7827.201",
+    "milestone": 149,
+    "revision": "6a7b3dbec3b2ca25877c2553b5473b2f277ef644",
+    "source": "official stable release",
+    "channel": "Stable",
+    "platform": "Mac",
+    "resolvedVia": "https://chromiumdash.appspot.com/fetch_releases?channel=Stable&platform=Mac"
+  },
+  "depotTools": {
+    "revision": "1e85b18d8037bca45f9a9891ae9325729f3ebcd4",
+    "branch": "main",
+    "source": "https://chromium.googlesource.com/chromium/tools/depot_tools.git"
+  },
+  "verifiedUpstreamPaths": {
+    "verticalTabs": "chrome/browser/ui/views/tabs/vertical/",
+    "splitTabs": "chrome/browser/ui/views/frame/multi_contents_view.h",
+    "verifiedAtRevision": true
+  },
+  "resolvedAt": "2026-06-26"
+}

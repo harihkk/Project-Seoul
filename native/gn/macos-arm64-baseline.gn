@@ -1,0 +1,25 @@
+# Seoul native Chromium baseline GN args (macOS arm64).
+#
+# This file contains ONLY justified local-build settings for a reproducible,
+# unmodified Chromium baseline. It contains no Seoul branding, no API keys, no
+# proprietary codec flags, no security-disabling flags, no experimental compiler
+# options, and no product patches. gen.sh copies these lines verbatim into
+# out/SeoulBaseline/args.gn.
+
+# Release build (not a debug build).
+is_debug = false
+
+# Component build: faster incremental links and far lower peak link memory than a
+# static build. Chosen deliberately because this host has limited RAM (8 GiB).
+is_component_build = true
+
+# No debug symbols: smaller output, much lower link memory and disk use.
+symbol_level = 0
+
+# Use the platform linker rather than bundled lld. Kept explicit per the baseline
+# spec; revisit only with evidence if linking fails.
+use_lld = false
+
+# Target CPU is appended by gen.sh as target_cpu = "arm64" only after the host and
+# the pinned revision are confirmed to be Apple Silicon. It is intentionally not
+# hard-coded here so the file documents the gating decision.
