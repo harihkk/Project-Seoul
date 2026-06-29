@@ -240,9 +240,7 @@ TEST_F(OrganizationModelTest, ArchiveAndRestoreTab) {
   ASSERT_TRUE(restored.has_value());
   EXPECT_EQ(model_.membership_count(), 1u);
   EXPECT_EQ(model_.archived_count(), 0u);
-  // Restored tabs come back retained, not temporary (avoids instant
-  // re-archive).
-  EXPECT_EQ(model_.FindMembership(restored.value())->role, TabRole::kRetained);
+  EXPECT_EQ(model_.FindMembership(restored.value())->role, TabRole::kTemporary);
 }
 
 TEST_F(OrganizationModelTest, ObserversOrderedOncePerCommitNoneOnFailure) {

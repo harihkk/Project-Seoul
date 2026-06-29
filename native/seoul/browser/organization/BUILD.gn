@@ -1,13 +1,12 @@
 # Project Seoul native organization engine.
 # Materialized into the checkout at src/seoul/browser/organization/ by
-# native/scripts/materialize.sh. Two targets:
-#   organization_model  - the pure, Chromium-free domain model (deps: //base only)
-#   organization        - the profile-keyed service + factory (Chromium glue)
+# native/scripts/materialize.sh.
 #
-# The pure model is the centerpiece and is independently testable. The service and
-# factory are the minimal integration boundary; their exact cycle-free placement in
-# the //chrome/browser dependency graph is resolved at the build host (see the
-# RESEARCH REQUIRED note below and docs/product/native-architecture.md).
+# GN integration uses Chromium's circular-implementation-target pattern:
+#   organization_model  - pure domain model (//base only)
+#   organization        - profile KeyedService + factory; publicly depends on
+#                         //chrome/browser:browser_public_dependencies so it may
+#                         include Profile headers without a standalone cycle.
 
 source_set("organization_model") {
   sources = [
@@ -23,7 +22,6 @@ source_set("organization_model") {
     "organization_types.h",
   ]
 
-  # Pure model: //base only. No Browser, no TabStripModel, no Profile.
   deps = [ "//base" ]
 }
 
@@ -35,31 +33,32 @@ source_set("organization") {
     "seoul_organization_service_factory.h",
   ]
 
-  deps = [
+  public_deps = [
     ":organization_model",
+    "//chrome/browser:browser_public_dependencies",
+  ]
+
+  deps = [
     "//base",
+    "//chrome/browser/profiles:profile",
     "//components/keyed_service/core",
     "//components/pref_registry",
     "//components/prefs",
     "//content/public/browser",
+    "//seoul/browser/commands:command_chromium",
     "//seoul/browser/lifecycle",
     "//seoul/browser/lifecycle:lifecycle_core",
-
-    # RESEARCH REQUIRED (resolve at the build host, cannot be verified without GN):
-    # the service references chrome/browser/profiles/profile.h and
-    # profile_selections.h. In Chromium these belong to //chrome/browser, so this
-    # source_set must be wired so it sees the Profile target without forming a
-    # //chrome/browser <-> //seoul cycle (for example by compiling these two files
-    # as part of //chrome/browser via the integration patch, rather than as a
-    # standalone library). The integration patch records both options.
-    # "//chrome/browser/profiles:profile",
+    "//seoul/browser/projection:projection_core",
   ]
 }
 
-source_set("unit_tests") {
+test("seoul_organization_unittests") {
   testonly = true
   sources = [
+    "organization_header_unittest.cc",
+    "organization_invariants_unittest.cc",
     "organization_model_unittest.cc",
+    "organization_recovery_unittest.cc",
     "organization_routing_unittest.cc",
     "organization_splits_unittest.cc",
     "organization_store_unittest.cc",

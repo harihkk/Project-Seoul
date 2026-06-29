@@ -100,6 +100,7 @@ base::Value::Dict ArchivedToDict(const ArchivedTabRecord& a) {
   base::Value::Dict d;
   d.Set("original_id", a.original_id.value());
   d.Set("workspace_id", a.workspace_id.value());
+  d.Set("original_role", static_cast<int>(a.original_role));
   d.Set("saved_root_url", a.saved_root_url);
   d.Set("title", a.title);
   d.Set("archived_at", base::TimeToValue(a.archived_at));
@@ -195,10 +196,10 @@ MutationResult<OrganizationSnapshot> DeserializeSnapshot(
       def ? WorkspaceId::FromString(*def) : WorkspaceId();
 
   const base::Value::List* workspaces = dict.FindList("workspaces");
+  if (workspaces && workspaces->size() > kMaxWorkspaces) {
+    return Err(OrganizationError::kLimitExceeded);
+  }
   if (workspaces) {
-    if (workspaces->size() > kMaxWorkspaces) {
-      return Err(OrganizationError::kLimitExceeded);
-    }
     for (const base::Value& v : *workspaces) {
       const base::Value::Dict* d = v.GetIfDict();
       if (!d) {
@@ -224,10 +225,10 @@ MutationResult<OrganizationSnapshot> DeserializeSnapshot(
   }
 
   const base::Value::List* essentials = dict.FindList("essentials");
+  if (essentials && essentials->size() > kMaxEssentials) {
+    return Err(OrganizationError::kLimitExceeded);
+  }
   if (essentials) {
-    if (essentials->size() > kMaxEssentials) {
-      return Err(OrganizationError::kLimitExceeded);
-    }
     for (const base::Value& v : *essentials) {
       const base::Value::Dict* d = v.GetIfDict();
       if (!d) {
@@ -243,7 +244,7 @@ MutationResult<OrganizationSnapshot> DeserializeSnapshot(
       e.name = name;
       e.root_url = url;
       if (!ReadEnum(*d, "kind", /*max=*/0, &e.kind)) {
-        e.kind = EssentialKind::kPersistentDestination;
+        return Err(OrganizationError::kCorruptState);
       }
       if (const std::string* icon = d->FindString("icon")) {
         e.icon = *icon;
@@ -255,6 +256,9 @@ MutationResult<OrganizationSnapshot> DeserializeSnapshot(
   }
 
   const base::Value::List* memberships = dict.FindList("memberships");
+  if (memberships && memberships->size() > kMaxTotalMemberships) {
+    return Err(OrganizationError::kLimitExceeded);
+  }
   if (memberships) {
     for (const base::Value& v : *memberships) {
       const base::Value::Dict* d = v.GetIfDict();
@@ -284,6 +288,9 @@ MutationResult<OrganizationSnapshot> DeserializeSnapshot(
   }
 
   const base::Value::List* splits = dict.FindList("splits");
+  if (splits && splits->size() > kMaxTotalSplits) {
+    return Err(OrganizationError::kLimitExceeded);
+  }
   if (splits) {
     for (const base::Value& v : *splits) {
       const base::Value::Dict* d = v.GetIfDict();
@@ -319,6 +326,9 @@ MutationResult<OrganizationSnapshot> DeserializeSnapshot(
   }
 
   const base::Value::List* windows = dict.FindList("windows");
+  if (windows && windows->size() > kMaxWindowStates) {
+    return Err(OrganizationError::kLimitExceeded);
+  }
   if (windows) {
     for (const base::Value& v : *windows) {
       const base::Value::Dict* d = v.GetIfDict();
@@ -394,6 +404,9 @@ MutationResult<OrganizationSnapshot> DeserializeSnapshot(
       }
       a.original_id = TabMembershipId::FromString(id);
       a.workspace_id = WorkspaceId::FromString(ws);
+      if (!ReadEnum(*d, "original_role", /*max=*/2, &a.original_role)) {
+        return Err(OrganizationError::kCorruptState);
+      }
       if (const std::string* u = d->FindString("saved_root_url")) {
         a.saved_root_url = *u;
       }

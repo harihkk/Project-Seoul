@@ -21,6 +21,12 @@ inline constexpr size_t kMaxSplitGroupsPerWorkspace = 500;
 inline constexpr size_t kMaxRoutingRules = 200;
 inline constexpr size_t kMaxArchivedTabs = 1000;
 
+// Aggregate caps enforced before walking untrusted stored lists.
+inline constexpr size_t kMaxTotalMemberships = 10000;
+inline constexpr size_t kMaxTotalSplits = 2000;
+inline constexpr size_t kMaxWindowStates = 256;
+inline constexpr size_t kMaxUpstreamSplitTokenLength = 256;
+
 inline constexpr size_t kMaxNameLength = 256;
 inline constexpr size_t kMaxIconRefLength = 256;
 inline constexpr size_t kMaxUrlLength = 4096;

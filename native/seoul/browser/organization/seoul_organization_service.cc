@@ -5,14 +5,22 @@
 #include <utility>
 
 #include "base/functional/bind.h"
+#include "base/memory/weak_ptr.h"
 #include "base/task/sequenced_task_runner.h"
 #include "components/pref_registry/pref_registry_syncable.h"
 #include "components/prefs/pref_service.h"
-#include "seoul/browser/lifecycle/lifecycle_coordinator.h"
+#include "seoul/browser/commands/chromium_mutation_adapter_impl.h"
+#include "seoul/browser/commands/command_confirmation_seam.h"
+#include "seoul/browser/commands/command_executor.h"
+#include "seoul/browser/commands/live_target_resolver.h"
 #include "seoul/browser/lifecycle/lifecycle_events.h"
 #include "seoul/browser/lifecycle/persistence_scheduler.h"
+#include "seoul/browser/lifecycle/session_restore_watcher.h"
 #include "seoul/browser/lifecycle/window_watcher.h"
+#include "seoul/browser/organization/organization_errors.h"
 #include "seoul/browser/organization/organization_store.h"
+#include "seoul/browser/projection/projection_service.h"
+#include "seoul/browser/shell/shell_service.h"
 
 namespace seoul {
 
@@ -22,28 +30,47 @@ SeoulOrganizationService::SeoulOrganizationService(Profile* profile,
   observation_.Observe(&model_);
   LoadFromPrefs();
 
-  // Persistence is coalesced through the scheduler. The writer is the in-memory
-  // pref write; a burst of events collapses into a single posted write.
   scheduler_ = std::make_unique<PersistenceScheduler>(
       base::BindRepeating(&SeoulOrganizationService::WriteToPrefs,
-                          base::Unretained(this)),
+                          weak_factory_.GetWeakPtr()),
       base::SequencedTaskRunner::GetCurrentDefault());
 
-  // The coordinator applies normalized events to the model and schedules
-  // writes.
-  coordinator_ = std::make_unique<LifecycleCoordinator>(
-      &model_, base::BindRepeating(&PersistenceScheduler::ScheduleWrite,
-                                   base::Unretained(scheduler_.get())));
+  coordinator_ = std::make_unique<LifecycleCoordinator>(&model_);
+  coordinator_->SetReconciliationRequestCallback(
+      base::BindRepeating(&SeoulOrganizationService::RunLifecycleReconciliation,
+                          weak_factory_.GetWeakPtr()));
 
-  // The watcher discovers this profile's normal windows and feeds the
-  // coordinator. RESEARCH REQUIRED (resolve at the build host): confirm the
-  // service is created before or after the first window for this profile.
-  // StartObserving handles both (it enumerates existing windows once and
-  // observes future ones), but the exact session-restore reconciliation
-  // handshake is wired at the build host.
   window_watcher_ =
       std::make_unique<WindowWatcher>(profile_, coordinator_.get());
   window_watcher_->StartObserving();
+
+  session_restore_watcher_ = std::make_unique<SessionRestoreWatcher>(
+      profile_, window_watcher_.get(), coordinator_.get());
+  session_restore_watcher_->StartObserving();
+
+  target_resolver_ = std::make_unique<LiveTargetResolver>();
+  mutation_adapter_ = std::make_unique<ChromiumMutationAdapterImpl>();
+  command_executor_ = std::make_unique<CommandExecutor>(
+      profile_, &model_, coordinator_.get(), target_resolver_.get(),
+      mutation_adapter_.get());
+  command_confirmation_ =
+      std::make_unique<CommandConfirmationSeam>(command_executor_.get());
+  coordinator_->SetConfirmationCallback(
+      base::BindRepeating(&CommandConfirmationSeam::OnNormalizedEvent,
+                          base::Unretained(command_confirmation_.get())));
+  coordinator_->SetPinHandlingSuppressor(
+      base::BindRepeating(&CommandExecutor::ShouldDeferLifecyclePinRoleMutation,
+                          base::Unretained(command_executor_.get())));
+
+  projection_service_ = std::make_unique<ProjectionService>(
+      profile_, &model_, coordinator_.get(), command_executor_.get(),
+      window_watcher_->live_state_provider());
+  shell_service_ = std::make_unique<ShellService>(
+      profile_, &model_, projection_service_.get(),
+      window_watcher_->live_state_provider(), command_executor_.get(),
+      coordinator_.get(), recovery_required_,
+      base::BindRepeating(&SeoulOrganizationService::AcknowledgeRecovery,
+                          base::Unretained(this)));
 }
 
 SeoulOrganizationService::~SeoulOrganizationService() = default;
@@ -51,17 +78,29 @@ SeoulOrganizationService::~SeoulOrganizationService() = default;
 // static
 void SeoulOrganizationService::RegisterProfilePrefs(
     user_prefs::PrefRegistrySyncable* registry) {
-  // A single, bounded dict. Not syncable in v0: organization layout is local
-  // until a sync design exists. The value carries its own schema_version.
   registry->RegisterDictionaryPref(kOrganizationPref);
+  registry->RegisterDictionaryPref(kOrganizationRecoveryPref);
 }
 
 void SeoulOrganizationService::Shutdown() {
-  // Detach window/tab observers before the browsers and tab strips are torn
-  // down.
+  if (command_executor_) {
+    command_executor_->Shutdown();
+  }
+  if (coordinator_) {
+    coordinator_->SetConfirmationCallback(
+        base::RepeatingCallback<void(const NormalizedEvent&)>());
+    coordinator_->SetPinHandlingSuppressor(
+        base::RepeatingCallback<bool(LiveTabKey)>());
+  }
+  command_confirmation_.reset();
+  command_executor_.reset();
+  mutation_adapter_.reset();
+  target_resolver_.reset();
+  if (session_restore_watcher_) {
+    session_restore_watcher_->StopObserving();
+    session_restore_watcher_.reset();
+  }
   window_watcher_.reset();
-  // Tell the coordinator we are shutting down, then flush any pending write
-  // once.
   if (coordinator_) {
     NormalizedEvent event;
     event.type = NormalizedEventType::kShutdownBegan;
@@ -71,48 +110,129 @@ void SeoulOrganizationService::Shutdown() {
     scheduler_->Flush();
     scheduler_->Shutdown();
   }
+  if (shell_service_) {
+    shell_service_->Shutdown();
+    shell_service_.reset();
+  }
+  if (projection_service_) {
+    projection_service_->Shutdown();
+    projection_service_.reset();
+  }
 }
 
 void SeoulOrganizationService::OnOrganizationChanged(
     const OrganizationChange& change) {
-  if (loading_) {
-    return;  // do not persist the state we are in the middle of loading
+  if (loading_ || suppress_persist_) {
+    return;
+  }
+  if (projection_service_) {
+    projection_service_->OnOrganizationChanged(change);
+  }
+  if (shell_service_) {
+    shell_service_->OnOrganizationChanged(change);
   }
   if (scheduler_) {
-    scheduler_->ScheduleWrite();  // coalesced
-  } else {
-    WriteToPrefs();  // before the scheduler exists (during initial load)
+    scheduler_->ScheduleWrite();
   }
+}
+
+void SeoulOrganizationService::CopyActivePrefToRecovery() {
+  const base::Value::Dict& active = prefs_->GetDict(kOrganizationPref);
+  if (active.empty()) {
+    return;
+  }
+  const base::Value::Dict& existing_recovery =
+      prefs_->GetDict(kOrganizationRecoveryPref);
+  if (!existing_recovery.empty()) {
+    return;  // preserve the first recovery copy
+  }
+  prefs_->SetDict(kOrganizationRecoveryPref, active.Clone());
 }
 
 void SeoulOrganizationService::LoadFromPrefs() {
   loading_ = true;
+  suppress_persist_ = false;
+  recovery_required_ = false;
+  last_load_result_ = OrganizationLoadResult::kEmpty;
+
   const base::Value::Dict& stored = prefs_->GetDict(kOrganizationPref);
-  if (!stored.empty()) {
-    MutationResult<OrganizationSnapshot> parsed = DeserializeSnapshot(stored);
-    if (parsed.has_value()) {
-      // LoadSnapshot is atomic; on semantic failure the in-memory state is
-      // untouched and we keep the last known valid state (we do not overwrite
-      // prefs here, preserving the stored bytes for manual recovery/diagnosis).
-      model_.LoadSnapshot(parsed.value());
-    }
-    // Corrupt/unsupported stored data is intentionally not overwritten on load.
+  if (stored.empty()) {
+    model_.EnsureDefaultWorkspace();
+    loading_ = false;
+    WriteToPrefs();
+    return;
   }
-  // Always guarantee exactly one default workspace for an eligible profile.
+
+  MutationResult<OrganizationSnapshot> parsed = DeserializeSnapshot(stored);
+  if (!parsed.has_value()) {
+    if (parsed.error() == OrganizationError::kUnsupportedSchema) {
+      last_load_result_ = OrganizationLoadResult::kUnsupportedVersion;
+    } else {
+      last_load_result_ = OrganizationLoadResult::kCorrupt;
+    }
+    CopyActivePrefToRecovery();
+    suppress_persist_ = true;
+    recovery_required_ = true;
+    model_.EnsureDefaultWorkspace();
+    loading_ = false;
+    return;
+  }
+
+  const MutationStatus loaded = model_.LoadSnapshot(parsed.value());
+  if (!loaded.has_value()) {
+    last_load_result_ = OrganizationLoadResult::kCorrupt;
+    CopyActivePrefToRecovery();
+    suppress_persist_ = true;
+    recovery_required_ = true;
+    model_.EnsureDefaultWorkspace();
+    loading_ = false;
+    return;
+  }
+
+  last_load_result_ = OrganizationLoadResult::kLoaded;
   model_.EnsureDefaultWorkspace();
   loading_ = false;
-  // Persist the (possibly newly initialized) valid state once.
-  WriteToPrefs();
 }
 
 bool SeoulOrganizationService::WriteToPrefs() {
+  if (suppress_persist_) {
+    return false;
+  }
   base::Value::Dict dict = SerializeSnapshot(model_.ToSnapshot());
   if (!SerializedSizeWithinLimit(dict)) {
-    // Refuse to write an over-limit blob; keep the last valid stored state.
     return false;
   }
   prefs_->SetDict(kOrganizationPref, std::move(dict));
   return true;
+}
+
+MutationStatus SeoulOrganizationService::AcknowledgeRecovery() {
+  if (!recovery_required_) {
+    return Err(OrganizationError::kNoOpRejected);
+  }
+  suppress_persist_ = false;
+  recovery_required_ = false;
+  if (!WriteToPrefs()) {
+    return Err(OrganizationError::kPersistenceFailure);
+  }
+  return Ok();
+}
+
+void SeoulOrganizationService::RunLifecycleReconciliation() {
+  if (!coordinator_ || !window_watcher_) {
+    return;
+  }
+  NormalizedEvent began;
+  began.type = NormalizedEventType::kReconciliationBegan;
+  began.origin = MutationOrigin::kSystemRecovery;
+  coordinator_->OnNormalizedEvent(began);
+
+  window_watcher_->RescanExistingWindows();
+
+  NormalizedEvent completed;
+  completed.type = NormalizedEventType::kReconciliationCompleted;
+  completed.origin = MutationOrigin::kSystemRecovery;
+  coordinator_->OnNormalizedEvent(completed);
 }
 
 }  // namespace seoul

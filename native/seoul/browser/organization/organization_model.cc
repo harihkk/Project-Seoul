@@ -351,8 +351,12 @@ MutationStatus OrganizationModel::DeleteWorkspace(const WorkspaceId& id) {
     s = (s->second.workspace_id == id) ? splits_.erase(s) : std::next(s);
   }
   for (auto r = routing_rules_.begin(); r != routing_rules_.end();) {
-    r = (r->second.predicate.source_workspace == id) ? routing_rules_.erase(r)
-                                                     : std::next(r);
+    const bool references_source = r->second.predicate.source_workspace == id;
+    const bool references_target = r->second.result.disposition ==
+                                       RoutingDisposition::kSpecificWorkspace &&
+                                   r->second.result.target_workspace == id;
+    r = (references_source || references_target) ? routing_rules_.erase(r)
+                                                 : std::next(r);
   }
   const WorkspaceId fallback = PickFallbackWorkspace(id);
   for (auto& [window_key, active] : window_active_) {
@@ -416,6 +420,10 @@ MutationResult<TabMembershipId> OrganizationModel::AddTabMembership(
   }
   if (!FindWorkspace(workspace_id)) {
     return Err(OrganizationError::kWorkspaceNotFound);
+  }
+  const WorkspaceRecord* workspace = FindWorkspace(workspace_id);
+  if (workspace->archived) {
+    return Err(OrganizationError::kArchivedWorkspaceCannotActivate);
   }
   if (tab_index_.count(std::string(tab_key))) {
     return Err(OrganizationError::kDuplicateMembership);
@@ -481,6 +489,10 @@ MutationStatus OrganizationModel::MoveTabToWorkspace(
   }
   if (!FindWorkspace(target_workspace)) {
     return Err(OrganizationError::kWorkspaceNotFound);
+  }
+  const WorkspaceRecord* target = FindWorkspace(target_workspace);
+  if (target->archived) {
+    return Err(OrganizationError::kArchivedWorkspaceCannotActivate);
   }
   if (it->second.workspace_id == target_workspace) {
     return Err(OrganizationError::kNoOpRejected);
@@ -689,12 +701,23 @@ MutationResult<SplitGroupId> OrganizationModel::CreateSplitGroup(
   if (!FindWorkspace(workspace_id)) {
     return Err(OrganizationError::kWorkspaceNotFound);
   }
+  const WorkspaceRecord* workspace = FindWorkspace(workspace_id);
+  if (workspace->archived) {
+    return Err(OrganizationError::kArchivedWorkspaceCannotActivate);
+  }
   if (pane_tab_keys.size() < kMinSplitPanes ||
       pane_tab_keys.size() > kMaxSplitPanesV0) {
     return Err(OrganizationError::kInvalidSplitArity);
   }
   if (divider_ratio < kMinDividerRatio || divider_ratio > kMaxDividerRatio) {
     return Err(OrganizationError::kInvalidDividerRatio);
+  }
+  if (upstream_split_token.empty() ||
+      upstream_split_token.size() > kMaxUpstreamSplitTokenLength) {
+    return Err(OrganizationError::kInvalidUpstreamSplitToken);
+  }
+  if (FindSplitIdByUpstreamToken(upstream_split_token).is_valid()) {
+    return Err(OrganizationError::kDuplicateSplitToken);
   }
   std::set<std::string> seen;
   for (const std::string& key : pane_tab_keys) {
@@ -767,6 +790,65 @@ MutationStatus OrganizationModel::DissolveSplitGroup(const SplitGroupId& id) {
   return Ok();
 }
 
+MutationStatus OrganizationModel::ReplaceSplitGroupContents(
+    std::string_view upstream_split_token,
+    const std::vector<std::string>& pane_tab_keys,
+    double divider_ratio,
+    int active_pane_index) {
+  if (notifying_) {
+    return Err(OrganizationError::kNoOpRejected);
+  }
+  if (upstream_split_token.empty() ||
+      upstream_split_token.size() > kMaxUpstreamSplitTokenLength) {
+    return Err(OrganizationError::kInvalidUpstreamSplitToken);
+  }
+  const SplitGroupId existing_id =
+      FindSplitIdByUpstreamToken(upstream_split_token);
+  if (!existing_id.is_valid()) {
+    return Err(OrganizationError::kSplitGroupNotFound);
+  }
+  auto it = splits_.find(existing_id);
+  if (it == splits_.end()) {
+    return Err(OrganizationError::kSplitGroupNotFound);
+  }
+  const WorkspaceId workspace_id = it->second.workspace_id;
+  const WorkspaceRecord* workspace = FindWorkspace(workspace_id);
+  if (!workspace || workspace->archived) {
+    return Err(OrganizationError::kArchivedWorkspaceCannotActivate);
+  }
+  if (pane_tab_keys.size() < kMinSplitPanes ||
+      pane_tab_keys.size() > kMaxSplitPanesV0) {
+    return Err(OrganizationError::kInvalidSplitArity);
+  }
+  if (divider_ratio < kMinDividerRatio || divider_ratio > kMaxDividerRatio) {
+    return Err(OrganizationError::kInvalidDividerRatio);
+  }
+  if (active_pane_index < 0 ||
+      active_pane_index >= static_cast<int>(pane_tab_keys.size())) {
+    return Err(OrganizationError::kInvalidActivePane);
+  }
+  std::set<std::string> seen;
+  for (const std::string& key : pane_tab_keys) {
+    if (!seen.insert(key).second) {
+      return Err(OrganizationError::kInvalidSplitArity);
+    }
+    auto ti = tab_index_.find(key);
+    if (ti == tab_index_.end()) {
+      return Err(OrganizationError::kTabMembershipNotFound);
+    }
+    const TabMembershipRecord* m = FindMembership(ti->second);
+    if (!m || m->workspace_id != workspace_id) {
+      return Err(OrganizationError::kCrossWorkspaceSplit);
+    }
+  }
+  it->second.pane_tab_keys = pane_tab_keys;
+  it->second.divider_ratio = divider_ratio;
+  it->second.active_pane_index = active_pane_index;
+  Notify(
+      {OrganizationChangeType::kSplitUpdated, workspace_id, TabMembershipId()});
+  return Ok();
+}
+
 // --- Temporary-tab protection / auto-archive ---
 
 std::vector<TabMembershipId> OrganizationModel::EligibleForAutoArchive(
@@ -833,7 +915,10 @@ MutationStatus OrganizationModel::ArchiveTab(const TabMembershipId& id) {
   ArchivedTabRecord a;
   a.original_id = id;
   a.workspace_id = workspace_id;
-  a.saved_root_url = it->second.saved_root_url;
+  a.original_role = it->second.role;
+  if (it->second.role == TabRole::kPinned) {
+    a.saved_root_url = it->second.saved_root_url;
+  }
   a.archived_at = Now();
   // Bounded retention: evict the oldest archived record if at capacity.
   if (archived_.size() >= kMaxArchivedTabs) {
@@ -877,13 +962,24 @@ MutationResult<TabMembershipId> OrganizationModel::RestoreArchivedTab(
       return Err(OrganizationError::kWorkspaceNotFound);
     }
   }
+  const WorkspaceRecord* target_workspace = FindWorkspace(workspace_id);
+  if (target_workspace->archived) {
+    return Err(OrganizationError::kArchivedWorkspaceCannotActivate);
+  }
+  if (MembershipsInWorkspace(workspace_id) >= kMaxMembershipsPerWorkspace) {
+    return Err(OrganizationError::kLimitExceeded);
+  }
   TabMembershipRecord m;
   m.id = TabMembershipId::GenerateNew();
   m.workspace_id = workspace_id;
   m.tab_key = std::string(tab_key);
-  m.role =
-      TabRole::kRetained;  // restored tabs come back retained, not temporary
-  m.saved_root_url = it->second.saved_root_url;
+  if (it->second.original_role == TabRole::kPinned) {
+    m.role = TabRole::kRetained;
+    m.saved_root_url.clear();
+  } else {
+    m.role = it->second.original_role;
+    m.saved_root_url.clear();
+  }
   m.order = NextOrderInWorkspace(workspace_id);
   m.created_at = Now();
   m.last_active_at = m.created_at;
@@ -1081,6 +1177,9 @@ MutationStatus OrganizationModel::LoadSnapshot(
   // Bounds.
   if (snapshot.workspaces.size() > kMaxWorkspaces ||
       snapshot.essentials.size() > kMaxEssentials ||
+      snapshot.memberships.size() > kMaxTotalMemberships ||
+      snapshot.splits.size() > kMaxTotalSplits ||
+      snapshot.window_states.size() > kMaxWindowStates ||
       snapshot.routing_rules.size() > kMaxRoutingRules ||
       snapshot.archived_tabs.size() > kMaxArchivedTabs) {
     return Err(OrganizationError::kLimitExceeded);
@@ -1093,6 +1192,9 @@ MutationStatus OrganizationModel::LoadSnapshot(
   for (const WorkspaceRecord& w : snapshot.workspaces) {
     if (!w.id.is_valid() || !ValidName(w.name)) {
       return Err(OrganizationError::kCorruptState);
+    }
+    if (w.order < 0) {
+      return Err(OrganizationError::kInvalidOrder);
     }
     if (!workspaces.emplace(w.id, w).second) {
       return Err(OrganizationError::kCorruptState);  // duplicate id
@@ -1132,6 +1234,9 @@ MutationStatus OrganizationModel::LoadSnapshot(
         m.tab_key.size() > kMaxTabKeyLength) {
       return Err(OrganizationError::kCorruptState);
     }
+    if (m.order < 0) {
+      return Err(OrganizationError::kInvalidOrder);
+    }
     if (workspaces.find(m.workspace_id) == workspaces.end()) {
       return Err(OrganizationError::kCorruptState);  // dangling workspace ref
     }
@@ -1147,10 +1252,19 @@ MutationStatus OrganizationModel::LoadSnapshot(
   }
 
   std::map<SplitGroupId, SplitGroupRecord> splits;
+  std::map<WorkspaceId, size_t> splits_per_workspace;
+  std::set<std::string> upstream_tokens;
   for (const SplitGroupRecord& s : snapshot.splits) {
     if (!s.id.is_valid() ||
         workspaces.find(s.workspace_id) == workspaces.end()) {
       return Err(OrganizationError::kCorruptState);
+    }
+    if (s.upstream_split_token.empty() ||
+        s.upstream_split_token.size() > kMaxUpstreamSplitTokenLength) {
+      return Err(OrganizationError::kInvalidUpstreamSplitToken);
+    }
+    if (!upstream_tokens.insert(s.upstream_split_token).second) {
+      return Err(OrganizationError::kDuplicateSplitToken);
     }
     if (s.pane_tab_keys.size() < kMinSplitPanes ||
         s.pane_tab_keys.size() > kMaxSplitPanesV0) {
@@ -1177,6 +1291,9 @@ MutationStatus OrganizationModel::LoadSnapshot(
     }
     if (!splits.emplace(s.id, s).second) {
       return Err(OrganizationError::kCorruptState);
+    }
+    if (++splits_per_workspace[s.workspace_id] > kMaxSplitGroupsPerWorkspace) {
+      return Err(OrganizationError::kLimitExceeded);
     }
   }
 
@@ -1208,6 +1325,9 @@ MutationStatus OrganizationModel::LoadSnapshot(
     if (!a.original_id.is_valid()) {
       return Err(OrganizationError::kCorruptState);
     }
+    if (workspaces.find(a.workspace_id) == workspaces.end()) {
+      return Err(OrganizationError::kCorruptState);
+    }
     // A tab cannot be both archived and live.
     if (memberships.find(a.original_id) != memberships.end()) {
       return Err(OrganizationError::kCorruptState);
@@ -1219,15 +1339,17 @@ MutationStatus OrganizationModel::LoadSnapshot(
 
   std::map<std::string, WorkspaceId> window_active;
   for (const WindowWorkspaceState& ws : snapshot.window_states) {
-    if (ws.window_key.empty()) {
+    if (ws.window_key.empty() || ws.window_key.size() > kMaxTabKeyLength) {
       return Err(OrganizationError::kCorruptState);
+    }
+    if (!window_active.emplace(ws.window_key, ws.active_workspace_id).second) {
+      return Err(OrganizationError::kCorruptState);  // duplicate window key
     }
     auto w = workspaces.find(ws.active_workspace_id);
     if (w == workspaces.end() || w->second.archived) {
       return Err(
           OrganizationError::kCorruptState);  // active must exist + be live
     }
-    window_active[ws.window_key] = ws.active_workspace_id;
   }
 
   // Commit (atomic swap).

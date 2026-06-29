@@ -106,6 +106,14 @@ class OrganizationModel {
                                    double divider_ratio,
                                    int active_pane_index);
   MutationStatus DissolveSplitGroup(const SplitGroupId& id);
+  // Atomically replace split pane membership and layout. Preserves the Seoul
+  // split id when `upstream_split_token` matches the existing record. Rejects
+  // invalid proposed state without dissolving first.
+  MutationStatus ReplaceSplitGroupContents(
+      std::string_view upstream_split_token,
+      const std::vector<std::string>& pane_tab_keys,
+      double divider_ratio,
+      int active_pane_index);
 
   // --- Temporary-tab protection / auto-archive ---
   // Returns the temporary memberships eligible for auto-archive: role ==

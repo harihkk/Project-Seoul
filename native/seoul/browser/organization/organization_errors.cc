@@ -38,6 +38,10 @@ const char* OrganizationErrorToString(OrganizationError error) {
       return "invalid_divider_ratio";
     case OrganizationError::kInvalidActivePane:
       return "invalid_active_pane";
+    case OrganizationError::kInvalidUpstreamSplitToken:
+      return "invalid_upstream_split_token";
+    case OrganizationError::kDuplicateSplitToken:
+      return "duplicate_split_token";
     case OrganizationError::kInvalidRoutingRule:
       return "invalid_routing_rule";
     case OrganizationError::kUnsupportedSchema:

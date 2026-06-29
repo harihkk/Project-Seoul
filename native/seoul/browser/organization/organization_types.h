@@ -13,6 +13,7 @@
 
 #include "base/time/time.h"
 #include "seoul/browser/organization/organization_ids.h"
+#include "seoul/browser/organization/organization_limits.h"
 
 namespace seoul {
 
@@ -165,6 +166,7 @@ struct TabLiveActivity {
 struct ArchivedTabRecord {
   TabMembershipId original_id;
   WorkspaceId workspace_id;
+  TabRole original_role = TabRole::kTemporary;
   std::string saved_root_url;
   std::string title;  // last known title, bounded; optional
   base::Time archived_at;

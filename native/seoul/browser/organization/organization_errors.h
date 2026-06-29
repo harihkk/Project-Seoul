@@ -27,6 +27,8 @@ enum class OrganizationError {
   kInvalidSplitArity,
   kInvalidDividerRatio,
   kInvalidActivePane,
+  kInvalidUpstreamSplitToken,
+  kDuplicateSplitToken,
   kInvalidRoutingRule,
   kUnsupportedSchema,
   kLimitExceeded,

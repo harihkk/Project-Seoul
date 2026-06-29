@@ -5,7 +5,7 @@
 // itself stays Chromium-free.
 //
 // As of the lifecycle-bridge milestone it also owns the INBOUND lifecycle
-// bridge: a per-profile WindowWatcher that attaches one TabStripBridge per
+// bridge: a per-profile window watcher that attaches one TabStripBridge per
 // eligible normal window, a LifecycleCoordinator that applies normalized events
 // to the model, and a PersistenceScheduler that coalesces writes. No outbound
 // (Seoul -> Chromium) command path exists yet.
@@ -16,6 +16,7 @@
 #include <memory>
 
 #include "base/memory/raw_ptr.h"
+#include "base/memory/weak_ptr.h"
 #include "base/scoped_observation.h"
 #include "components/keyed_service/core/keyed_service.h"
 #include "seoul/browser/organization/organization_model.h"
@@ -30,13 +31,28 @@ class PrefRegistrySyncable;
 
 namespace seoul {
 
+class ProjectionService;
+class ShellService;
+class CommandExecutor;
 class LifecycleCoordinator;
 class PersistenceScheduler;
+class SessionRestoreWatcher;
 class WindowWatcher;
 
 // Single dict preference holding the bounded organization snapshot. Versioned
 // in the value itself (schema_version), not in the key.
 inline constexpr char kOrganizationPref[] = "seoul.organization.v1";
+// Recovery copy of a corrupt or unsupported active snapshot. The active pref is
+// left untouched until an explicit repair replaces it.
+inline constexpr char kOrganizationRecoveryPref[] =
+    "seoul.organization.v1.recovery";
+
+enum class OrganizationLoadResult {
+  kEmpty,
+  kLoaded,
+  kCorrupt,
+  kUnsupportedVersion,
+};
 
 class SeoulOrganizationService : public KeyedService,
                                  public OrganizationModelObserver {
@@ -52,6 +68,27 @@ class SeoulOrganizationService : public KeyedService,
 
   OrganizationModel& model() { return model_; }
   const OrganizationModel& model() const { return model_; }
+  OrganizationLoadResult last_load_result() const { return last_load_result_; }
+  bool recovery_required() const { return recovery_required_; }
+
+  // Explicit recovery transition after corrupt/unsupported pref load. Writes a
+  // valid initialized snapshot to the active pref and resumes persistence.
+  MutationStatus AcknowledgeRecovery();
+
+  LifecycleCoordinator* lifecycle_coordinator() { return coordinator_.get(); }
+  const LifecycleCoordinator* lifecycle_coordinator() const {
+    return coordinator_.get();
+  }
+  CommandExecutor* command_executor() { return command_executor_.get(); }
+  const CommandExecutor* command_executor() const {
+    return command_executor_.get();
+  }
+  ProjectionService* projection_service() { return projection_service_.get(); }
+  const ProjectionService* projection_service() const {
+    return projection_service_.get();
+  }
+  ShellService* shell_service() { return shell_service_.get(); }
+  const ShellService* shell_service() const { return shell_service_.get(); }
 
   // KeyedService:
   void Shutdown() override;
@@ -60,32 +97,35 @@ class SeoulOrganizationService : public KeyedService,
   void OnOrganizationChanged(const OrganizationChange& change) override;
 
  private:
-  // Loads the snapshot from prefs. On corrupt/unsupported data it leaves the
-  // last known valid in-memory state untouched (does not overwrite prefs).
-  // Always ensures a default workspace exists afterward.
   void LoadFromPrefs();
-  // Serializes the current model and writes it to prefs if within size limits.
-  // Returns true on a successful write, false if the blob exceeds the size cap
-  // (in which case the last valid stored state is kept). PrefService writes are
-  // in-memory and flushed to disk asynchronously by Chromium, so this adds no
-  // blocking file I/O to the UI thread. Used as the PersistenceScheduler
-  // writer.
   bool WriteToPrefs();
+  void CopyActivePrefToRecovery();
+  void RunLifecycleReconciliation();
 
   raw_ptr<Profile> profile_;
   raw_ptr<PrefService> prefs_;
   OrganizationModel model_;
+  OrganizationLoadResult last_load_result_ = OrganizationLoadResult::kEmpty;
   bool loading_ = false;  // suppress save-on-change while loading
+  bool suppress_persist_ =
+      false;  // corrupt/unsupported load: do not overwrite active pref
+  bool recovery_required_ = false;
 
-  // Inbound lifecycle bridge (created after the initial load). Destruction
-  // order is the reverse of construction: watcher first (detach observers),
-  // then coordinator, then scheduler.
   std::unique_ptr<PersistenceScheduler> scheduler_;
   std::unique_ptr<LifecycleCoordinator> coordinator_;
   std::unique_ptr<WindowWatcher> window_watcher_;
+  std::unique_ptr<SessionRestoreWatcher> session_restore_watcher_;
+  std::unique_ptr<class LiveTargetResolver> target_resolver_;
+  std::unique_ptr<class ChromiumMutationAdapterImpl> mutation_adapter_;
+  std::unique_ptr<CommandExecutor> command_executor_;
+  std::unique_ptr<class CommandConfirmationSeam> command_confirmation_;
+  std::unique_ptr<ProjectionService> projection_service_;
+  std::unique_ptr<ShellService> shell_service_;
 
   base::ScopedObservation<OrganizationModel, OrganizationModelObserver>
       observation_{this};
+
+  base::WeakPtrFactory<SeoulOrganizationService> weak_factory_{this};
 };
 
 }  // namespace seoul
