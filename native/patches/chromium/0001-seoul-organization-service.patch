@@ -1,0 +1,32 @@
+diff --git a/chrome/browser/BUILD.gn b/chrome/browser/BUILD.gn
+index 63c2601cfc..0c78d0e388 100644
+--- a/chrome/browser/BUILD.gn
++++ b/chrome/browser/BUILD.gn
+@@ -415,6 +415,7 @@ static_library("browser") {
+     "//chrome/browser/profiles:profiles_extra_parts_impl",
+     "//chrome/browser/profiles:profile_util_impl",
+     "//chrome/browser/profiles:profile_manager",
++    "//seoul/browser/organization",
+     "//chrome/browser/profiles:profile_manager_impl",
+ 
+     # TODO(crbug.com/353332589): Remove this circular dependency once
+diff --git a/chrome/browser/profiles/chrome_browser_main_extra_parts_profiles.cc b/chrome/browser/profiles/chrome_browser_main_extra_parts_profiles.cc
+index 1aab47b6d0..0f491246f3 100644
+--- a/chrome/browser/profiles/chrome_browser_main_extra_parts_profiles.cc
++++ b/chrome/browser/profiles/chrome_browser_main_extra_parts_profiles.cc
+@@ -13,6 +13,7 @@
+ #include "build/chromeos_buildflags.h"
+ #include "chrome/browser/accessibility/accessibility_labels_service_factory.h"
+ #include "chrome/browser/accessibility/page_colors_controller_factory.h"
++#include "seoul/browser/organization/seoul_organization_service_factory.h"
+ #include "chrome/browser/accessibility_annotator/accessibility_annotator_backend_factory.h"
+ #include "chrome/browser/accessibility_annotator/accessibility_annotator_enablement_service_factory.h"
+ #include "chrome/browser/accessibility_annotator/accessibility_annotator_service_factory.h"
+@@ -1514,6 +1515,7 @@ void ChromeBrowserMainExtraPartsProfiles::
+ 
+   WebDataServiceFactory::GetInstance();
+   webrtc_event_logging::WebRtcEventLogManagerKeyedServiceFactory::GetInstance();
++  seoul::SeoulOrganizationServiceFactory::GetInstance();
+ }
+ 
+ void ChromeBrowserMainExtraPartsProfiles::PreProfileInit() {

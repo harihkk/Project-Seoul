@@ -1,0 +1,56 @@
+{
+  "schemaVersion": 1,
+  "baseRevision": "6a7b3dbec3b2ca25877c2553b5473b2f277ef644",
+  "patchDir": "native/patches/chromium",
+  "description": "Ordered, reversible Chromium integration patch series for Project Seoul. Applied over the pinned baseRevision after Seoul-owned source is materialized. Patch 1 wires the organization service; patch 2 wires the inbound lifecycle bridge target and depends on patch 1.",
+  "entrySchema": {
+    "id": "unique stable identifier (kebab-case)",
+    "description": "what the patch does",
+    "rationale": "why it is necessary and which upstream alternative was rejected",
+    "baseRevision": "full Chromium SHA this patch is authored against; must equal manifest baseRevision",
+    "order": "unique ascending integer giving application order",
+    "file": "patch file path relative to patchDir",
+    "affectedPaths": ["upstream src-relative paths the patch touches"],
+    "sha256": "lowercase hex sha256 of the patch file",
+    "applyVerify": "command/strategy proving the patch applies cleanly (git apply --check)",
+    "reverseVerify": "command/strategy proving the patch reverses cleanly (git apply -R --check)",
+    "reviewable": "true once the patch is independently reviewable in isolation"
+  },
+  "patches": [
+    {
+      "id": "seoul-organization-service",
+      "description": "Add the Seoul organization service to the //chrome/browser GN graph and register its profile-keyed factory at profile-service init.",
+      "rationale": "The profile-scoped SeoulOrganizationService must be built so its bounded preference is registered and the default workspace is initialized for eligible regular profiles. Adding a GN dependency edge plus one factory GetInstance() registration is the smallest upstream change; alternatives (a global static initializer, or editing browser_prefs.cc directly) were rejected as less localized and harder to reverse. Exposes no UI and changes no tab behavior.",
+      "baseRevision": "6a7b3dbec3b2ca25877c2553b5473b2f277ef644",
+      "order": 1,
+      "file": "0001-seoul-organization-service.patch",
+      "affectedPaths": [
+        "chrome/browser/BUILD.gn",
+        "chrome/browser/profiles/chrome_browser_main_extra_parts_profiles.cc"
+      ],
+      "dependencies": [],
+      "sha256": "c9cac4da06009562f08ebb533675609dd576dd0a0300a07ce862cb137f1b6506",
+      "applyVerify": "git -C $SEOUL_CHROMIUM_ROOT/src apply --check native/patches/chromium/0001-seoul-organization-service.patch",
+      "reverseVerify": "git -C $SEOUL_CHROMIUM_ROOT/src apply -R --check (after apply)",
+      "reviewable": true
+    },
+    {
+      "id": "seoul-lifecycle-bridge",
+      "description": "Add the Seoul inbound lifecycle bridge target (//seoul/browser/lifecycle) to the //chrome/browser GN graph so the per-profile window watcher, per-window tab-strip bridges, coordinator, and persistence scheduler are built and linked alongside the already-registered organization service. No new registration site is needed: the service (patch 1) constructs and owns the bridge.",
+      "rationale": "The lifecycle code is repository-owned Seoul source that observes Chromium window/tab/split events and feeds the organization model. It is pulled transitively through the organization target, but is declared as an explicit, independently reviewable GN dependency edge so the bridge is a first-class build input and can be reviewed and reverted on its own. No UI, command, AI, or session-storage change is introduced. Depends on patch 1 (the organization dep line is its context anchor and the service owns the bridge).",
+      "baseRevision": "6a7b3dbec3b2ca25877c2553b5473b2f277ef644",
+      "order": 2,
+      "file": "0002-seoul-lifecycle-bridge.patch",
+      "affectedPaths": [
+        "chrome/browser/BUILD.gn"
+      ],
+      "dependencies": [
+        "seoul-organization-service"
+      ],
+      "sha256": "c7d8b3ebf7983e4af6338c7971368ae0c834ad057dcd72a9091abbbb0159e270",
+      "applyVerify": "git -C $SEOUL_CHROMIUM_ROOT/src apply (after patch 1); cumulative series round trip in native/scripts/patches.sh verify",
+      "reverseVerify": "git -C $SEOUL_CHROMIUM_ROOT/src apply -R 0002 then 0001 (descending); checkout restored byte-identical",
+      "reviewable": true
+    }
+  ]
+}
