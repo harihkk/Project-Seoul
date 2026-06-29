@@ -30,6 +30,7 @@ class BrowserWindowInterface;
 namespace seoul {
 
 class LifecycleCoordinator;
+class LiveWindowStateProvider;
 class TabStripBridge;
 
 class WindowWatcher : public BrowserCollectionObserver {
@@ -43,6 +44,12 @@ class WindowWatcher : public BrowserCollectionObserver {
 
   // Begin observing and discover windows already open at startup. Idempotent.
   void StartObserving();
+  // Rescan tabs and splits for every tracked window (session-restore
+  // completion).
+  void RescanExistingWindows();
+  LiveWindowStateProvider* live_state_provider() {
+    return live_state_provider_.get();
+  }
 
   // BrowserCollectionObserver:
   void OnBrowserCreated(BrowserWindowInterface* browser) override;
@@ -59,6 +66,7 @@ class WindowWatcher : public BrowserCollectionObserver {
 
   raw_ptr<Profile> profile_;
   raw_ptr<LifecycleCoordinator> coordinator_;
+  std::unique_ptr<LiveWindowStateProvider> live_state_provider_;
   std::map<LiveWindowKey, std::unique_ptr<TabStripBridge>> bridges_;
   base::ScopedObservation<BrowserCollection, BrowserCollectionObserver>
       observation_{this};

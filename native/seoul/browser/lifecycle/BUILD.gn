@@ -1,13 +1,11 @@
 # Project Seoul native window/tab lifecycle bridge (INBOUND ONLY).
 # Materialized into the checkout at src/seoul/browser/lifecycle/ by
-# native/scripts/materialize.sh. Three targets:
-#   lifecycle_core - identity, normalized events, coordinator, persistence
-#                    scheduler. Chromium-free (deps: //base + the pure model),
-#                    so the coordinator is unit-testable without a browser.
-#   lifecycle      - the thin Chromium adapters (per-window TabStripModelObserver
-#                    and the per-profile window watcher). Chromium UI deps.
-#   unit_tests     - tests for the core (the Chromium adapters need a browser and
-#                    are exercised by future browser tests, not here).
+# native/scripts/materialize.sh.
+#
+# GN integration uses Chromium's circular-implementation-target pattern:
+#   lifecycle_core - identity, events, coordinator (//base + pure model)
+#   lifecycle      - Chromium adapters; publicly depends on
+#                    //chrome/browser:browser_public_dependencies
 
 source_set("lifecycle_core") {
   sources = [
@@ -16,11 +14,11 @@ source_set("lifecycle_core") {
     "lifecycle_event_sink.h",
     "lifecycle_events.h",
     "lifecycle_identity.h",
+    "live_window_snapshot_types.h",
     "persistence_scheduler.cc",
     "persistence_scheduler.h",
   ]
 
-  # Pure logic: //base and the pure model only. No Browser, no TabStripModel.
   deps = [
     "//base",
     "//seoul/browser/organization:organization_model",
@@ -29,40 +27,42 @@ source_set("lifecycle_core") {
 
 source_set("lifecycle") {
   sources = [
+    "live_window_state.cc",
+    "live_window_state.h",
+    "session_restore_watcher.cc",
+    "session_restore_watcher.h",
     "tab_strip_bridge.cc",
     "tab_strip_bridge.h",
     "window_watcher.cc",
     "window_watcher.h",
   ]
 
-  deps = [
+  public_deps = [
     ":lifecycle_core",
+    "//chrome/browser:browser_public_dependencies",
+  ]
+
+  deps = [
     "//base",
+    "//chrome/browser/sessions",
+    "//chrome/browser/ui/browser_window",
+    "//chrome/browser/ui/tabs",
     "//components/sessions:session_id",
     "//components/sessions/content",
     "//components/split_tabs",
     "//components/tabs/public",
     "//content/public/browser",
-
-    # RESEARCH REQUIRED (resolve at the build host, cannot be verified without GN):
-    # the adapters reference chrome/browser/ui/tabs/tab_strip_model.h,
-    # chrome/browser/tab_list/tab_removed_reason.h, and
-    # chrome/browser/ui/browser_window/public/{browser_collection,
-    # browser_window_interface,profile_browser_collection}.h. These belong to
-    # //chrome/browser(/ui). This source_set must therefore be wired so it sees
-    # those targets without forming a //chrome/browser <-> //seoul cycle (for
-    # example by compiling these files as part of //chrome/browser via the
-    # integration patch). The integration patch records the chosen option.
-    # "//chrome/browser/ui",
+    "//seoul/browser/organization:organization_model",
   ]
 }
 
-source_set("unit_tests") {
+test("seoul_lifecycle_core_unittests") {
   testonly = true
   sources = [
     "lifecycle_coordinator_unittest.cc",
     "lifecycle_identity_unittest.cc",
     "lifecycle_reconciliation_unittest.cc",
+    "lifecycle_rescan_unittest.cc",
     "lifecycle_splits_unittest.cc",
     "persistence_scheduler_unittest.cc",
   ]
@@ -71,6 +71,17 @@ source_set("unit_tests") {
     "//base",
     "//base/test:test_support",
     "//seoul/browser/organization:organization_model",
+    "//testing/gtest",
+  ]
+}
+
+test("seoul_lifecycle_state_unittests") {
+  testonly = true
+  sources = [ "live_window_state_unittest.cc" ]
+  deps = [
+    ":lifecycle",
+    "//base",
+    "//base/test:test_support",
     "//testing/gtest",
   ]
 }

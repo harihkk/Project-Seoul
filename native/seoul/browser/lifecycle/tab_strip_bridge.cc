@@ -2,22 +2,49 @@
 
 #include "seoul/browser/lifecycle/tab_strip_bridge.h"
 
+#include <map>
 #include <utility>
 #include <vector>
 
 #include "chrome/browser/tab_list/tab_removed_reason.h"
+#include "chrome/browser/ui/browser_window/public/browser_window_interface.h"
 #include "chrome/browser/ui/tabs/tab_strip_model.h"
 #include "components/sessions/content/session_tab_helper.h"
 #include "components/sessions/core/session_id.h"
 #include "components/split_tabs/split_tab_visual_data.h"
+#include "components/tabs/public/split_tab_data.h"
 #include "components/tabs/public/tab_interface.h"
 #include "seoul/browser/lifecycle/lifecycle_event_sink.h"
+#include "seoul/browser/lifecycle/live_window_state.h"
 
 namespace seoul {
 
-namespace {
+TabStripBridge::TabStripBridge(LiveWindowKey window,
+                               BrowserWindowInterface* browser,
+                               TabStripModel* model,
+                               LifecycleEventSink* sink,
+                               LiveWindowStateProvider* live_state)
+    : window_(window),
+      browser_(browser),
+      model_(model),
+      sink_(sink),
+      live_state_(live_state) {
+  model_->AddObserver(this);
+}
 
-TabRemovalKind RemovalKindFromReason(TabRemovedReason reason) {
+TabStripBridge::~TabStripBridge() {
+  if (model_) {
+    model_->RemoveObserver(this);
+  }
+}
+
+TabRemovalKind TabStripBridge::ClassifyRemoval(TabRemovedReason reason) const {
+  if (model_ && model_->closing_all()) {
+    return TabRemovalKind::kWindowShutdown;
+  }
+  if (browser_ && browser_->IsDeleteScheduled()) {
+    return TabRemovalKind::kWindowShutdown;
+  }
   switch (reason) {
     case TabRemovedReason::kDeleted:
       return TabRemovalKind::kGenuineClose;
@@ -29,22 +56,6 @@ TabRemovalKind RemovalKindFromReason(TabRemovedReason reason) {
       return TabRemovalKind::kGenuineClose;
   }
   return TabRemovalKind::kUnknown;
-}
-
-}  // namespace
-
-TabStripBridge::TabStripBridge(LiveWindowKey window,
-                               TabStripModel* model,
-                               LifecycleEventSink* sink)
-    : window_(window), model_(model), sink_(sink) {
-  model_->AddObserver(this);
-}
-
-TabStripBridge::~TabStripBridge() {
-  // If the strip is already gone, OnTabStripModelDestroyed cleared model_.
-  if (model_) {
-    model_->RemoveObserver(this);
-  }
 }
 
 // static
@@ -65,14 +76,135 @@ LiveTabKey TabStripBridge::KeyForTab(const tabs::TabInterface* tab) {
 void TabStripBridge::EmitTabEvent(NormalizedEventType type,
                                   const LiveTabKey& tab,
                                   int order_index,
-                                  int batch_sequence) {
+                                  int batch_sequence,
+                                  TabInsertKind insert_kind,
+                                  TabRemovalKind removal_kind) {
   NormalizedEvent event;
   event.type = type;
   event.window = window_;
   event.tab = tab;
   event.order_index = order_index;
   event.batch_sequence = batch_sequence;
+  event.insert_kind = insert_kind;
+  event.removal_kind = removal_kind;
   sink_->OnNormalizedEvent(event);
+}
+
+void TabStripBridge::EnumerateExistingState() {
+  if (enumerated_ || !model_ || !sink_) {
+    return;
+  }
+  enumerated_ = true;
+  RescanExistingState();
+}
+
+void TabStripBridge::RescanExistingState() {
+  if (!model_ || !sink_) {
+    return;
+  }
+
+  std::set<LiveTabKey> current_tabs;
+  std::map<LiveTabKey, int> current_order;
+  std::map<LiveTabKey, bool> current_pinned;
+
+  const int count = model_->count();
+  for (int index = 0; index < count; ++index) {
+    tabs::TabInterface* tab = model_->GetTabAtIndex(index);
+    const LiveTabKey key = KeyForTab(tab);
+    if (!key.is_valid()) {
+      continue;
+    }
+    current_tabs.insert(key);
+    current_order[key] = index;
+    current_pinned[key] = model_->IsTabPinned(index);
+  }
+
+  for (const LiveTabKey& key : last_enumerated_tabs_) {
+    if (!current_tabs.count(key)) {
+      EmitTabEvent(NormalizedEventType::kTabRemoved, key, -1, 0,
+                   TabInsertKind::kUnknown, TabRemovalKind::kGenuineClose);
+    }
+  }
+
+  for (const LiveTabKey& key : current_tabs) {
+    if (!last_enumerated_tabs_.count(key)) {
+      EmitTabEvent(NormalizedEventType::kTabInserted, key, current_order[key],
+                   0, TabInsertKind::kExisting, TabRemovalKind::kUnknown);
+    } else {
+      EmitTabEvent(NormalizedEventType::kTabMoved, key, current_order[key], 0);
+    }
+    const bool pinned = current_pinned[key];
+    if (!last_enumerated_tabs_.count(key) && pinned) {
+      NormalizedEvent pinned_event;
+      pinned_event.type = NormalizedEventType::kPinnedStateChanged;
+      pinned_event.window = window_;
+      pinned_event.tab = key;
+      pinned_event.order_index = current_order[key];
+      pinned_event.pinned = true;
+      sink_->OnNormalizedEvent(pinned_event);
+    }
+  }
+
+  const int active = model_->active_index();
+  if (active >= 0 && active < count) {
+    EmitTabEvent(NormalizedEventType::kActiveTabChanged,
+                 KeyForTab(model_->GetTabAtIndex(active)), -1, 0);
+  }
+
+  std::set<std::string> current_splits;
+  for (int index = 0; index < count; ++index) {
+    const std::optional<split_tabs::SplitTabId> split_id =
+        model_->GetSplitForTab(index);
+    if (!split_id.has_value()) {
+      continue;
+    }
+    const std::string token = split_id->ToString();
+    if (!current_splits.insert(token).second) {
+      continue;
+    }
+    split_tabs::SplitTabData* split_data =
+        model_->GetSplitData(split_id.value());
+    if (!split_data) {
+      continue;
+    }
+    const std::vector<tabs::TabInterface*> panes = split_data->ListTabs();
+    if (panes.size() < 2) {
+      continue;
+    }
+    if (last_enumerated_splits_.count(token)) {
+      NormalizedEvent changed;
+      changed.type = NormalizedEventType::kSplitContentsChanged;
+      changed.window = window_;
+      changed.upstream_split_token = token;
+      changed.split_pane_a = KeyForTab(panes[0]);
+      changed.split_pane_b = KeyForTab(panes[1]);
+      sink_->OnNormalizedEvent(changed);
+    } else {
+      NormalizedEvent event;
+      event.type = NormalizedEventType::kSplitAdded;
+      event.window = window_;
+      event.upstream_split_token = token;
+      event.split_pane_a = KeyForTab(panes[0]);
+      event.split_pane_b = KeyForTab(panes[1]);
+      event.divider_ratio = split_data->visual_data()->split_ratio();
+      sink_->OnNormalizedEvent(event);
+    }
+  }
+
+  for (const std::string& token : last_enumerated_splits_) {
+    if (!current_splits.count(token)) {
+      NormalizedEvent removed;
+      removed.type = NormalizedEventType::kSplitRemoved;
+      removed.window = window_;
+      removed.upstream_split_token = token;
+      sink_->OnNormalizedEvent(removed);
+    }
+  }
+
+  last_enumerated_tabs_ = std::move(current_tabs);
+  last_enumerated_splits_ = std::move(current_splits);
+  enumerated_ = true;
+  PublishLiveSnapshot();
 }
 
 void TabStripBridge::OnTabStripModelChanged(
@@ -83,11 +215,10 @@ void TabStripBridge::OnTabStripModelChanged(
     case TabStripModelChange::kInserted: {
       const TabStripModelChange::Insert* insert = change.GetInsert();
       int seq = 0;
-      // Process in the documented vector order; rely only on the index carried
-      // by each entry, never on a live model query mid-batch.
       for (const auto& entry : insert->contents) {
         EmitTabEvent(NormalizedEventType::kTabInserted,
-                     KeyForContents(entry.contents), entry.index, seq++);
+                     KeyForContents(entry.contents), entry.index, seq++,
+                     TabInsertKind::kNew);
       }
       break;
     }
@@ -95,19 +226,13 @@ void TabStripBridge::OnTabStripModelChanged(
       const TabStripModelChange::Remove* remove = change.GetRemove();
       int seq = 0;
       for (const auto& entry : remove->contents) {
-        // Prefer the SessionID carried by the removal; fall back to the tab.
         LiveTabKey key =
             (entry.session_id.has_value() && entry.session_id->is_valid())
                 ? LiveTabKey::FromSessionId(entry.session_id->id())
                 : KeyForTab(entry.tab);
-        NormalizedEvent event;
-        event.type = NormalizedEventType::kTabRemoved;
-        event.window = window_;
-        event.tab = key;
-        event.order_index = entry.index;
-        event.batch_sequence = seq++;
-        event.removal_kind = RemovalKindFromReason(entry.remove_reason);
-        sink_->OnNormalizedEvent(event);
+        EmitTabEvent(NormalizedEventType::kTabRemoved, key, entry.index, seq++,
+                     TabInsertKind::kUnknown,
+                     ClassifyRemoval(entry.remove_reason));
       }
       break;
     }
@@ -119,8 +244,6 @@ void TabStripBridge::OnTabStripModelChanged(
     }
     case TabStripModelChange::kReplaced: {
       const TabStripModelChange::Replace* replace = change.GetReplace();
-      // Logical tab preserved; report so the coordinator keeps membership and
-      // the identity is taken from the tab, not the (changed) WebContents.
       EmitTabEvent(NormalizedEventType::kTabReplaced, KeyForTab(replace->tab),
                    replace->index, 0);
       break;
@@ -129,13 +252,11 @@ void TabStripBridge::OnTabStripModelChanged(
       break;
   }
 
-  // Activation can accompany any change (including discard, where the tab is
-  // the same but contents differ). Emit once if the active tab actually
-  // changed.
   if (selection.active_tab_changed() && selection.new_tab) {
     EmitTabEvent(NormalizedEventType::kActiveTabChanged,
                  KeyForTab(selection.new_tab), -1, 0);
   }
+  PublishLiveSnapshot();
 }
 
 void TabStripBridge::OnTabCloseCancelled(const tabs::TabInterface* tab) {
@@ -149,9 +270,9 @@ void TabStripBridge::OnTabPinnedStateChanged(tabs::TabInterface* tab,
   event.window = window_;
   event.tab = KeyForTab(tab);
   event.order_index = index;
-  // Discrete callback (not inside a batch): the index is valid to query.
   event.pinned = model_->IsTabPinned(index);
   sink_->OnNormalizedEvent(event);
+  PublishLiveSnapshot();
 }
 
 void TabStripBridge::OnSplitTabChanged(const SplitTabChange& change) {
@@ -186,10 +307,8 @@ void TabStripBridge::OnSplitTabChanged(const SplitTabChange& change) {
       const SplitTabChange::VisualsChange* visuals = change.GetVisualsChange();
       event.type = NormalizedEventType::kSplitVisualsChanged;
       event.divider_ratio = visuals->new_visual_data().split_ratio();
-      // RESEARCH REQUIRED: M149's SplitTabChange exposes no per-event "drag in
-      // progress" flag, only kLayoutUpdated / kRatioUpdated. We therefore mark
-      // every visuals change as committable; per-pixel writes are still avoided
-      // because the PersistenceScheduler coalesces a burst into one write.
+      // M149 SplitTabChange::VisualsChange has no is_intermediate(). Ratio
+      // bursts are coalesced by PersistenceScheduler at the service layer.
       event.split_visuals_intermediate = false;
       break;
     }
@@ -198,10 +317,17 @@ void TabStripBridge::OnSplitTabChanged(const SplitTabChange& change) {
       break;
   }
   sink_->OnNormalizedEvent(event);
+  PublishLiveSnapshot();
+}
+
+void TabStripBridge::PublishLiveSnapshot() {
+  if (!live_state_ || !model_) {
+    return;
+  }
+  live_state_->PublishSnapshot(window_, model_.get());
 }
 
 void TabStripBridge::OnTabStripModelDestroyed(TabStripModel* tab_strip_model) {
-  // Stop observing before the strip becomes invalid; do not touch it afterward.
   if (model_) {
     model_->RemoveObserver(this);
     model_ = nullptr;

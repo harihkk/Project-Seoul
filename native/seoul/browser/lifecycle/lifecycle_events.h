@@ -40,6 +40,7 @@ enum class NormalizedEventType {
 // preserved.
 enum class TabInsertKind {
   kUnknown,
+  kExisting,    // present when the bridge first attaches
   kNew,         // a genuinely new tab
   kTransferIn,  // arriving from another window (matches a pending transfer)
   kRestored,    // created by session restore
@@ -77,6 +78,9 @@ struct NormalizedEvent {
   LiveTabKey split_pane_a;
   LiveTabKey split_pane_b;
   double divider_ratio = 0.5;
+  // When false, split-contents events omit ratio and the coordinator preserves
+  // the existing ratio. When true, an out-of-range ratio is rejected.
+  bool has_divider_ratio = false;
   // True while a divider drag is in progress; such events must not persist.
   bool split_visuals_intermediate = false;
 

@@ -61,9 +61,7 @@ class SplitsTest : public testing::Test {
  protected:
   SplitsTest()
       : model_(base::BindLambdaForTesting([this]() { return now_; })),
-        coordinator_(&model_, base::BindLambdaForTesting([this]() {
-          ++persist_count_;
-        })) {}
+        coordinator_(&model_) {}
 
   const SplitGroupRecord* FindSplit(const std::string& token) {
     const SplitGroupId id = model_.FindSplitIdByUpstreamToken(token);
@@ -78,7 +76,6 @@ class SplitsTest : public testing::Test {
   }
 
   base::Time now_ = base::Time::UnixEpoch() + base::Seconds(1000);
-  int persist_count_ = 0;
   OrganizationModel model_;
   LifecycleCoordinator coordinator_;
 };
@@ -109,38 +106,62 @@ TEST_F(SplitsTest, SplitRemovedDissolves) {
   EXPECT_EQ(0u, SplitCount());
 }
 
-TEST_F(SplitsTest, PanesChangedUpdatesMembers) {
+TEST_F(SplitsTest, AtomicContentsReplacementPreservesSplitId) {
   DiscoverAndInsert(10, 11);
-  coordinator_.OnNormalizedEvent(Insert(1, 12));
   coordinator_.OnNormalizedEvent(SplitAdded("split-abc", 10, 11, 0.5));
+  const SplitGroupId before = model_.FindSplitIdByUpstreamToken("split-abc");
+  coordinator_.OnNormalizedEvent(Insert(1, 12));
   NormalizedEvent changed = Make(NormalizedEventType::kSplitContentsChanged);
   changed.window = LiveWindowKey::FromSessionId(1);
   changed.upstream_split_token = "split-abc";
   changed.split_pane_a = LiveTabKey::FromSessionId(10);
   changed.split_pane_b = LiveTabKey::FromSessionId(12);
   coordinator_.OnNormalizedEvent(changed);
-  const SplitGroupRecord* s = FindSplit("split-abc");
-  ASSERT_TRUE(s);
-  EXPECT_EQ(LiveTabKey::FromSessionId(12).value(), s->pane_tab_keys[1]);
+  const SplitGroupId after = model_.FindSplitIdByUpstreamToken("split-abc");
+  EXPECT_TRUE(before == after);
+  EXPECT_EQ(LiveTabKey::FromSessionId(12).value(),
+            FindSplit("split-abc")->pane_tab_keys[1]);
+}
+
+TEST_F(SplitsTest, ContentsReplacementPreservesRatioWhenOmitted) {
+  DiscoverAndInsert(10, 11);
+  coordinator_.OnNormalizedEvent(SplitAdded("split-abc", 10, 11, 0.4));
+  coordinator_.OnNormalizedEvent(Insert(1, 12));
+  NormalizedEvent changed = Make(NormalizedEventType::kSplitContentsChanged);
+  changed.upstream_split_token = "split-abc";
+  changed.split_pane_a = LiveTabKey::FromSessionId(10);
+  changed.split_pane_b = LiveTabKey::FromSessionId(12);
+  changed.has_divider_ratio = false;
+  coordinator_.OnNormalizedEvent(changed);
+  EXPECT_DOUBLE_EQ(0.4, FindSplit("split-abc")->divider_ratio);
+}
+
+TEST_F(SplitsTest, ContentsReplacementRejectsExplicitInvalidRatio) {
+  DiscoverAndInsert(10, 11);
+  coordinator_.OnNormalizedEvent(SplitAdded("split-abc", 10, 11, 0.4));
+  NormalizedEvent changed = Make(NormalizedEventType::kSplitContentsChanged);
+  changed.upstream_split_token = "split-abc";
+  changed.split_pane_a = LiveTabKey::FromSessionId(10);
+  changed.split_pane_b = LiveTabKey::FromSessionId(11);
+  changed.has_divider_ratio = true;
+  changed.divider_ratio = 99.0;
+  coordinator_.OnNormalizedEvent(changed);
+  EXPECT_DOUBLE_EQ(0.4, FindSplit("split-abc")->divider_ratio);
 }
 
 TEST_F(SplitsTest, IntermediateRatioNotPersistedAndUnchanged) {
   DiscoverAndInsert(10, 11);
   coordinator_.OnNormalizedEvent(SplitAdded("split-abc", 10, 11, 0.5));
-  const int baseline = persist_count_;
   coordinator_.OnNormalizedEvent(
       SplitVisuals("split-abc", 0.8, /*intermediate=*/true));
-  EXPECT_EQ(baseline, persist_count_);  // no write scheduled mid-drag
   EXPECT_DOUBLE_EQ(0.5, FindSplit("split-abc")->divider_ratio);
 }
 
 TEST_F(SplitsTest, FinalRatioCommitted) {
   DiscoverAndInsert(10, 11);
   coordinator_.OnNormalizedEvent(SplitAdded("split-abc", 10, 11, 0.5));
-  const int baseline = persist_count_;
   coordinator_.OnNormalizedEvent(
       SplitVisuals("split-abc", 0.7, /*intermediate=*/false));
-  EXPECT_GT(persist_count_, baseline);
   EXPECT_DOUBLE_EQ(0.7, FindSplit("split-abc")->divider_ratio);
 }
 

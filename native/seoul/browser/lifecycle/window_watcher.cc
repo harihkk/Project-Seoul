@@ -1,7 +1,5 @@
 // Project Seoul native lifecycle bridge.
 
-#include "seoul/browser/lifecycle/window_watcher.h"
-
 #include <utility>
 
 #include "chrome/browser/ui/browser_window/public/browser_window_interface.h"
@@ -10,13 +8,16 @@
 #include "components/sessions/core/session_id.h"
 #include "seoul/browser/lifecycle/lifecycle_coordinator.h"
 #include "seoul/browser/lifecycle/lifecycle_events.h"
+#include "seoul/browser/lifecycle/live_window_state.h"
 #include "seoul/browser/lifecycle/tab_strip_bridge.h"
 
 namespace seoul {
 
 WindowWatcher::WindowWatcher(Profile* profile,
                              LifecycleCoordinator* coordinator)
-    : profile_(profile), coordinator_(coordinator) {}
+    : profile_(profile),
+      coordinator_(coordinator),
+      live_state_provider_(std::make_unique<LiveWindowStateProvider>()) {}
 
 WindowWatcher::~WindowWatcher() = default;
 
@@ -29,13 +30,20 @@ void WindowWatcher::StartObserving() {
   if (!observation_.IsObserving()) {
     observation_.Observe(collection);
   }
-  // Discover already-open eligible windows exactly once (bounded single pass).
   collection->ForEach([this](BrowserWindowInterface* browser) {
     if (IsEligible(browser)) {
       Track(browser);
     }
-    return true;  // continue iterating
+    return true;
   });
+}
+
+void WindowWatcher::RescanExistingWindows() {
+  for (auto& [key, bridge] : bridges_) {
+    if (bridge) {
+      bridge->RescanExistingState();
+    }
+  }
 }
 
 // static
@@ -61,20 +69,23 @@ void WindowWatcher::Track(BrowserWindowInterface* browser) {
   }
   const LiveWindowKey key = LiveWindowKey::FromSessionId(sid.id());
   if (bridges_.count(key)) {
-    return;  // Already tracked; do not duplicate the window.
+    return;
   }
   TabStripModel* model = browser->GetTabStripModel();
   if (!model) {
     return;
   }
-  // Attach the per-window bridge before announcing the window.
-  bridges_[key] = std::make_unique<TabStripBridge>(key, model, coordinator_);
+  auto bridge = std::make_unique<TabStripBridge>(
+      key, browser, model, coordinator_, live_state_provider_.get());
 
   NormalizedEvent event;
   event.type = NormalizedEventType::kWindowDiscovered;
   event.window = key;
   event.persisted_window = PersistedWindowRef::FromSessionId(sid.id());
   coordinator_->OnNormalizedEvent(event);
+
+  bridge->EnumerateExistingState();
+  bridges_[key] = std::move(bridge);
 }
 
 void WindowWatcher::Untrack(BrowserWindowInterface* browser) {
@@ -87,13 +98,11 @@ void WindowWatcher::Untrack(BrowserWindowInterface* browser) {
   if (it == bridges_.end()) {
     return;
   }
-  // Announce destruction before tearing down the bridge so the coordinator sees
-  // a deterministic order; the bridge destructor detaches the tab-strip
-  // observer.
   NormalizedEvent event;
   event.type = NormalizedEventType::kWindowDestroyed;
   event.window = key;
   coordinator_->OnNormalizedEvent(event);
+  live_state_provider_->RemoveWindow(key);
   bridges_.erase(it);
 }
 

@@ -40,7 +40,7 @@ class ReconciliationTest : public testing::Test {
  protected:
   ReconciliationTest()
       : model_(base::BindLambdaForTesting([this]() { return now_; })),
-        coordinator_(&model_, base::DoNothing()) {}
+        coordinator_(&model_) {}
 
   size_t MembershipCount() const {
     return model_.ToSnapshot().memberships.size();
@@ -85,15 +85,15 @@ TEST_F(ReconciliationTest, MatchingRestoredTabIsNotDuplicated) {
   EXPECT_TRUE(HasTab(50));
 }
 
-TEST_F(ReconciliationTest, UnmatchedLiveTabGetsAssigned) {
+TEST_F(ReconciliationTest, UnmatchedRestoredTabDoesNotFabricateMembership) {
   coordinator_.OnNormalizedEvent(
       Make(NormalizedEventType::kReconciliationBegan));
   coordinator_.OnNormalizedEvent(Window(1));
-  coordinator_.OnNormalizedEvent(RestoredTab(1, 99));  // no prior membership
+  coordinator_.OnNormalizedEvent(RestoredTab(1, 99));
   coordinator_.OnNormalizedEvent(
       Make(NormalizedEventType::kReconciliationCompleted));
-  EXPECT_TRUE(HasTab(99));
-  EXPECT_EQ(1u, MembershipCount());
+  EXPECT_FALSE(HasTab(99));
+  EXPECT_EQ(0u, MembershipCount());
 }
 
 TEST_F(ReconciliationTest, MissingPersistedTabLeftUnresolvedNeverFabricated) {

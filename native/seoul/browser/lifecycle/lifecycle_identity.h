@@ -1,18 +1,24 @@
 // Project Seoul native lifecycle bridge.
 // Identity types that keep LIVE (runtime) and PERSISTED (restorable) references
-// separate, and that never embed a raw pointer, index, process id, routing id,
-// or renderer id. All four are derived from a Chromium SessionID value (an
-// int), but are distinct types so a window ref can never be used as a tab ref
-// and a live key can never be persisted where a persisted ref is required.
+// separate. All four are derived from a Chromium SessionID value (an int), but
+// are distinct types so a window ref can never be used as a tab ref.
 //
-// Chromium guarantees verified in the pinned source:
-//  - Browser::session_id() (SessionID) identifies a window and is restorable.
+// Verified at pinned M149 (6a7b3dbec3b2ca25877c2553b5473b2f277ef644):
+//  - BrowserWindowInterface::GetSessionID() identifies a browser window.
 //  - sessions::SessionTabHelper::IdForTab(WebContents*) gives a tab SessionID.
 //  - TabStripModelChange::RemovedTab carries std::optional<SessionID>.
-// RESEARCH REQUIRED (resolve at the build host): whether a tab's SessionID is
-//  preserved across WebContents discard/replacement and across full session
-//  restore at every point Seoul needs it. Where it is not guaranteed, the
-//  coordinator keeps the reference unresolved rather than fabricating identity.
+//
+// NOT guaranteed across every boundary Seoul cares about (honest limits):
+//  - WebContents discard/replacement: SessionID is preserved for the logical
+//    tab, but WebContents identity changes; Seoul keys off SessionID only.
+//  - Tab movement between windows: SessionID is preserved; membership follows
+//    the pending-transfer handshake rather than a new membership.
+//  - Normal restart / crash restoration: window and tab SessionIDs are restored
+//    from session storage when Chromium restores the session; until a valid ID
+//    appears, Seoul leaves the reference unresolved (no fabrication).
+//  - Recently closed restoration: may assign a new SessionID; Seoul treats it
+//    as a genuinely new tab unless an explicit future reconciliation rule
+//    matches persisted metadata without reopening URLs.
 
 #ifndef SEOUL_BROWSER_LIFECYCLE_LIFECYCLE_IDENTITY_H_
 #define SEOUL_BROWSER_LIFECYCLE_LIFECYCLE_IDENTITY_H_
@@ -25,18 +31,13 @@
 
 namespace seoul {
 
-// Why a Seoul-model mutation happened. Exposed during observer notification so
-// the future outbound command layer never reacts to its own changes as new user
-// events. The smallest mechanism that prevents feedback loops.
 enum class MutationOrigin {
-  kChromiumObservation,      // inbound: a real Chromium event
-  kStartupReconciliation,    // inbound: reconciling against restored state
-  kUserOrganizationCommand,  // future outbound: an explicit Seoul command
-  kSystemRecovery,           // recovery/repair
+  kChromiumObservation,
+  kStartupReconciliation,
+  kUserOrganizationCommand,
+  kSystemRecovery,
 };
 
-// A SessionID-backed strong id. `prefix` namespaces the string form so a window
-// key string can never be mistaken for a tab key string.
 #define SEOUL_SESSION_ID(TypeName, PREFIX)                                   \
   class TypeName {                                                           \
    public:                                                                   \
@@ -78,10 +79,6 @@ enum class MutationOrigin {
     int value_ = 0;                                                          \
   }
 
-// Live (runtime) keys and persisted (restorable) refs are distinct TYPES even
-// though both are SessionID-backed. The engine stores the string form of the
-// live key as its opaque tab_key/window_key; the persisted ref is the
-// reconciliation handle written/read across restart.
 SEOUL_SESSION_ID(LiveWindowKey, "w-");
 SEOUL_SESSION_ID(PersistedWindowRef, "wref-");
 SEOUL_SESSION_ID(LiveTabKey, "t-");

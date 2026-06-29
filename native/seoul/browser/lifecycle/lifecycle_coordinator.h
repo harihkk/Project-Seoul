@@ -8,6 +8,7 @@
 #define SEOUL_BROWSER_LIFECYCLE_LIFECYCLE_COORDINATOR_H_
 
 #include <cstddef>
+#include <deque>
 #include <map>
 #include <set>
 #include <string>
@@ -23,12 +24,11 @@ namespace seoul {
 
 class OrganizationModel;
 
+using ReconciliationRequestCallback = base::RepeatingClosure;
+
 class LifecycleCoordinator : public LifecycleEventSink {
  public:
-  // `model` must outlive this. `schedule_persist` is run when a committed
-  // mutation should eventually be written; the callee coalesces. Both required.
-  LifecycleCoordinator(OrganizationModel* model,
-                       base::RepeatingClosure schedule_persist);
+  explicit LifecycleCoordinator(OrganizationModel* model);
   LifecycleCoordinator(const LifecycleCoordinator&) = delete;
   LifecycleCoordinator& operator=(const LifecycleCoordinator&) = delete;
   ~LifecycleCoordinator() override;
@@ -36,19 +36,26 @@ class LifecycleCoordinator : public LifecycleEventSink {
   // LifecycleEventSink:
   void OnNormalizedEvent(const NormalizedEvent& event) override;
 
-  // A genuinely new tab starts temporary (Seoul semantics section 5).
+  void SetReconciliationRequestCallback(ReconciliationRequestCallback callback);
+  void SetConfirmationCallback(
+      base::RepeatingCallback<void(const NormalizedEvent&)> callback);
+  void SetPinHandlingSuppressor(
+      base::RepeatingCallback<bool(LiveTabKey tab)> suppressor);
+
   static constexpr TabRole kNewTabRole = TabRole::kTemporary;
-
-  // Cap on tabs in flight between windows. A transfer that never lands is
-  // evicted oldest-first past this cap; shutdown and reconciliation also clear
-  // pending transfers. No timer is used.
   static constexpr size_t kMaxPendingTransfers = 256;
+  static constexpr size_t kMaxQueuedEvents = 128;
 
-  // Exposed for tests and the future outbound command layer.
   MutationOrigin current_origin() const { return current_origin_; }
   bool is_reconciling() const { return reconciling_; }
   bool is_shutting_down() const { return shutting_down_; }
+  bool queue_overflow() const { return queue_overflow_; }
+  bool reconciliation_required() const { return reconciliation_required_; }
+  bool lifecycle_degraded() const {
+    return queue_overflow_ || reconciliation_required_;
+  }
   size_t pending_transfer_count() const { return pending_transfers_.size(); }
+  size_t queued_event_count() const { return pending_events_.size(); }
   size_t known_window_count() const { return known_windows_.size(); }
 
  private:
@@ -56,6 +63,11 @@ class LifecycleCoordinator : public LifecycleEventSink {
     WorkspaceId workspace;
     int sequence = 0;
   };
+
+  void ProcessEvent(const NormalizedEvent& event);
+  void DrainPendingEvents();
+  static bool EventsAreDuplicate(const NormalizedEvent& a,
+                                 const NormalizedEvent& b);
 
   void HandleWindowDiscovered(const NormalizedEvent& event);
   void HandleWindowGone(const NormalizedEvent& event);
@@ -73,17 +85,26 @@ class LifecycleCoordinator : public LifecycleEventSink {
   WorkspaceId ActiveOrDefaultWorkspace(const LiveWindowKey& window);
   SplitGroupId FindSplitByToken(const std::string& token) const;
   void EvictOldestTransferIfNeeded();
-  void NotePersist();
+  void ExpireTransfersForWindow(const LiveWindowKey& window);
+  void HandleQueueOverflow();
+  bool ShouldAcceptEvent(const NormalizedEvent& event) const;
 
   raw_ptr<OrganizationModel> model_;
-  base::RepeatingClosure schedule_persist_;
 
   MutationOrigin current_origin_ = MutationOrigin::kChromiumObservation;
-  bool applying_ = false;     // reentrancy guard
-  bool reconciling_ = false;  // between reconciliation begin and complete
+  bool applying_ = false;
+  bool draining_ = false;
+  bool reconciling_ = false;
   bool shutting_down_ = false;
+  bool queue_overflow_ = false;
+  bool reconciliation_required_ = false;
   int sequence_ = 0;
 
+  ReconciliationRequestCallback reconciliation_request_callback_;
+  base::RepeatingCallback<void(const NormalizedEvent&)> confirmation_callback_;
+  base::RepeatingCallback<bool(LiveTabKey)> pin_handling_suppressor_;
+
+  std::deque<NormalizedEvent> pending_events_;
   std::set<LiveWindowKey> known_windows_;
   std::map<LiveTabKey, PendingTransfer> pending_transfers_;
 };

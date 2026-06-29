@@ -4,10 +4,12 @@
 #include "seoul/browser/lifecycle/lifecycle_coordinator.h"
 
 #include "base/functional/bind.h"
+#include "base/memory/raw_ptr.h"
 #include "base/test/bind.h"
 #include "base/time/time.h"
 #include "seoul/browser/lifecycle/lifecycle_events.h"
 #include "seoul/browser/organization/organization_model.h"
+#include "seoul/browser/organization/organization_observer.h"
 #include "seoul/browser/organization/organization_types.h"
 #include "testing/gtest/include/gtest/gtest.h"
 
@@ -67,9 +69,7 @@ class LifecycleCoordinatorTest : public testing::Test {
  protected:
   LifecycleCoordinatorTest()
       : model_(base::BindLambdaForTesting([this]() { return now_; })),
-        coordinator_(&model_, base::BindLambdaForTesting([this]() {
-          ++persist_count_;
-        })) {}
+        coordinator_(&model_) {}
 
   // Helpers reading the model.
   size_t MembershipCount() const {
@@ -90,7 +90,6 @@ class LifecycleCoordinatorTest : public testing::Test {
   }
 
   base::Time now_ = base::Time::UnixEpoch() + base::Seconds(1000);
-  int persist_count_ = 0;
   OrganizationModel model_;
   LifecycleCoordinator coordinator_;
 };
@@ -277,10 +276,128 @@ TEST_F(LifecycleCoordinatorTest, ShutdownIgnoresLaterEvents) {
   EXPECT_EQ(0u, MembershipCount());
 }
 
-TEST_F(LifecycleCoordinatorTest, EventsScheduleAtLeastOnePersist) {
+TEST_F(LifecycleCoordinatorTest, WindowShutdownRemovalPreservesMembership) {
   coordinator_.OnNormalizedEvent(WindowDiscovered(1));
   coordinator_.OnNormalizedEvent(TabInserted(1, 10));
-  EXPECT_GT(persist_count_, 0);
+  coordinator_.OnNormalizedEvent(
+      TabRemoved(1, 10, TabRemovalKind::kWindowShutdown));
+  EXPECT_EQ(1u, MembershipCount());
+}
+
+TEST_F(LifecycleCoordinatorTest, ReconciliationClearsPendingTransfers) {
+  coordinator_.OnNormalizedEvent(WindowDiscovered(1));
+  coordinator_.OnNormalizedEvent(TabInserted(1, 10));
+  coordinator_.OnNormalizedEvent(
+      TabRemoved(1, 10, TabRemovalKind::kTransferOut));
+  EXPECT_EQ(1u, coordinator_.pending_transfer_count());
+  coordinator_.OnNormalizedEvent(
+      Event(NormalizedEventType::kReconciliationBegan));
+  coordinator_.OnNormalizedEvent(
+      Event(NormalizedEventType::kReconciliationCompleted));
+  EXPECT_EQ(0u, coordinator_.pending_transfer_count());
+}
+
+class ReentrantObserver : public OrganizationModelObserver {
+ public:
+  explicit ReentrantObserver(LifecycleCoordinator* coordinator)
+      : coordinator_(coordinator) {}
+
+  void OnOrganizationChanged(const OrganizationChange& change) override {
+    if (change.type == OrganizationChangeType::kMembershipAdded &&
+        !reentered_) {
+      reentered_ = true;
+      coordinator_->OnNormalizedEvent(TabInserted(1, 99));
+    }
+  }
+
+ private:
+  raw_ptr<LifecycleCoordinator> coordinator_;
+  bool reentered_ = false;
+};
+
+TEST_F(LifecycleCoordinatorTest, ReentrantEventIsQueuedAndApplied) {
+  coordinator_.OnNormalizedEvent(WindowDiscovered(1));
+  ReentrantObserver obs(&coordinator_);
+  model_.AddObserver(&obs);
+  coordinator_.OnNormalizedEvent(TabInserted(1, 10));
+  model_.RemoveObserver(&obs);
+  EXPECT_EQ(2u, MembershipCount());
+}
+
+TEST_F(LifecycleCoordinatorTest, QueueOverflowSurfacesFailure) {
+  coordinator_.OnNormalizedEvent(WindowDiscovered(1));
+  class OverflowObserver : public OrganizationModelObserver {
+   public:
+    explicit OverflowObserver(LifecycleCoordinator* c) : c_(c) {}
+    void OnOrganizationChanged(const OrganizationChange& change) override {
+      if (fired_) {
+        return;
+      }
+      fired_ = true;
+      for (size_t i = 0; i < LifecycleCoordinator::kMaxQueuedEvents + 1; ++i) {
+        NormalizedEvent e = TabInserted(1, static_cast<int>(100 + i));
+        c_->OnNormalizedEvent(e);
+      }
+    }
+    bool fired_ = false;
+    raw_ptr<LifecycleCoordinator> c_;
+  } overflow(&coordinator_);
+  model_.AddObserver(&overflow);
+  coordinator_.OnNormalizedEvent(TabInserted(1, 10));
+  model_.RemoveObserver(&overflow);
+  EXPECT_TRUE(coordinator_.queue_overflow());
+}
+
+TEST_F(LifecycleCoordinatorTest, QueueOverflowRequiresReconciliation) {
+  coordinator_.OnNormalizedEvent(WindowDiscovered(1));
+  class OverflowObserver : public OrganizationModelObserver {
+   public:
+    explicit OverflowObserver(LifecycleCoordinator* c) : c_(c) {}
+    void OnOrganizationChanged(const OrganizationChange& change) override {
+      if (fired_) {
+        return;
+      }
+      fired_ = true;
+      for (size_t i = 0; i < LifecycleCoordinator::kMaxQueuedEvents + 1; ++i) {
+        c_->OnNormalizedEvent(TabInserted(1, static_cast<int>(200 + i)));
+      }
+    }
+    bool fired_ = false;
+    raw_ptr<LifecycleCoordinator> c_;
+  } overflow(&coordinator_);
+  model_.AddObserver(&overflow);
+  coordinator_.OnNormalizedEvent(TabInserted(1, 10));
+  model_.RemoveObserver(&overflow);
+  EXPECT_TRUE(coordinator_.reconciliation_required());
+}
+
+TEST_F(LifecycleCoordinatorTest, ReconciliationClearsDegradedState) {
+  coordinator_.OnNormalizedEvent(
+      Event(NormalizedEventType::kReconciliationBegan));
+  coordinator_.OnNormalizedEvent(
+      Event(NormalizedEventType::kReconciliationCompleted));
+  EXPECT_FALSE(coordinator_.reconciliation_required());
+  EXPECT_FALSE(coordinator_.queue_overflow());
+}
+
+TEST_F(LifecycleCoordinatorTest, RescanSimulationDetectsNewTab) {
+  coordinator_.OnNormalizedEvent(WindowDiscovered(1));
+  NormalizedEvent existing = TabInserted(1, 10, 0);
+  existing.insert_kind = TabInsertKind::kExisting;
+  coordinator_.OnNormalizedEvent(existing);
+  NormalizedEvent discovered = TabInserted(1, 11, 1);
+  discovered.insert_kind = TabInsertKind::kExisting;
+  coordinator_.OnNormalizedEvent(discovered);
+  EXPECT_EQ(2u, MembershipCount());
+}
+
+TEST_F(LifecycleCoordinatorTest, ExistingTabInsertKindCreatesMembershipOnce) {
+  coordinator_.OnNormalizedEvent(WindowDiscovered(1));
+  NormalizedEvent existing = TabInserted(1, 10, 0);
+  existing.insert_kind = TabInsertKind::kExisting;
+  coordinator_.OnNormalizedEvent(existing);
+  coordinator_.OnNormalizedEvent(existing);
+  EXPECT_EQ(1u, MembershipCount());
 }
 
 }  // namespace
