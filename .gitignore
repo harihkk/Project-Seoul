@@ -30,3 +30,10 @@ apps/browser-harness/itest/artifacts/
 
 # local probe scripts
 _probe_*.mjs
+
+# Native baseline audit evidence (screenshots, raw logs) - never committed
+native/evidence/
+
+# Safety: never track an in-repo Chromium checkout or build output
+seoul-chromium/
+native/**/out/
