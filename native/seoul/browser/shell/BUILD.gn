@@ -1,0 +1,87 @@
+# Project Seoul native browser shell V0.
+
+source_set("shell_core") {
+  sources = [
+    "command_launcher_catalog.cc",
+    "command_launcher_catalog.h",
+    "shell_actions.h",
+    "shell_controller.cc",
+    "shell_controller.h",
+    "shell_errors.cc",
+    "shell_errors.h",
+    "shell_observer.h",
+    "shell_service.cc",
+    "shell_service.h",
+    "shell_types.h",
+    "shell_view_model.cc",
+    "shell_view_model.h",
+  ]
+
+  deps = [
+    "//base",
+    "//seoul/browser/commands:command_core",
+    "//seoul/browser/lifecycle:lifecycle_core",
+    "//seoul/browser/organization:organization_model",
+    "//seoul/browser/projection:projection_core",
+    "//url",
+  ]
+}
+
+source_set("shell_chromium") {
+  sources = [
+    "views/seoul_command_launcher_view.cc",
+    "views/seoul_command_launcher_view.h",
+    "views/seoul_shell_footer_view.cc",
+    "views/seoul_shell_footer_view.h",
+    "views/seoul_shell_header_view.cc",
+    "views/seoul_shell_header_view.h",
+    "views/seoul_shell_region_host.cc",
+    "views/seoul_shell_region_host.h",
+    "views/seoul_workspace_menu.cc",
+    "views/seoul_workspace_menu.h",
+  ]
+
+  public_deps = [
+    ":shell_core",
+    "//chrome/browser:browser_public_dependencies",
+  ]
+
+  deps = [
+    "//base",
+    "//chrome/browser/ui/views/tabs/vertical",
+    "//components/vector_icons",
+    "//seoul/browser/lifecycle",
+    "//ui/accessibility:ax_enums",
+    "//ui/base",
+    "//ui/menus",
+    "//ui/views",
+  ]
+}
+
+test("seoul_shell_core_unittests") {
+  testonly = true
+  sources = [
+    "command_launcher_catalog_unittest.cc",
+    "shell_view_model_unittest.cc",
+  ]
+  deps = [
+    ":shell_core",
+    "//base",
+    "//base/test:test_support",
+    "//seoul/browser/organization:organization_model",
+    "//testing/gtest",
+    "//url",
+  ]
+}
+
+source_set("shell_browser_tests") {
+  testonly = true
+  sources = [ "shell_browsertest.cc" ]
+  deps = [
+    ":shell_chromium",
+    "//chrome/browser:browser_public_dependencies",
+    "//chrome/test:test_support",
+    "//content/test:test_support",
+    "//testing/gtest",
+  ]
+}
