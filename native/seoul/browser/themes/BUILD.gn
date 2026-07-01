@@ -1,0 +1,26 @@
+# Project Seoul theme system.
+# Theme token model, WCAG contrast validation, and JSON round-tripping. Pure
+# model: //base only.
+
+import("//testing/test.gni")
+
+source_set("themes_core") {
+  sources = [
+    "theme_types.h",
+    "theme_validation.cc",
+    "theme_validation.h",
+  ]
+
+  deps = [ "//base" ]
+}
+
+test("seoul_themes_unittests") {
+  testonly = true
+  sources = [ "theme_validation_unittest.cc" ]
+  deps = [
+    ":themes_core",
+    "//base",
+    "//base/test:test_support",
+    "//testing/gtest",
+  ]
+}

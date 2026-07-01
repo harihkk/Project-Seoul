@@ -1,0 +1,47 @@
+# Project Seoul voice operating layer.
+# Session state machine, speech provider seams, and spoken-reference
+# resolution. Pure model: //base only. Platform/cloud provider adapters and
+# microphone capture live in a later Chromium-glue target; they are not
+# authored blind here.
+
+import("//testing/test.gni")
+
+source_set("voice_core") {
+  sources = [
+    "speech_providers.h",
+    "voice_reference_resolver.cc",
+    "voice_reference_resolver.h",
+    "voice_session.cc",
+    "voice_session.h",
+    "voice_types.h",
+  ]
+
+  deps = [ "//base" ]
+}
+
+source_set("voice_test_support") {
+  testonly = true
+  sources = [
+    "fake_speech_providers.cc",
+    "fake_speech_providers.h",
+  ]
+  deps = [
+    ":voice_core",
+    "//base",
+  ]
+}
+
+test("seoul_voice_unittests") {
+  testonly = true
+  sources = [
+    "voice_reference_resolver_unittest.cc",
+    "voice_session_unittest.cc",
+  ]
+  deps = [
+    ":voice_core",
+    ":voice_test_support",
+    "//base",
+    "//base/test:test_support",
+    "//testing/gtest",
+  ]
+}

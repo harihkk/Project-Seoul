@@ -1,5 +1,7 @@
 # Project Seoul workspace projection engine V0.
 
+import("//testing/test.gni")
+
 source_set("projection_core") {
   sources = [
     "projection_calculator.cc",

@@ -1,0 +1,51 @@
+# Project Seoul Adaptive UI (SAUI).
+# Seoul-owned declarative surface protocol: typed document model, trusted
+# component catalog, structural parsing, semantic validation, incremental
+# patches, typed events, and presentation selection. Pure model: //base,
+# //url, and the Seoul data contracts only. No rendering here; the trusted
+# renderer consumes validated surfaces.
+
+import("//testing/test.gni")
+
+source_set("saui_core") {
+  sources = [
+    "saui_catalog.cc",
+    "saui_catalog.h",
+    "saui_document.cc",
+    "saui_document.h",
+    "saui_errors.h",
+    "saui_events.h",
+    "saui_limits.h",
+    "saui_patch.cc",
+    "saui_patch.h",
+    "saui_selection.cc",
+    "saui_selection.h",
+    "saui_types.h",
+    "saui_validator.cc",
+    "saui_validator.h",
+  ]
+
+  deps = [
+    "//base",
+    "//seoul/browser/data:data_core",
+    "//url",
+  ]
+}
+
+test("seoul_saui_unittests") {
+  testonly = true
+  sources = [
+    "saui_document_unittest.cc",
+    "saui_patch_unittest.cc",
+    "saui_selection_unittest.cc",
+    "saui_validator_unittest.cc",
+  ]
+  deps = [
+    ":saui_core",
+    "//base",
+    "//base/test:test_support",
+    "//seoul/browser/data:data_core",
+    "//testing/gtest",
+    "//url",
+  ]
+}

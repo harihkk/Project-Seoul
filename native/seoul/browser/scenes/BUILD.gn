@@ -1,0 +1,32 @@
+# Project Seoul Scenes.
+# Reusable browsing environments composed by id-reference into organization,
+# themes, site layers, routing, lifecycle, and assistant defaults. Validation
+# and deterministic activation planning. Pure model: //base plus the Seoul
+# tool layer (for the assistant-defaults sensitivity type).
+
+import("//testing/test.gni")
+
+source_set("scenes_core") {
+  sources = [
+    "scene_registry.cc",
+    "scene_registry.h",
+    "scene_types.h",
+  ]
+
+  deps = [
+    "//base",
+    "//seoul/browser/tools:tools_core",
+  ]
+}
+
+test("seoul_scenes_unittests") {
+  testonly = true
+  sources = [ "scene_registry_unittest.cc" ]
+  deps = [
+    ":scenes_core",
+    "//base",
+    "//base/test:test_support",
+    "//seoul/browser/tools:tools_core",
+    "//testing/gtest",
+  ]
+}

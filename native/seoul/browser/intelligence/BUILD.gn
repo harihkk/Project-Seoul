@@ -1,0 +1,40 @@
+# Project Seoul hybrid intelligence.
+# Provider-neutral model interface and the deterministic-first reasoning
+# router. Pure model: //base only. Concrete local-runtime and cloud-API
+# adapters live in later glue targets and are not authored blind here.
+
+import("//testing/test.gni")
+
+source_set("intelligence_core") {
+  sources = [
+    "model_provider.h",
+    "reasoning_router.cc",
+    "reasoning_router.h",
+  ]
+
+  deps = [ "//base" ]
+}
+
+source_set("intelligence_test_support") {
+  testonly = true
+  sources = [
+    "fake_model_provider.cc",
+    "fake_model_provider.h",
+  ]
+  deps = [
+    ":intelligence_core",
+    "//base",
+  ]
+}
+
+test("seoul_intelligence_unittests") {
+  testonly = true
+  sources = [ "reasoning_router_unittest.cc" ]
+  deps = [
+    ":intelligence_core",
+    ":intelligence_test_support",
+    "//base",
+    "//base/test:test_support",
+    "//testing/gtest",
+  ]
+}

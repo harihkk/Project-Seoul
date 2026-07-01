@@ -1,0 +1,25 @@
+# Project Seoul context threads.
+# User-approved working context with forbidden-content classes unrepresentable
+# and cloud-scope minimization. Pure model: //base only.
+
+import("//testing/test.gni")
+
+source_set("context_core") {
+  sources = [
+    "context_thread.cc",
+    "context_thread.h",
+  ]
+
+  deps = [ "//base" ]
+}
+
+test("seoul_context_unittests") {
+  testonly = true
+  sources = [ "context_thread_unittest.cc" ]
+  deps = [
+    ":context_core",
+    "//base",
+    "//base/test:test_support",
+    "//testing/gtest",
+  ]
+}

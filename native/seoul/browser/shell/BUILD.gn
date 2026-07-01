@@ -1,5 +1,7 @@
 # Project Seoul native browser shell V0.
 
+import("//testing/test.gni")
+
 source_set("shell_core") {
   sources = [
     "command_launcher_catalog.cc",

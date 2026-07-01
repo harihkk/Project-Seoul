@@ -1,5 +1,7 @@
 # Project Seoul outbound browser command layer.
 
+import("//testing/test.gni")
+
 source_set("command_core") {
   sources = [
     "browser_command.h",

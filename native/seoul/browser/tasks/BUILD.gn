@@ -1,0 +1,40 @@
+# Project Seoul general-purpose operator: task layer.
+# Typed plans, plan validation, bounded observe-verify-decide execution with
+# receipts and checkpoints, and the Task Deck model. Pure model: //base, //url
+# (transitively via tools), and the Seoul tool layer.
+
+import("//testing/test.gni")
+
+source_set("tasks_core") {
+  sources = [
+    "plan_types.h",
+    "plan_validator.cc",
+    "plan_validator.h",
+    "task_deck_model.cc",
+    "task_deck_model.h",
+    "task_execution.cc",
+    "task_execution.h",
+    "task_types.h",
+  ]
+
+  deps = [
+    "//base",
+    "//seoul/browser/tools:tools_core",
+  ]
+}
+
+test("seoul_tasks_unittests") {
+  testonly = true
+  sources = [
+    "plan_validator_unittest.cc",
+    "task_deck_model_unittest.cc",
+    "task_execution_unittest.cc",
+  ]
+  deps = [
+    ":tasks_core",
+    "//base",
+    "//base/test:test_support",
+    "//seoul/browser/tools:tools_core",
+    "//testing/gtest",
+  ]
+}

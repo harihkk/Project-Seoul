@@ -7,6 +7,8 @@
 #   lifecycle      - Chromium adapters; publicly depends on
 #                    //chrome/browser:browser_public_dependencies
 
+import("//testing/test.gni")
+
 source_set("lifecycle_core") {
   sources = [
     "lifecycle_coordinator.cc",

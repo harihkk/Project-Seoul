@@ -1,0 +1,33 @@
+# Project Seoul grounded data layer.
+# Provider-neutral data contracts (weather, market, product), the provenance
+# envelope, and contract/chart-eligibility validation. Pure model: //base only.
+
+import("//testing/test.gni")
+
+source_set("data_core") {
+  sources = [
+    "data_errors.h",
+    "data_validation.cc",
+    "data_validation.h",
+    "market_data_provider.h",
+    "market_types.h",
+    "product_types.h",
+    "provenance.h",
+    "shopping_provider.h",
+    "weather_provider.h",
+    "weather_types.h",
+  ]
+
+  deps = [ "//base" ]
+}
+
+test("seoul_data_unittests") {
+  testonly = true
+  sources = [ "data_validation_unittest.cc" ]
+  deps = [
+    ":data_core",
+    "//base",
+    "//base/test:test_support",
+    "//testing/gtest",
+  ]
+}

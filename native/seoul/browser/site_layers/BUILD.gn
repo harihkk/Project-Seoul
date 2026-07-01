@@ -1,0 +1,27 @@
+# Project Seoul Site Layers.
+# Declarative per-site customization compiled to safe scoped CSS. No arbitrary
+# JavaScript; selectors and values are validated against a safe subset. Pure
+# model: //base only.
+
+import("//testing/test.gni")
+
+source_set("site_layers_core") {
+  sources = [
+    "site_layer_compiler.cc",
+    "site_layer_compiler.h",
+    "site_layer_types.h",
+  ]
+
+  deps = [ "//base" ]
+}
+
+test("seoul_site_layers_unittests") {
+  testonly = true
+  sources = [ "site_layer_compiler_unittest.cc" ]
+  deps = [
+    ":site_layers_core",
+    "//base",
+    "//base/test:test_support",
+    "//testing/gtest",
+  ]
+}

@@ -1,0 +1,45 @@
+# Project Seoul connected tools.
+# Provider-neutral connector seam and registry that mirrors connector-owned
+# typed tools into the shared Tool Registry. An external connector can never
+# register outside its own namespace. Pure model: //base plus the tool layer.
+
+import("//testing/test.gni")
+
+source_set("connectors_core") {
+  sources = [
+    "connector.h",
+    "connector_registry.cc",
+    "connector_registry.h",
+  ]
+
+  deps = [
+    "//base",
+    "//seoul/browser/tools:tools_core",
+  ]
+}
+
+source_set("connectors_test_support") {
+  testonly = true
+  sources = [
+    "fake_connector.cc",
+    "fake_connector.h",
+  ]
+  deps = [
+    ":connectors_core",
+    "//base",
+    "//seoul/browser/tools:tools_core",
+  ]
+}
+
+test("seoul_connectors_unittests") {
+  testonly = true
+  sources = [ "connector_registry_unittest.cc" ]
+  deps = [
+    ":connectors_core",
+    ":connectors_test_support",
+    "//base",
+    "//base/test:test_support",
+    "//seoul/browser/tools:tools_core",
+    "//testing/gtest",
+  ]
+}

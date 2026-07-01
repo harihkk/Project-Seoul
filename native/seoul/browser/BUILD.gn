@@ -3,9 +3,49 @@
 group("browser") {
   deps = [
     "//seoul/browser/commands:command_chromium",
+    "//seoul/browser/connectors:connectors_core",
+    "//seoul/browser/context:context_core",
+    "//seoul/browser/data:data_core",
+    "//seoul/browser/intelligence:intelligence_core",
     "//seoul/browser/lifecycle",
     "//seoul/browser/organization",
     "//seoul/browser/projection:projection_chromium",
+    "//seoul/browser/saui:saui_core",
+    "//seoul/browser/scenes:scenes_core",
     "//seoul/browser/shell:shell_chromium",
+    "//seoul/browser/site_layers:site_layers_core",
+    "//seoul/browser/tasks:tasks_core",
+    "//seoul/browser/themes:themes_core",
+    "//seoul/browser/tools:tools_core",
+    "//seoul/browser/voice:voice_core",
+    "//seoul/browser/workflows:workflows_core",
+  ]
+}
+
+# Aggregate of every Seoul unit-test target. A capable host builds and runs
+# this to exercise all pure-model tests in one target; the browser-test
+# targets that need InProcessBrowserTest are wired into //chrome/test through
+# the integration patch and are not part of this group.
+group("seoul_unittests") {
+  testonly = true
+  deps = [
+    "//seoul/browser/commands:seoul_command_core_unittests",
+    "//seoul/browser/connectors:seoul_connectors_unittests",
+    "//seoul/browser/context:seoul_context_unittests",
+    "//seoul/browser/data:seoul_data_unittests",
+    "//seoul/browser/intelligence:seoul_intelligence_unittests",
+    "//seoul/browser/lifecycle:seoul_lifecycle_core_unittests",
+    "//seoul/browser/lifecycle:seoul_lifecycle_state_unittests",
+    "//seoul/browser/organization:seoul_organization_unittests",
+    "//seoul/browser/projection:seoul_projection_core_unittests",
+    "//seoul/browser/saui:seoul_saui_unittests",
+    "//seoul/browser/scenes:seoul_scenes_unittests",
+    "//seoul/browser/shell:seoul_shell_core_unittests",
+    "//seoul/browser/site_layers:seoul_site_layers_unittests",
+    "//seoul/browser/tasks:seoul_tasks_unittests",
+    "//seoul/browser/themes:seoul_themes_unittests",
+    "//seoul/browser/tools:seoul_tools_unittests",
+    "//seoul/browser/voice:seoul_voice_unittests",
+    "//seoul/browser/workflows:seoul_workflows_unittests",
   ]
 }

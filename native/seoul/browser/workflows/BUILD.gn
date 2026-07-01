@@ -1,0 +1,38 @@
+# Project Seoul workflow system.
+# Versioned typed task graphs, structural validation, typed edit operations,
+# import/export, and compilation onto the task layer's typed plans. Pure
+# model: //base plus the Seoul tool and task layers.
+
+import("//testing/test.gni")
+
+source_set("workflows_core") {
+  sources = [
+    "workflow_editor.cc",
+    "workflow_editor.h",
+    "workflow_graph.cc",
+    "workflow_graph.h",
+    "workflow_types.h",
+  ]
+
+  deps = [
+    "//base",
+    "//seoul/browser/tasks:tasks_core",
+    "//seoul/browser/tools:tools_core",
+  ]
+}
+
+test("seoul_workflows_unittests") {
+  testonly = true
+  sources = [
+    "workflow_editor_unittest.cc",
+    "workflow_graph_unittest.cc",
+  ]
+  deps = [
+    ":workflows_core",
+    "//base",
+    "//base/test:test_support",
+    "//seoul/browser/tasks:tasks_core",
+    "//seoul/browser/tools:tools_core",
+    "//testing/gtest",
+  ]
+}

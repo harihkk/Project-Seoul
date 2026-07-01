@@ -8,6 +8,8 @@
 #                         //chrome/browser:browser_public_dependencies so it may
 #                         include Profile headers without a standalone cycle.
 
+import("//testing/test.gni")
+
 source_set("organization_model") {
   sources = [
     "organization_errors.cc",

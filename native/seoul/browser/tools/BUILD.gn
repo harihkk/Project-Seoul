@@ -1,0 +1,32 @@
+# Project Seoul general-purpose operator: tool layer.
+# Typed tool identities, schemas, argument validation, and the dynamic
+# registry with permission-scoped discovery. Pure model: //base and //url.
+
+import("//testing/test.gni")
+
+source_set("tools_core") {
+  sources = [
+    "tool_registry.cc",
+    "tool_registry.h",
+    "tool_schema.cc",
+    "tool_schema.h",
+    "tool_types.h",
+  ]
+
+  deps = [
+    "//base",
+    "//url",
+  ]
+}
+
+test("seoul_tools_unittests") {
+  testonly = true
+  sources = [ "tool_registry_unittest.cc" ]
+  deps = [
+    ":tools_core",
+    "//base",
+    "//base/test:test_support",
+    "//testing/gtest",
+    "//url",
+  ]
+}
