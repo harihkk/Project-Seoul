@@ -7,28 +7,34 @@
 
 class VerticalTabStripRegionView;
 
-namespace views {
-class View;
-}
-
 namespace seoul {
 
 class SeoulShellFooterView;
 class SeoulShellHeaderView;
 class ShellController;
 
+// Owns the shell header/footer child views attached to one initialized vertical
+// tab-strip region. Ownership is scoped to the owning ShellService per-window
+// binding (no process-global map). Destruction detaches and removes the shell
+// child views from the region, so the host must be destroyed while the region
+// is still alive (the integration patch unregisters at the start of
+// ResetTabStrip and in the region destructor, before child-view teardown).
 class SeoulShellRegionHost {
  public:
-  static void Attach(VerticalTabStripRegionView* region,
-                     ShellController* controller);
-  static void Detach(VerticalTabStripRegionView* region);
+  SeoulShellRegionHost();
+  SeoulShellRegionHost(const SeoulShellRegionHost&) = delete;
+  SeoulShellRegionHost& operator=(const SeoulShellRegionHost&) = delete;
+  ~SeoulShellRegionHost();
+
+  // Attaches header/footer views for `controller` into `region`. Re-attaching
+  // to the same region rebinds the controller without duplicating views.
+  void Attach(VerticalTabStripRegionView* region, ShellController* controller);
+  // Removes the shell child views from the region. Idempotent.
+  void Detach();
+
+  VerticalTabStripRegionView* region() const { return region_; }
 
  private:
-  static SeoulShellRegionHost* FromRegion(VerticalTabStripRegionView* region);
-  void DoAttach(VerticalTabStripRegionView* region,
-                ShellController* controller);
-  void DoDetach();
-
   raw_ptr<VerticalTabStripRegionView> region_ = nullptr;
   raw_ptr<SeoulShellHeaderView> header_ = nullptr;
   raw_ptr<SeoulShellFooterView> footer_ = nullptr;

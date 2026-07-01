@@ -42,11 +42,9 @@ void ShellService::Shutdown() {
   if (model_) {
     model_->RemoveObserver(this);
   }
-  for (auto& [window, host_region] : regions_) {
-    (void)window;
-    SeoulShellRegionHost::Detach(host_region.get());
-  }
-  regions_.clear();
+  // Destroy hosts first: each host detaches its shell child views (which
+  // unobserve their controller) while the controllers are still alive.
+  hosts_.clear();
   for (auto& [window, controller] : controllers_) {
     controller->Shutdown();
     (void)window;
@@ -67,10 +65,6 @@ ShellController& ShellService::EnsureController(ShellWindowKey window) {
         lifecycle_, recovery_required_);
     controller->SetAcknowledgeRecoveryCallback(acknowledge_recovery_);
     it = controllers_.emplace(window, std::move(controller)).first;
-    auto region_it = regions_.find(window);
-    if (region_it != regions_.end() && region_it->second) {
-      SeoulShellRegionHost::Attach(region_it->second.get(), it->second.get());
-    }
   }
   return *it->second;
 }
@@ -80,17 +74,19 @@ void ShellService::RegisterVerticalRegion(ShellWindowKey window,
   if (shutting_down_ || !window.is_valid() || !region) {
     return;
   }
-  regions_[window] = region;
   ShellController& controller = EnsureController(window);
-  SeoulShellRegionHost::Attach(region, &controller);
+  // Deterministic duplicate handling: replacing the entry destroys any prior
+  // host (detaching its child views) before the new one attaches. One host per
+  // initialized region; no process-global state.
+  std::unique_ptr<SeoulShellRegionHost>& host = hosts_[window];
+  host = std::make_unique<SeoulShellRegionHost>();
+  host->Attach(region, &controller);
 }
 
 void ShellService::UnregisterVerticalRegion(ShellWindowKey window) {
-  auto region_it = regions_.find(window);
-  if (region_it != regions_.end()) {
-    SeoulShellRegionHost::Detach(region_it->second.get());
-  }
-  regions_.erase(window);
+  // Destroy the host first (detaches shell child views while the controller is
+  // still alive), then tear down the per-window controller binding.
+  hosts_.erase(window);
   if (auto it = controllers_.find(window); it != controllers_.end()) {
     it->second->Shutdown();
     controllers_.erase(it);

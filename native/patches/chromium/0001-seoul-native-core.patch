@@ -11,7 +11,7 @@ index 63c2601cfc..fc90e7e1ca 100644
 +    "//seoul/browser/commands:command_chromium",
 +    "//seoul/browser/projection:projection_chromium",
 +    "//seoul/browser/shell:shell_chromium",
- 
+
      "//chrome/browser/browsing_data:impl",
      "//chrome/browser/accessibility:impl",
 @@ -912,6 +917,7 @@ static_library("browser") {
@@ -35,15 +35,15 @@ index 1aab47b6d0..0f491246f3 100644
  #include "chrome/browser/accessibility_annotator/accessibility_annotator_enablement_service_factory.h"
  #include "chrome/browser/accessibility_annotator/accessibility_annotator_service_factory.h"
 @@ -1514,6 +1515,7 @@ void ChromeBrowserMainExtraPartsProfiles::
- 
+
    WebDataServiceFactory::GetInstance();
    webrtc_event_logging::WebRtcEventLogManagerKeyedServiceFactory::GetInstance();
 +  seoul::SeoulOrganizationServiceFactory::GetInstance();
  }
- 
+
  void ChromeBrowserMainExtraPartsProfiles::PreProfileInit() {
 diff --git a/chrome/browser/ui/views/frame/vertical_tab_strip_region_view.cc b/chrome/browser/ui/views/frame/vertical_tab_strip_region_view.cc
-index 25ffbdf18e..a4c81e5994 100644
+index 25ffbdf18e..9c1d25d7ca 100644
 --- a/chrome/browser/ui/views/frame/vertical_tab_strip_region_view.cc
 +++ b/chrome/browser/ui/views/frame/vertical_tab_strip_region_view.cc
 @@ -49,6 +49,12 @@
@@ -61,7 +61,7 @@ index 25ffbdf18e..a4c81e5994 100644
  #include "chrome/browser/ui/web_applications/app_browser_controller.h"
 @@ -292,6 +298,27 @@ VerticalTabStripRegionView::~VerticalTabStripRegionView() {
    hover_locks_.clear();
- 
+
    if (root_node_) {
 +    if (browser_view_ && browser_view_->browser()) {
 +      Profile* profile = browser_view_->browser()->profile();
@@ -86,10 +86,10 @@ index 25ffbdf18e..a4c81e5994 100644
 +    }
      root_node_->SetController(nullptr);
    }
- 
+
 @@ -505,6 +532,21 @@ void VerticalTabStripRegionView::Layout(PassKey) {
  }
- 
+
  views::View* VerticalTabStripRegionView::GetDefaultFocusableChild() {
 +  if (browser_view_ && browser_view_->browser()) {
 +    Profile* profile = browser_view_->browser()->profile();
@@ -109,38 +109,68 @@ index 25ffbdf18e..a4c81e5994 100644
    const int active_index = tab_strip_model_->active_index();
    if (active_index != TabStripModel::kNoTab) {
      return GetTabAnchorViewAt(active_index);
-@@ -630,6 +672,27 @@ void VerticalTabStripRegionView::InitializeTabStrip() {
-       base::BindRepeating(&VerticalTabStripRegionView::ClearTabStripView,
-                           base::Unretained(this)));
- 
+@@ -662,6 +704,29 @@ void VerticalTabStripRegionView::InitializeTabStrip() {
+   on_child_moved_subscription_ =
+       root_node_->RegisterOnChildMovedCallback(base::BindRepeating(
+           &VerticalTabStripRegionView::OnChildMoved, base::Unretained(this)));
++
++  // Register Seoul projection and shell ONLY after the root node is fully
++  // initialized (controller set, Init() called, child callbacks installed), so
++  // they never observe a partially initialized view tree. Registration applies
++  // the current projection even when live state was published earlier.
 +  if (browser_view_ && browser_view_->browser()) {
 +    Profile* profile = browser_view_->browser()->profile();
 +    if (seoul::SeoulOrganizationService* service =
 +            seoul::SeoulOrganizationServiceFactory::GetForProfile(profile)) {
-+      if (seoul::ProjectionService* projection = service->projection_service()) {
-+        const SessionID sid = browser_view_->browser()->session_id();
-+        if (sid.is_valid()) {
-+          projection->RegisterVerticalRegion(
-+              seoul::LiveWindowKey::FromSessionId(sid.id()), this);
++      const SessionID sid = browser_view_->browser()->session_id();
++      if (sid.is_valid()) {
++        const seoul::LiveWindowKey key =
++            seoul::LiveWindowKey::FromSessionId(sid.id());
++        if (seoul::ProjectionService* projection =
++                service->projection_service()) {
++          projection->RegisterVerticalRegion(key, this);
++        }
++        if (seoul::ShellService* shell = service->shell_service()) {
++          shell->RegisterVerticalRegion(key, this);
 +        }
 +      }
-+      if (seoul::ShellService* shell = service->shell_service()) {
-+        const SessionID sid = browser_view_->browser()->session_id();
-+        if (sid.is_valid()) {
-+          shell->RegisterVerticalRegion(
-+              seoul::LiveWindowKey::FromSessionId(sid.id()), this);
++    }
++  }
+ }
+
+ void VerticalTabStripRegionView::ResetTabStrip() {
+@@ -669,6 +734,27 @@ void VerticalTabStripRegionView::ResetTabStrip() {
+     return;
+   }
+
++  // Unregister Seoul BEFORE the subscriptions, controller, root node and child
++  // views are reset, so no adapter or host retains a resetting root node.
++  if (browser_view_ && browser_view_->browser()) {
++    Profile* profile = browser_view_->browser()->profile();
++    if (seoul::SeoulOrganizationService* service =
++            seoul::SeoulOrganizationServiceFactory::GetForProfile(profile)) {
++      const SessionID sid = browser_view_->browser()->session_id();
++      if (sid.is_valid()) {
++        const seoul::LiveWindowKey key =
++            seoul::LiveWindowKey::FromSessionId(sid.id());
++        if (seoul::ProjectionService* projection =
++                service->projection_service()) {
++          projection->UnregisterVerticalRegion(key);
++        }
++        if (seoul::ShellService* shell = service->shell_service()) {
++          shell->UnregisterVerticalRegion(key);
 +        }
 +      }
 +    }
 +  }
 +
-   std::unique_ptr<TabMenuModelFactory> tab_menu_model_factory;
-   if (browser_view_ && browser_view_->browser()->app_controller()) {
-     tab_menu_model_factory =
-@@ -1110,6 +1173,20 @@ void VerticalTabStripRegionView::OnCollapseStateChanged(
+   on_children_added_subscription_.reset();
+   on_children_removed_subscription_.reset();
+   on_child_moved_subscription_.reset();
+@@ -1110,6 +1196,20 @@ void VerticalTabStripRegionView::OnCollapseStateChanged(
      tab_strip_view_->SetCollapsedState(collapsed);
    }
- 
+
 +  if (browser_view_ && browser_view_->browser()) {
 +    Profile* profile = browser_view_->browser()->profile();
 +    if (seoul::SeoulOrganizationService* service =
@@ -159,16 +189,20 @@ index 25ffbdf18e..a4c81e5994 100644
        state == tabs::VerticalTabStripCollapseState::kCollapsed) {
      UpdateExpandOnHoverState();
 diff --git a/chrome/browser/ui/views/frame/vertical_tab_strip_region_view.h b/chrome/browser/ui/views/frame/vertical_tab_strip_region_view.h
-index 70c78e23c0..69ab335a20 100644
+index 70c78e23c0..b599558b39 100644
 --- a/chrome/browser/ui/views/frame/vertical_tab_strip_region_view.h
 +++ b/chrome/browser/ui/views/frame/vertical_tab_strip_region_view.h
-@@ -187,6 +187,9 @@ class VerticalTabStripRegionView final
+@@ -187,6 +187,13 @@ class VerticalTabStripRegionView final
    tabs::VerticalTabStripState target_collapse_state_for_testing() {
      return target_collapse_state_;
    }
 +  views::View* GetSeoulShellSeparatorAnchor() { return top_button_separator_; }
 +  views::View* GetSeoulShellFooterAnchor() { return bottom_button_container_; }
 +  views::View* GetSeoulTabStripView() { return tab_strip_view_; }
++  // Production accessor for the initialized vertical-tab root node, used by the
++  // Seoul projection adapter (not a testing-only accessor). Non-null only
++  // between InitializeTabStrip() and ResetTabStrip().
++  RootTabCollectionNode* GetSeoulRootNode() { return root_node_.get(); }
    void DisableTabStripEditingForTesting() override;
    gfx::Rect GetLinkDropBoundsForTesting(
        const BrowserRootView::DropIndex& drop_index,

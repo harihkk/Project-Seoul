@@ -197,7 +197,7 @@ void VerticalPresentationAdapter::ApplyToVerticalTabStripRegion(
   if (!region) {
     return;
   }
-  RootTabCollectionNode* root = region->root_node_for_testing();
+  RootTabCollectionNode* root = region->GetSeoulRootNode();
   if (!root) {
     return;
   }
@@ -225,7 +225,7 @@ views::View* VerticalPresentationAdapter::FindDefaultFocusableChild(
   if (!region) {
     return nullptr;
   }
-  RootTabCollectionNode* root = region->root_node_for_testing();
+  RootTabCollectionNode* root = region->GetSeoulRootNode();
   if (!root) {
     return nullptr;
   }

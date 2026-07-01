@@ -22,6 +22,7 @@ class LiveWindowStateProvider;
 class OrganizationModel;
 class ProjectionService;
 class ShellController;
+class SeoulShellRegionHost;
 
 class ShellService : public OrganizationModelObserver {
  public:
@@ -61,7 +62,10 @@ class ShellService : public OrganizationModelObserver {
   bool shutting_down_ = false;
   AcknowledgeRecoveryCallback acknowledge_recovery_;
   std::map<ShellWindowKey, std::unique_ptr<ShellController>> controllers_;
-  std::map<ShellWindowKey, raw_ptr<VerticalTabStripRegionView>> regions_;
+  // One owned host per initialized vertical region (scoped to this service's
+  // window bindings; replaces the former process-global host map). The host
+  // destructor detaches the shell child views.
+  std::map<ShellWindowKey, std::unique_ptr<SeoulShellRegionHost>> hosts_;
 };
 
 }  // namespace seoul

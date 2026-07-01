@@ -21,7 +21,7 @@
   "patches": [
     {
       "id": "seoul-native-core",
-      "description": "Wire Seoul organization and lifecycle circular-implementation targets into //chrome/browser (deps + allow_circular_includes_from) and register SeoulOrganizationServiceFactory once at profile-service init.",
+      "description": "Wire Seoul organization and lifecycle circular-implementation targets into //chrome/browser (deps + allow_circular_includes_from); register SeoulOrganizationServiceFactory once at profile-service init; register Seoul projection and shell against VerticalTabStripRegionView only AFTER RootTabCollectionNode::Init() and unregister them at the start of ResetTabStrip; expose a production GetSeoulRootNode() accessor (no testing-only accessor in production); forward collapse-state changes to the shell.",
       "rationale": "Chromium-facing Seoul glue includes //chrome/browser headers and must use the browser_public_dependencies circular-implementation pattern. A single patch avoids duplicate lifecycle linkage (organization already depends on lifecycle transitively) and keeps factory registration in one place.",
       "baseRevision": "6a7b3dbec3b2ca25877c2553b5473b2f277ef644",
       "order": 1,
@@ -29,10 +29,11 @@
       "affectedPaths": [
         "chrome/browser/BUILD.gn",
         "chrome/browser/profiles/chrome_browser_main_extra_parts_profiles.cc",
-        "chrome/browser/ui/views/frame/vertical_tab_strip_region_view.cc"
+        "chrome/browser/ui/views/frame/vertical_tab_strip_region_view.cc",
+        "chrome/browser/ui/views/frame/vertical_tab_strip_region_view.h"
       ],
       "dependencies": [],
-      "sha256": "d873e3987aecf6064c49d6e877927a82a84a86576f3fbb309297a91065c0ddaa",
+      "sha256": "d37139af44ce9b8e026197d98afe5d7be5c588bc410cf56fe1e33105f5b6fd65",
       "applyVerify": "materialize.sh apply; git -C $SEOUL_CHROMIUM_ROOT/src apply --check native/patches/chromium/0001-seoul-native-core.patch",
       "reverseVerify": "git -C $SEOUL_CHROMIUM_ROOT/src apply -R native/patches/chromium/0001-seoul-native-core.patch",
       "reviewable": true
