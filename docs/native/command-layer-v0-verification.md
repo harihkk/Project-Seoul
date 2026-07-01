@@ -41,8 +41,8 @@ Authored on an 8 GiB Mac; no GN generation, compilation, or test execution perfo
 - V1 acceptance tests updated for recovery, overflow, rescan, split ratio.
 
 ### Formatting
-- `clang-format`: `/Users/hk/Documents/Projects/seoul-chromium/src/buildtools/mac_arm64-format/clang-format` - OK
-- `gn format`: `/Users/hk/Documents/Projects/seoul-chromium/src/buildtools/mac/gn` - OK
+- `clang-format`: external Chromium checkout `buildtools/mac_arm64-format/clang-format` - OK
+- `gn format`: external Chromium checkout `buildtools/mac/gn` - OK
 
 ### Patch round trip
 - `node native/scripts/check-patch-manifest.mjs` - OK

@@ -113,8 +113,8 @@ On the build host, clone the Project Seoul repo fresh. Do not copy a working tre
 from another machine (it may carry untracked build evidence or local edits).
 
 ```
-git clone <project-seoul-remote-url> /Users/<you>/ProjectSeoul
-cd /Users/<you>/ProjectSeoul
+git clone <project-seoul-remote-url> <project-seoul-checkout>
+cd <project-seoul-checkout>
 git checkout native/chromium-baseline   # or the branch carrying this runbook
 git rev-parse HEAD                       # record this; it goes in the manifest
 git status                               # expect a clean tree
@@ -450,8 +450,8 @@ no keychain references).
 |---|---|---|
 | `schemaVersion` | integer | Manifest format version (start at 1). |
 | `buildId` | string | Free-form unique id for this build run (for example a timestamp slug). |
-| `projectSeoul.repoCommit` | string | `git rev-parse HEAD` of the Project Seoul checkout. |
-| `projectSeoul.branch` | string | Branch built from. |
+| `sourceRepository.repoCommit` | string | `git rev-parse HEAD` of the repository checkout. |
+| `sourceRepository.branch` | string | Branch built from. |
 | `chromium.version` | string | Product version from the lock. |
 | `chromium.revision` | string | Full Chromium SHA; must equal the lock and the checked-out HEAD. |
 | `depotTools.revision` | string | Full depot_tools SHA; must equal the lock. |
@@ -481,8 +481,8 @@ no keychain references).
 {
   "schemaVersion": 1,
   "buildId": "seoul-baseline-2026-07-01T09-15-00Z",
-  "projectSeoul": {
-    "repoCommit": "<git rev-parse HEAD of ProjectSeoul>",
+  "sourceRepository": {
+    "repoCommit": "<git rev-parse HEAD of repository checkout>",
     "branch": "native/chromium-baseline"
   },
   "chromium": {

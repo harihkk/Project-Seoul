@@ -1,40 +1,58 @@
 # Project Seoul
 
-Project Seoul is becoming a real, premium Chromium-based browser. This repository
-is currently a **foundation**, not a completed browser. It contains three things:
+Project Seoul is the voice-first, visual, programmable personal Chromium-based
+browser. This repository holds the tracked Seoul-owned native source and the
+single reversible Chromium integration patch, plus a frozen browser-control
+harness kept only as a protocol reference. The source is authored and
+unit-tested at the source level; it is **not yet compiled or runtime-verified**
+(the authoring host cannot build Chromium). See
+`docs/release/seoul-product-readiness.md` for the exact per-feature status and
+the overall verdict.
 
-1. A **frozen Manifest V3 browser-control harness** (`apps/browser-harness/`), a
-   protocol and safety reference only (described in the rest of this README).
-2. An **unmodified, pinned native Chromium baseline** (`native/`): the lock,
-   baseline GN args, and reproduction/verification scripts. The Chromium source and
+The repository contains:
+
+1. The **tracked Seoul-owned native product source** (`native/seoul/browser/`):
+   organization, projection, command, and shell layers, plus the product
+   subsystems - adaptive visual UI (`saui/`), voice (`voice/`), the tool
+   registry and general operator (`tools/`, `tasks/`), workflows (`workflows/`),
+   Scenes (`scenes/`), themes (`themes/`), Site Layers (`site_layers/`), Context
+   Threads (`context/`), hybrid intelligence (`intelligence/`), grounded data
+   contracts (`data/`), and connected tools (`connectors/`). Every module ships a
+   unit-test target.
+2. The **single reversible Chromium integration patch** (`native/patches/`) over
+   a pinned Chromium revision, which wires the native services into
+   `//chrome/browser` and the vertical tab strip. It applies and reverses
+   cleanly against the pinned checkout.
+3. An **unmodified, pinned native Chromium baseline** (`native/chromium.lock.json`,
+   `native/gn/`) plus reproduction/verification scripts. The Chromium source and
    build output live in an external, untracked checkout, never in this repo.
-3. The **tracked Seoul-owned native source scaffold** (`native/seoul/`) and an
-   ordered, reversible **Chromium integration patch series** (`native/patches/`),
-   currently empty of product code by design.
+4. A **frozen Manifest V3 browser-control harness** (`apps/browser-harness/`), a
+   protocol and safety reference only (described in the rest of this README). The
+   native product re-implements these capabilities properly.
 
 Source-of-truth model: Seoul-owned code is tracked here (`native/seoul/`) and is
 materialized into the external checkout; unavoidable upstream edits are minimal,
 reversible patches (`native/patches/chromium/`) over a pinned Chromium revision.
 The modified checkout is disposable and is never the source of truth.
 
-**Not yet done / not verified on any machine:** GN generation, Chromium
-compilation, launch, smoke test, runtime vertical-tabs and split-view validation,
+**Not yet done / not verified on any machine:** GN generation, C++ compilation,
+unit-test and browser-test execution, launch, runtime behavior, performance,
 packaging, signing, and notarization. The component-build development settings in
 `native/gn/` are for local iteration and are **not** the shipping configuration.
 
-See: `docs/native/chromium-baseline.md` (baseline + checkout state),
-`docs/native/remote-build-runbook.md` (how to build on a capable Mac),
-`docs/product/feature-matrix.md` and `docs/product/native-architecture.md`
-(product direction and subsystem design). The harness integrates a browser-control
-runtime slice (side panel, user-gated tab access, semantic page observation, typed
-actions, restricted execution, persisted control-session state, action timeline)
-and exists only as a temporary reference; the native product re-implements these
-capabilities properly.
+See: `docs/product/seoul-product-definition.md` (what Seoul is),
+`docs/product/seoul-product-thesis.md` (who it is for and why),
+`docs/native/seoul-product-build-runbook.md` (how to build the product on a
+capable Mac), `docs/product/seoul-competitive-review.md`, and
+`docs/release/seoul-product-readiness.md` (per-feature status and verdict). The
+harness integrates a browser-control runtime slice (side panel, user-gated tab
+access, semantic page observation, typed actions, restricted execution, persisted
+control-session state, action timeline) and exists only as a temporary reference.
 
 ## Prerequisites (verified on this machine)
 
 - macOS on Apple Silicon (`arm64`)
-- Node.js `v26.0.0` (requires Node ≥ 23.6 for built-in TypeScript type stripping)
+- Node.js `v26.0.0` (requires Node >= 23.6 for built-in TypeScript type stripping)
 - npm `11.12.1`
 - Google Chrome `149` (requires Chrome >= 116 for `chrome.sidePanel.open`)
 - Python `3.14.6` (only to serve the local fixture)

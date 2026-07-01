@@ -1,7 +1,7 @@
 # Chromium M149 lifecycle source audit
 
 Milestone Part 2. The exact pinned Chromium APIs the inbound lifecycle bridge
-depends on. Pinned checkout: `/Users/hk/Documents/Projects/seoul-chromium/src`,
+depends on. Pinned checkout: external Chromium checkout,
 HEAD `6a7b3dbec3b2ca25877c2553b5473b2f277ef644` (macOS arm64). Every API below was
 read directly in that checkout. Anything not confirmed there is marked
 `RESEARCH REQUIRED`. No signatures are invented. Plain ASCII.

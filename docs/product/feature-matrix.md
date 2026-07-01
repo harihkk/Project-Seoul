@@ -15,7 +15,7 @@ describes observable behavior, not an intent to reuse their implementation.
 Seoul's interface and identity are original.
 
 Upstream-Chromium-support claims are grounded in the local pinned checkout at
-`/Users/hk/Documents/Projects/seoul-chromium/src` (Chromium 149.0.7827.201,
+the external Chromium checkout (Chromium 149.0.7827.201,
 revision 6a7b3dbec3b2ca25877c2553b5473b2f277ef644). Each cited path was verified
 with `git grep` / `ls` in that checkout. Where no evidence was found, the field
 reads "research required" rather than guessing. Cited paths are relative to that

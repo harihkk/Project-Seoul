@@ -1,7 +1,7 @@
 # Chromium command API audit (pinned M149)
 
 Pinned revision: `6a7b3dbec3b2ca25877c2553b5473b2f277ef644`.
-Checkout: `/Users/hk/Documents/Projects/seoul-chromium/src`.
+Checkout: external Chromium checkout.
 Desktop APIs only unless noted.
 
 ## Selected for command layer V0

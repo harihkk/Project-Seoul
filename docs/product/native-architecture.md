@@ -21,9 +21,8 @@ otherwise unmodified Chromium checkout:
 The pinned upstream revision is recorded in `native/chromium.lock.json`
 (Chromium 149.0.7827.201, commit `6a7b3dbec3b2ca25877c2553b5473b2f277ef644`,
 macOS arm64). The Chromium source and build output live OUTSIDE this repository,
-under an external root (default sibling directory, validated against
-`/Users/hk/Documents/Projects/seoul-chromium/src`). Nothing under that root is
-tracked by Project Seoul Git.
+under an external root (default sibling directory, validated against the pinned
+checkout). Nothing under that root is tracked by Project Seoul Git.
 
 Seoul has an original product interface and identity. It copies valuable feature
 CAPABILITIES from other browsers; it never copies their proprietary source,
@@ -56,10 +55,10 @@ Do not overclaim. As of this document:
 ### Evidence convention
 
 Every claim below about what upstream Chromium already provides was checked with
-`git grep` / `ls` against the real local checkout at
-`/Users/hk/Documents/Projects/seoul-chromium/src`, and the exact path is cited.
-Anywhere a concrete Chromium integration point could not be confirmed in the
-checkout, it is explicitly marked **research required** rather than invented.
+`git grep` / `ls` against the external Chromium checkout, and the exact upstream
+path is cited. Anywhere a concrete Chromium integration point could not be
+confirmed in the checkout, it is explicitly marked **research required** rather
+than invented.
 
 ---
 

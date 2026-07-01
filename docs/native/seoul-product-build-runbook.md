@@ -1,0 +1,132 @@
+# Seoul product build runbook
+
+This runbook builds the actual Seoul product: unmodified Chromium at the pinned
+revision, plus the Seoul-owned native source materialized into the checkout, the
+single reversible integration patch applied, the Seoul targets compiled, and the
+Seoul unit tests and browser tests run. It supersedes the baseline-only
+`remote-build-runbook.md` (which builds unmodified Chromium and applies no
+patch).
+
+Status of this runbook on the authoring host: NOT executable here. This machine
+has 8 GiB RAM and no capable toolchain; the build-host gate
+(`native/scripts/build-host-check.sh`) refuses to run gen/build. Everything up
+to and including the materialize + patch + static round-trip HAS been exercised
+here (see the readiness report); compilation and test execution require a
+capable host and have not been performed.
+
+## Capable-host requirements
+
+More than RAM and disk are required. A host must have:
+
+- Apple silicon (arm64) for the current target.
+- Full Xcode (not just Command Line Tools) and a compatible macOS SDK.
+- The correct active developer directory (`xcode-select -p`).
+- The pinned `depot_tools` at the locked revision (see `native/chromium.lock.json`).
+- A fast local filesystem with ample free space for a Chromium build.
+- A clean checkout at the locked Chromium revision with no tracked edits.
+- An absolute, space-free checkout path outside the Project Seoul repo.
+- A controlled macOS test runner for browser tests (a windowing session).
+- Local model files, if the local intelligence path is being exercised.
+- Official API test credentials, if cloud evaluation is being run - supplied via
+  the platform secure store and environment, never committed.
+- Signing credentials later, for distribution only.
+
+Never place credentials in the repository. Never claim a build succeeded on a
+host where it did not.
+
+## Ordered procedure
+
+Each step maps to a repository script. Absolute paths assume the repo at
+`$SEOUL_REPO` and the checkout resolved by `native/scripts/common.sh`
+(`SEOUL_CHROMIUM_ROOT`, else the sibling `seoul-chromium`).
+
+1. Host validation
+   `native/scripts/build-host-check.sh`
+   Gates RAM, disk, architecture, Xcode, SDK. A failing gate stops the build.
+
+2. Locked checkout verification
+   `native/scripts/verify-checkout.sh`
+   Confirms the Chromium HEAD and depot_tools HEAD equal the lock, no tracked
+   user edits, expected upstream paths present, gclient consistent.
+
+3. Materialization
+   `native/scripts/materialize.sh apply`
+   Mirrors `native/seoul/` into `src/seoul/` in the checkout. Then
+   `native/scripts/materialize.sh verify` confirms the overlay matches source.
+
+4. Patch application
+   `native/scripts/patches.sh apply`
+   Applies the ordered series from `native/patches/manifest.json` (currently one
+   patch, `0001-seoul-native-core`) with `git apply` in ascending order. The
+   patch wires the Seoul services into `//chrome/browser`, registers the
+   organization service at profile init, registers Seoul projection/shell against
+   the vertical tab strip after `RootTabCollectionNode::Init()`, exposes the
+   production `GetSeoulRootNode()` accessor, and forwards collapse-state changes.
+
+5. GN generation
+   `native/scripts/gen.sh`
+   Writes `args.gn` from `native/gn/macos-arm64-baseline.gn` and runs `gn gen`
+   into `out/SeoulBaseline`. Use `gen.sh --verify` on an incapable host to print
+   effective args without running GN.
+
+6. GN check
+   `gn check out/SeoulBaseline //seoul/...`
+   Validates the Seoul target graph and include dependencies. The Seoul BUILD
+   files import `//testing/test.gni` for the `test()` template; every module
+   exposes a `*_core`/`*_chromium` library and a `seoul_*_unittests` target, and
+   `//seoul/browser:seoul_unittests` aggregates them.
+
+7. Browser build
+   `native/scripts/build.sh`
+   Builds the `chrome` target. To include the Seoul libraries explicitly, build
+   `//seoul/browser` as well:
+   `autoninja -C out/SeoulBaseline chrome seoul/browser`.
+
+8. Unit-test build
+   `autoninja -C out/SeoulBaseline seoul/browser:seoul_unittests`
+   Builds every Seoul pure-model unit-test target in one group.
+
+9. Browser-test build
+   `autoninja -C out/SeoulBaseline browser_tests`
+   The Seoul browser-test sources are wired into `//chrome/test:browser_tests`
+   through the integration patch (this wiring is an open item; the current
+   browser-test bodies are placeholders and must be authored against the build -
+   see the readiness report).
+
+10. Test execution
+    `out/SeoulBaseline/seoul_saui_unittests` (and each `seoul_*_unittests`), or
+    run the aggregate via the gn-generated runners. Then the Seoul browser tests
+    via `browser_tests --gtest_filter=Seoul*`.
+
+11. Launch
+    `native/scripts/run.sh` launches the built browser for manual validation.
+
+12. Fixture test execution
+    Run the end-to-end fixtures (`docs/quality/seoul-end-to-end-tests.md`) as
+    browser tests with fake speech, model, and connector providers.
+
+13. Evidence capture
+    Record build manifest (revision, args, target list), test logs, timings,
+    and performance measurements (`docs/native/` and the readiness report).
+
+14. Cleanup / restoration
+    `native/scripts/patches.sh reverse` then `native/scripts/materialize.sh
+    reverse`, then `native/scripts/verify-checkout.sh` to confirm the checkout is
+    restored to the locked HEAD with no overlay and no applied patch.
+
+## What is proven on the authoring host today
+
+- Materialize apply/verify/reverse round-trip: clean.
+- Patch `git apply --check`, apply, and reverse against the pinned checkout:
+  clean; zero tracked Chromium edits remain after reverse.
+- clang-format (Chromium style) across all native C++: clean.
+- Header include resolution against the pinned checkout: all resolve.
+- `git diff --check`, JSON, patch-manifest, repo-boundary, shell-syntax: pass.
+- Checkout restored to the locked HEAD with no overlay and no applied patch.
+
+## What is NOT proven and requires a capable host
+
+GN generation, `gn check`, C++ compilation, linking, unit-test execution,
+browser-test execution, launch, runtime behavior, performance, packaging,
+signing, and notarization. None of these have been performed. A capable-host
+build is the mandatory next action.

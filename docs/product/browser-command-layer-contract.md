@@ -9,9 +9,9 @@ not read any section below as a description of shipped behavior.
 Pinned Chromium revision: 6a7b3dbec3b2ca25877c2553b5473b2f277ef644
 
 All Chromium API citations in this document were confirmed by reading header
-files in the real checkout at /Users/hk/Documents/Projects/seoul-chromium/src
-at the pinned revision. Where an API could not be confirmed, the section reads
-RESEARCH REQUIRED. No method signatures are invented.
+files in the external Chromium checkout at the pinned revision. Where an API
+could not be confirmed, the section reads RESEARCH REQUIRED. No method
+signatures are invented.
 
 ---
 
@@ -78,7 +78,7 @@ observer event would be misclassified as user-originated and double-applied.
 ## 2. Confirmed Chromium API surface (pinned revision)
 
 These are the real, confirmed entry points referenced by the commands. All
-paths are relative to /Users/hk/Documents/Projects/seoul-chromium/src.
+paths are relative to the external Chromium checkout root.
 
 - Insert a tab:
   `TabStripModel::InsertWebContentsAt(int index, std::unique_ptr<content::WebContents> contents, int add_types, std::optional<tab_groups::TabGroupId> group)`
