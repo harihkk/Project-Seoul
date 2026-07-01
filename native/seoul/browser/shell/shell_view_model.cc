@@ -54,18 +54,20 @@ ShellSnapshot ShellViewModel::Build(const OrganizationModel& model,
     snapshot.workspace.archived = ws->archived;
   }
   snapshot.workspace.switching =
-      context.switch_phase != WorkspaceSwitchPhase::kIdle &&
-      context.switch_phase != WorkspaceSwitchPhase::kApplied;
+      context.switch_phase == WorkspaceSwitchPhase::kValidating ||
+      context.switch_phase == WorkspaceSwitchPhase::kCalculating ||
+      context.switch_phase == WorkspaceSwitchPhase::kAwaitingActivation ||
+      context.switch_phase == WorkspaceSwitchPhase::kCommitting;
 
   if (context.recovery_required) {
     snapshot.status = ShellStatus::kRecoveryRequired;
     snapshot.show_status_banner = true;
-    snapshot.status_message = "organization_recovery_required";
+    snapshot.status_message = "Recovery required.";
     AddAction(&snapshot, ShellUtilityAction::kAcknowledgeRecovery, true, "");
     AddAction(&snapshot, ShellUtilityAction::kNewTemporaryTab, false,
-              "recovery_required");
+              "Recovery required.");
     AddAction(&snapshot, ShellUtilityAction::kCreateSplit, false,
-              "recovery_required");
+              "Recovery required.");
     return snapshot;
   }
 
@@ -73,12 +75,12 @@ ShellSnapshot ShellViewModel::Build(const OrganizationModel& model,
       projection.status == ProjectionStatus::kReconciliationRequired) {
     snapshot.status = ShellStatus::kReconciliationRequired;
     snapshot.show_status_banner = true;
-    snapshot.status_message = "reconciliation_required";
+    snapshot.status_message = "Reconciliation required.";
     AddAction(&snapshot, ShellUtilityAction::kReconcile, true, "");
   } else if (projection.status == ProjectionStatus::kFailOpen) {
     snapshot.status = ShellStatus::kFailOpen;
     snapshot.show_status_banner = true;
-    snapshot.status_message = "projection_fail_open";
+    snapshot.status_message = "Showing all tabs while the layout recovers.";
   } else if (context.switch_phase ==
                  WorkspaceSwitchPhase::kAwaitingActivation ||
              context.switch_phase == WorkspaceSwitchPhase::kCommitting) {
@@ -126,7 +128,7 @@ ShellSnapshot ShellViewModel::Build(const OrganizationModel& model,
 
   ShellSectionInfo pinned_section;
   pinned_section.section = ShellSection::kWorkspacePinned;
-  pinned_section.label = "workspace_pinned";
+  pinned_section.label = "Pinned";
   pinned_section.visible =
       pinned_count > 0 || snapshot.mode == ShellMode::kExpanded;
   pinned_section.projected_count = pinned_count;
@@ -134,14 +136,14 @@ ShellSnapshot ShellViewModel::Build(const OrganizationModel& model,
 
   ShellSectionInfo retained_section;
   retained_section.section = ShellSection::kRetainedTabs;
-  retained_section.label = "retained_tabs";
+  retained_section.label = "Retained";
   retained_section.visible = retained_count > 0;
   retained_section.projected_count = retained_count;
   snapshot.sections.push_back(retained_section);
 
   ShellSectionInfo temporary_section;
   temporary_section.section = ShellSection::kTemporaryTabs;
-  temporary_section.label = "temporary_tabs";
+  temporary_section.label = "Temporary";
   temporary_section.visible = temporary_count > 0;
   temporary_section.projected_count = temporary_count;
   snapshot.sections.push_back(temporary_section);
@@ -150,7 +152,7 @@ ShellSnapshot ShellViewModel::Build(const OrganizationModel& model,
       snapshot.status != ShellStatus::kReconciliationRequired &&
       snapshot.status != ShellStatus::kRecoveryRequired;
   AddAction(&snapshot, ShellUtilityAction::kNewTemporaryTab, mutations_ok,
-            mutations_ok ? "" : "reconciliation_required");
+            mutations_ok ? "" : "Reconciliation required.");
   AddAction(&snapshot, ShellUtilityAction::kCommandLauncher, true, "");
 
   bool split_ok = false;
@@ -176,7 +178,7 @@ ShellSnapshot ShellViewModel::Build(const OrganizationModel& model,
   }
   AddAction(&snapshot, ShellUtilityAction::kCreateSplit,
             split_ok && mutations_ok,
-            split_ok ? "" : "split_precondition_failure");
+            split_ok ? "" : "Select another tab to split with.");
 
   return snapshot;
 }

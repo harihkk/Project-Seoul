@@ -33,6 +33,7 @@ enum class CommandKind {
   kRemoveRoutingRule,
 
   // Chromium-affecting.
+  kOpenNewTab,  // open Chromium's normal New Tab Page (no URL navigation)
   kOpenTemporaryTab,
   kOpenRetainedTab,
   kActivateTab,

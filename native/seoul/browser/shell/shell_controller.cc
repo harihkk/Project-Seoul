@@ -42,6 +42,11 @@ ShellController::ShellController(ShellWindowKey window,
   if (controller) {
     controller->AddObserver(this);
   }
+  if (WorkspaceSwitcher* switcher =
+          projection_service_ ? projection_service_->GetSwitcher(window_)
+                              : nullptr) {
+    switcher->AddObserver(this);
+  }
   Recompute(true);
 }
 
@@ -66,6 +71,10 @@ void ShellController::Shutdown() {
     if (controller) {
       controller->RemoveObserver(this);
     }
+    if (WorkspaceSwitcher* switcher =
+            projection_service_->GetSwitcher(window_)) {
+      switcher->RemoveObserver(this);
+    }
   }
   observers_.Clear();
 }
@@ -88,12 +97,16 @@ void ShellController::SetCollapsed(bool collapsed) {
 
 bool ShellController::SnapshotsEqual(const ShellSnapshot& a,
                                      const ShellSnapshot& b) const {
-  return a.revision == b.revision && a.status == b.status && a.mode == b.mode &&
+  // Semantic equality: compares every user-visible and command-relevant field
+  // but NOT the monotonic revision (which changes on every recompute). When
+  // this returns true the Views hierarchy must not be rebuilt.
+  return a.window == b.window && a.mode == b.mode && a.status == b.status &&
+         a.workspace == b.workspace && a.essentials == b.essentials &&
+         a.pinned_items == b.pinned_items && a.sections == b.sections &&
+         a.actions == b.actions &&
          a.show_empty_workspace == b.show_empty_workspace &&
          a.show_status_banner == b.show_status_banner &&
          a.status_message == b.status_message &&
-         a.workspace.workspace_id == b.workspace.workspace_id &&
-         a.workspace.name == b.workspace.name &&
          a.switch_phase == b.switch_phase;
 }
 
@@ -106,10 +119,9 @@ void ShellController::Recompute(bool publish) {
   context.mode = collapsed_ ? ShellMode::kCollapsed : ShellMode::kExpanded;
   context.recovery_required = recovery_required_;
   context.lifecycle_degraded = lifecycle_ && lifecycle_->lifecycle_degraded();
-  WorkspaceSwitcher* switcher =
-      projection_service_ ? projection_service_->GetSwitcher(window_) : nullptr;
-  context.switch_phase =
-      switcher ? switcher->phase() : WorkspaceSwitchPhase::kIdle;
+  // Use the directly observed switch phase (captures terminal failure phases
+  // before the transaction resets), not an inferred snapshot of switcher state.
+  context.switch_phase = observed_switch_phase_;
 
   WindowProjection projection;
   if (projection_service_) {
@@ -125,13 +137,28 @@ void ShellController::Recompute(bool publish) {
     }
   }
 
-  ShellSnapshot next =
-      ShellViewModel::Build(*model_, context, projection, live_, revision_++);
-  if (!publish || !SnapshotsEqual(snapshot_, next)) {
-    snapshot_ = std::move(next);
-    if (publish) {
-      Publish();
-    }
+  // Build with the current revision so it does not perturb semantic comparison.
+  ShellSnapshot next = ShellViewModel::Build(*model_, context, projection,
+                                             live_, snapshot_.revision);
+  // Surface a directly-observed switch failure as a user-facing banner, unless
+  // a higher-priority status (recovery/reconciliation/fail-open) already owns
+  // it.
+  if (switch_failed_ && (next.status == ShellStatus::kCoherent ||
+                         next.status == ShellStatus::kEmptyWorkspace)) {
+    next.status = ShellStatus::kSwitchingWorkspace;
+    next.show_status_banner = true;
+    next.status_message = "Workspace switch failed.";
+  }
+  if (initialized_ && SnapshotsEqual(snapshot_, next)) {
+    // Identical semantic state: keep the existing snapshot/revision, do not
+    // republish, do not rebuild the Views hierarchy.
+    return;
+  }
+  next.revision = ++revision_;
+  snapshot_ = std::move(next);
+  initialized_ = true;
+  if (publish) {
+    Publish();
   }
 }
 
@@ -171,6 +198,27 @@ void ShellController::OnProjectionChanged(const ProjectionChange& change,
   Recompute(true);
 }
 
+void ShellController::OnWorkspaceSwitchPhaseChanged(
+    WorkspaceSwitchPhase phase,
+    std::optional<ProjectionError> error) {
+  (void)error;
+  observed_switch_phase_ = phase;
+  switch (phase) {
+    case WorkspaceSwitchPhase::kValidating:
+    case WorkspaceSwitchPhase::kApplied:
+      switch_failed_ = false;  // a new switch started or one succeeded
+      break;
+    case WorkspaceSwitchPhase::kRejected:
+    case WorkspaceSwitchPhase::kCancelled:
+    case WorkspaceSwitchPhase::kOutcomeUnknown:
+      switch_failed_ = true;  // sticky until the next switch starts/succeeds
+      break;
+    default:
+      break;
+  }
+  Recompute(true);
+}
+
 ShellResult<WorkspaceId> ShellController::SwitchWorkspace(WorkspaceId target) {
   if (shutting_down_ || !projection_service_) {
     return ShellErr(ShellError::kInvalidWindow);
@@ -196,9 +244,11 @@ ShellStatusResult ShellController::OpenNewTemporaryTab() {
   }
   BrowserCommand command;
   command.id = CommandId::Next();
-  command.kind = CommandKind::kOpenTemporaryTab;
+  command.kind = CommandKind::kOpenNewTab;
   command.window = window_;
-  command.url = GURL();
+  // No URL: the new-tab command opens Chromium's New Tab Page through the
+  // dedicated path, never through URL validation. The inserted tab is assigned
+  // to the active workspace and marked temporary by the lifecycle coordinator.
   auto result = executor_->Submit(std::move(command));
   Recompute(true);
   return result.has_value() ? ShellOk()
@@ -238,14 +288,11 @@ ShellStatusResult ShellController::RunReconciliation() {
   if (shutting_down_ || !lifecycle_) {
     return ShellErr(ShellError::kInvalidWindow);
   }
-  if (lifecycle_->reconciliation_required()) {
-    NormalizedEvent began;
-    began.type = NormalizedEventType::kReconciliationBegan;
-    lifecycle_->OnNormalizedEvent(began);
-    NormalizedEvent completed;
-    completed.type = NormalizedEventType::kReconciliationCompleted;
-    lifecycle_->OnNormalizedEvent(completed);
-  }
+  // Delegate to the coordinator's real reconciliation path, which emits
+  // reconciliation-began, performs the bounded WindowWatcher rescan, and emits
+  // reconciliation-completed only after the rescan returns. The shell never
+  // synthesizes completion itself.
+  lifecycle_->RequestReconciliation();
   Recompute(true);
   return ShellOk();
 }

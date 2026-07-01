@@ -15,6 +15,11 @@ class ChromiumMutationAdapterImpl : public ChromiumMutationAdapter {
       delete;
   ~ChromiumMutationAdapterImpl() override;
 
+  CommandStatusResult OpenNewTab(Profile* profile,
+                                 const ResolvedWindowTarget& window,
+                                 CommandForegroundDisposition disposition,
+                                 LiveTabKey* out_tab) override;
+
   CommandStatusResult OpenTab(Profile* profile,
                               const ResolvedWindowTarget& window,
                               const GURL& url,

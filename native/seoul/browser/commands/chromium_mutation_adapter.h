@@ -15,6 +15,15 @@ class ChromiumMutationAdapter {
  public:
   virtual ~ChromiumMutationAdapter() = default;
 
+  // Open Chromium's normal New Tab Page in `window` via the dedicated new-tab
+  // path (no URL navigation, no URL policy). On success `out_tab` is the
+  // inserted tab's live key.
+  virtual CommandStatusResult OpenNewTab(
+      Profile* profile,
+      const ResolvedWindowTarget& window,
+      CommandForegroundDisposition disposition,
+      LiveTabKey* out_tab) = 0;
+
   virtual CommandStatusResult OpenTab(Profile* profile,
                                       const ResolvedWindowTarget& window,
                                       const GURL& url,

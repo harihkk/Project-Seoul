@@ -23,6 +23,15 @@ void LifecycleCoordinator::SetReconciliationRequestCallback(
   reconciliation_request_callback_ = std::move(callback);
 }
 
+void LifecycleCoordinator::RequestReconciliation() {
+  // Run the real reconciliation path (began -> bounded window rescan ->
+  // completed) wired by the owning service. The shell recovery control routes
+  // here instead of synthesizing reconciliation events itself.
+  if (reconciliation_request_callback_) {
+    reconciliation_request_callback_.Run();
+  }
+}
+
 void LifecycleCoordinator::SetConfirmationCallback(
     base::RepeatingCallback<void(const NormalizedEvent&)> callback) {
   confirmation_callback_ = std::move(callback);

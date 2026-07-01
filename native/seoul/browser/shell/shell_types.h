@@ -88,6 +88,9 @@ struct ShellEssentialItem {
   bool has_live_tab = false;
   bool live_in_current_window = false;
   bool is_active = false;
+
+  friend bool operator==(const ShellEssentialItem&,
+                         const ShellEssentialItem&) = default;
 };
 
 struct ShellPinnedItem {
@@ -96,6 +99,9 @@ struct ShellPinnedItem {
   std::string saved_root_url;
   ShellItemState state = ShellItemState::kNormal;
   bool is_active = false;
+
+  friend bool operator==(const ShellPinnedItem&,
+                         const ShellPinnedItem&) = default;
 };
 
 struct ShellWorkspaceHeader {
@@ -105,6 +111,9 @@ struct ShellWorkspaceHeader {
   bool archived = false;
   bool switching = false;
   ShellItemState state = ShellItemState::kNormal;
+
+  friend bool operator==(const ShellWorkspaceHeader&,
+                         const ShellWorkspaceHeader&) = default;
 };
 
 struct ShellSectionInfo {
@@ -112,12 +121,18 @@ struct ShellSectionInfo {
   std::string label;
   bool visible = false;
   int projected_count = 0;
+
+  friend bool operator==(const ShellSectionInfo&,
+                         const ShellSectionInfo&) = default;
 };
 
 struct ShellActionEnablement {
   ShellUtilityAction action = ShellUtilityAction::kNewTemporaryTab;
   bool enabled = false;
   std::string disabled_reason;
+
+  friend bool operator==(const ShellActionEnablement&,
+                         const ShellActionEnablement&) = default;
 };
 
 struct ShellSnapshot {

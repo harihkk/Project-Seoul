@@ -3,7 +3,11 @@
 #ifndef SEOUL_BROWSER_PROJECTION_WORKSPACE_SWITCHER_H_
 #define SEOUL_BROWSER_PROJECTION_WORKSPACE_SWITCHER_H_
 
+#include <optional>
+
 #include "base/memory/raw_ptr.h"
+#include "base/observer_list.h"
+#include "base/observer_list_types.h"
 #include "seoul/browser/commands/command_completion_observer.h"
 #include "seoul/browser/commands/command_executor.h"
 #include "seoul/browser/lifecycle/live_window_state.h"
@@ -26,6 +30,18 @@ enum class WorkspaceSwitchPhase {
   kRejected,
   kCancelled,
   kOutcomeUnknown,
+};
+
+// Direct observation of the workspace-switch transaction. Fired on every phase
+// transition, including terminal phases (applied/rejected/cancelled/outcome
+// unknown) before the transaction resets to idle, so a subscriber sees pending
+// and failure states without depending on unrelated organization mutations.
+// `error` is set only for failure terminals.
+class WorkspaceSwitchObserver : public base::CheckedObserver {
+ public:
+  virtual void OnWorkspaceSwitchPhaseChanged(
+      WorkspaceSwitchPhase phase,
+      std::optional<ProjectionError> error) = 0;
 };
 
 struct WorkspaceSwitchResult {
@@ -55,11 +71,18 @@ class WorkspaceSwitcher : public CommandCompletionObserver {
 
   WorkspaceSwitchPhase phase() const { return phase_; }
 
+  void AddObserver(WorkspaceSwitchObserver* observer);
+  void RemoveObserver(WorkspaceSwitchObserver* observer);
+
   void OnCommandCompleted(CommandId id,
                           CommandKind kind,
                           CommandStatus status) override;
 
  private:
+  // Assigns the phase and notifies observers. `error` is only meaningful for
+  // failure terminals.
+  void SetPhase(WorkspaceSwitchPhase phase,
+                std::optional<ProjectionError> error = std::nullopt);
   WindowProjection ComputeTargetProjection(WorkspaceId target) const;
   ProjectionResult<WorkspaceSwitchResult> CommitWorkspace(
       WorkspaceId target_workspace,
@@ -74,6 +97,7 @@ class WorkspaceSwitcher : public CommandCompletionObserver {
   raw_ptr<WindowProjectionController> controller_;
   raw_ptr<LiveWindowStateProvider> live_state_;
   WorkspaceSwitchPhase phase_ = WorkspaceSwitchPhase::kIdle;
+  base::ObserverList<WorkspaceSwitchObserver> observers_;
   WorkspaceId pending_target_;
   WorkspaceId prior_workspace_;
   LiveTabKey pending_activation_tab_;

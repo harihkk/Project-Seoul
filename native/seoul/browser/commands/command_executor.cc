@@ -108,6 +108,18 @@ CommandResult<CommandStatus> CommandExecutor::DispatchChromiumCommand(
 
   CommandStatusResult dispatch = CommandOk();
   switch (command.kind) {
+    case CommandKind::kOpenNewTab: {
+      auto window = resolver_->ResolveWindow(profile_, command.window);
+      if (!window.has_value()) {
+        registry_.Consume(command.id);
+        pending_commands_.erase(command.id);
+        return base::unexpected(CommandError::kWindowNotFound);
+      }
+      LiveTabKey inserted;
+      dispatch = adapter_->OpenNewTab(profile_, window.value(),
+                                      command.foreground, &inserted);
+      break;
+    }
     case CommandKind::kOpenTemporaryTab:
     case CommandKind::kOpenRetainedTab: {
       auto window = resolver_->ResolveWindow(profile_, command.window);
@@ -235,6 +247,7 @@ ExpectedObservation CommandExecutor::BuildObservation(
   obs.created_at = base::TimeTicks::Now();
   obs.destination_index = command.destination_index;
   switch (command.kind) {
+    case CommandKind::kOpenNewTab:
     case CommandKind::kOpenTemporaryTab:
     case CommandKind::kOpenRetainedTab:
       obs.expected_event = NormalizedEventType::kTabInserted;
@@ -410,6 +423,7 @@ bool CommandExecutor::VerifyPostcondition(const BrowserCommand& command) const {
     return false;
   }
   switch (command.kind) {
+    case CommandKind::kOpenNewTab:
     case CommandKind::kOpenTemporaryTab:
     case CommandKind::kOpenRetainedTab:
       return true;

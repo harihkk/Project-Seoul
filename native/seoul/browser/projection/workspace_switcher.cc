@@ -30,6 +30,22 @@ WorkspaceSwitcher::~WorkspaceSwitcher() {
   }
 }
 
+void WorkspaceSwitcher::AddObserver(WorkspaceSwitchObserver* observer) {
+  observers_.AddObserver(observer);
+}
+
+void WorkspaceSwitcher::RemoveObserver(WorkspaceSwitchObserver* observer) {
+  observers_.RemoveObserver(observer);
+}
+
+void WorkspaceSwitcher::SetPhase(WorkspaceSwitchPhase phase,
+                                 std::optional<ProjectionError> error) {
+  phase_ = phase;
+  for (WorkspaceSwitchObserver& observer : observers_) {
+    observer.OnWorkspaceSwitchPhaseChanged(phase, error);
+  }
+}
+
 WindowProjection WorkspaceSwitcher::ComputeTargetProjection(
     WorkspaceId target) const {
   if (!controller_ || !model_ || !live_state_) {
@@ -53,6 +69,8 @@ bool WorkspaceSwitcher::IsTargetTabActive(LiveTabKey tab) const {
 
 ProjectionResult<WorkspaceSwitchResult> WorkspaceSwitcher::RejectSwitch(
     ProjectionError error) {
+  // Surface the rejection terminal before the transaction resets to idle.
+  SetPhase(WorkspaceSwitchPhase::kRejected, error);
   ResetTransaction();
   return base::unexpected(error);
 }
@@ -61,7 +79,7 @@ void WorkspaceSwitcher::ResetTransaction() {
   if (controller_) {
     controller_->SetSwitchInProgress(false);
   }
-  phase_ = WorkspaceSwitchPhase::kIdle;
+  SetPhase(WorkspaceSwitchPhase::kIdle);
   pending_target_ = WorkspaceId();
   prior_workspace_ = WorkspaceId();
   pending_activation_tab_ = LiveTabKey();
@@ -88,7 +106,7 @@ WorkspaceSwitcher::SwitchWorkspaceForWindow(WorkspaceId target_workspace) {
     return RejectSwitch(ProjectionError::kArchivedWorkspace);
   }
 
-  phase_ = WorkspaceSwitchPhase::kValidating;
+  SetPhase(WorkspaceSwitchPhase::kValidating);
   if (controller_) {
     controller_->SetSwitchInProgress(true);
   }
@@ -102,31 +120,32 @@ WorkspaceSwitcher::SwitchWorkspaceForWindow(WorkspaceId target_workspace) {
     result.phase = WorkspaceSwitchPhase::kApplied;
     result.committed_projection = controller_->projection();
     result.empty_workspace = result.committed_projection.empty_workspace;
+    SetPhase(WorkspaceSwitchPhase::kApplied);
     ResetTransaction();
     return result;
   }
 
-  phase_ = WorkspaceSwitchPhase::kCalculating;
+  SetPhase(WorkspaceSwitchPhase::kCalculating);
   const WindowProjection target_projection =
       ComputeTargetProjection(target_workspace);
   const LiveTabKey target_tab = ProjectionOrdering::SelectSwitchTarget(
       *model_, target_projection, window.value(), target_workspace);
 
   if (!target_tab.is_valid()) {
-    phase_ = WorkspaceSwitchPhase::kCommitting;
+    SetPhase(WorkspaceSwitchPhase::kCommitting);
     auto committed = CommitWorkspace(target_workspace, target_projection);
     ResetTransaction();
     return committed;
   }
 
   if (IsTargetTabActive(target_tab)) {
-    phase_ = WorkspaceSwitchPhase::kCommitting;
+    SetPhase(WorkspaceSwitchPhase::kCommitting);
     auto committed = CommitWorkspace(target_workspace, target_projection);
     ResetTransaction();
     return committed;
   }
 
-  phase_ = WorkspaceSwitchPhase::kAwaitingActivation;
+  SetPhase(WorkspaceSwitchPhase::kAwaitingActivation);
   pending_activation_tab_ = target_tab;
   BrowserCommand cmd;
   cmd.id = CommandId::Next();
@@ -148,7 +167,7 @@ WorkspaceSwitcher::SwitchWorkspaceForWindow(WorkspaceId target_workspace) {
       }
       return RejectSwitch(ProjectionError::kActivationFailed);
     }
-    phase_ = WorkspaceSwitchPhase::kCommitting;
+    SetPhase(WorkspaceSwitchPhase::kCommitting);
     auto committed = CommitWorkspace(target_workspace, target_projection);
     ResetTransaction();
     return committed;
@@ -223,6 +242,7 @@ ProjectionResult<WorkspaceSwitchResult> WorkspaceSwitcher::CommitWorkspace(
       controller_->EnterFailOpen();
     }
   }
+  SetPhase(WorkspaceSwitchPhase::kApplied);
   return result;
 }
 
@@ -238,7 +258,7 @@ void WorkspaceSwitcher::OnCommandCompleted(CommandId id,
       ComputeTargetProjection(pending_target_);
 
   if (status == CommandStatus::kOutcomeUnknown) {
-    phase_ = WorkspaceSwitchPhase::kOutcomeUnknown;
+    SetPhase(WorkspaceSwitchPhase::kOutcomeUnknown);
     if (pending_activation_tab_.is_valid() &&
         IsTargetTabActive(pending_activation_tab_)) {
       (void)CommitWorkspace(pending_target_, target_projection);
@@ -256,6 +276,10 @@ void WorkspaceSwitcher::OnCommandCompleted(CommandId id,
       model_->SetActiveWorkspaceForWindow(window.value(), prior_workspace_);
       controller_->OnOrganizationChanged();
     }
+    SetPhase(status == CommandStatus::kCancelled
+                 ? WorkspaceSwitchPhase::kCancelled
+                 : WorkspaceSwitchPhase::kRejected,
+             ProjectionError::kActivationFailed);
     ResetTransaction();
     return;
   }
@@ -265,11 +289,13 @@ void WorkspaceSwitcher::OnCommandCompleted(CommandId id,
       model_->SetActiveWorkspaceForWindow(window.value(), prior_workspace_);
       controller_->OnOrganizationChanged();
     }
+    SetPhase(WorkspaceSwitchPhase::kRejected,
+             ProjectionError::kActivationFailed);
     ResetTransaction();
     return;
   }
 
-  phase_ = WorkspaceSwitchPhase::kCommitting;
+  SetPhase(WorkspaceSwitchPhase::kCommitting);
   (void)CommitWorkspace(pending_target_, target_projection);
   ResetTransaction();
 }

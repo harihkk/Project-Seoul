@@ -37,6 +37,9 @@ class LifecycleCoordinator : public LifecycleEventSink {
   void OnNormalizedEvent(const NormalizedEvent& event) override;
 
   void SetReconciliationRequestCallback(ReconciliationRequestCallback callback);
+  // Trigger the real reconciliation path (the request callback set above). Used
+  // by the shell recovery control; safe no-op if no callback is set.
+  void RequestReconciliation();
   void SetConfirmationCallback(
       base::RepeatingCallback<void(const NormalizedEvent&)> callback);
   void SetPinHandlingSuppressor(

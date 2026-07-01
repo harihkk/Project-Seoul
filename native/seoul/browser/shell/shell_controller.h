@@ -3,6 +3,8 @@
 #ifndef SEOUL_BROWSER_SHELL_SHELL_CONTROLLER_H_
 #define SEOUL_BROWSER_SHELL_SHELL_CONTROLLER_H_
 
+#include <optional>
+
 #include "base/memory/raw_ptr.h"
 #include "base/observer_list.h"
 #include "seoul/browser/commands/browser_command.h"
@@ -25,7 +27,8 @@ class WorkspaceSwitcher;
 
 class ShellController : public OrganizationModelObserver,
                         public LiveWindowStateObserver,
-                        public ProjectionObserver {
+                        public ProjectionObserver,
+                        public WorkspaceSwitchObserver {
  public:
   ShellController(ShellWindowKey window,
                   Profile* profile,
@@ -64,6 +67,11 @@ class ShellController : public OrganizationModelObserver,
   void OnProjectionChanged(const ProjectionChange& change,
                            const WindowProjection& projection) override;
 
+  // WorkspaceSwitchObserver:
+  void OnWorkspaceSwitchPhaseChanged(
+      WorkspaceSwitchPhase phase,
+      std::optional<ProjectionError> error) override;
+
  private:
   void Recompute(bool publish);
   void Publish();
@@ -79,9 +87,13 @@ class ShellController : public OrganizationModelObserver,
   bool recovery_required_ = false;
   bool collapsed_ = false;
   bool shutting_down_ = false;
+  bool initialized_ = false;  // first snapshot established + published
+  // Directly observed workspace-switch transaction state (not inferred).
+  WorkspaceSwitchPhase observed_switch_phase_ = WorkspaceSwitchPhase::kIdle;
+  bool switch_failed_ = false;
   LiveWindowSnapshot live_;
   ShellSnapshot snapshot_;
-  uint64_t revision_ = 1;
+  uint64_t revision_ = 0;
   base::RepeatingCallback<MutationStatus()> acknowledge_recovery_callback_;
   base::ObserverList<ShellObserver> observers_;
 };

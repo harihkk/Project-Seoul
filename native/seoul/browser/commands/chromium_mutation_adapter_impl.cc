@@ -5,6 +5,7 @@
 #include <vector>
 
 #include "chrome/browser/profiles/profile.h"
+#include "chrome/browser/ui/browser_tabstrip.h"
 #include "chrome/browser/ui/browser_window/public/browser_collection.h"
 #include "chrome/browser/ui/browser_window/public/browser_window_interface.h"
 #include "chrome/browser/ui/browser_window/public/profile_browser_collection.h"
@@ -42,6 +43,31 @@ BrowserWindowInterface* FindBrowser(Profile* profile, LiveWindowKey window) {
 
 ChromiumMutationAdapterImpl::ChromiumMutationAdapterImpl() = default;
 ChromiumMutationAdapterImpl::~ChromiumMutationAdapterImpl() = default;
+
+CommandStatusResult ChromiumMutationAdapterImpl::OpenNewTab(
+    Profile* profile,
+    const ResolvedWindowTarget& window,
+    CommandForegroundDisposition disposition,
+    LiveTabKey* out_tab) {
+  BrowserWindowInterface* browser = FindBrowser(profile, window.window);
+  if (!browser) {
+    return CommandErr(CommandError::kWindowNotFound);
+  }
+  const bool foreground =
+      disposition == CommandForegroundDisposition::kForeground;
+  // An empty GURL loads Chromium's normal New Tab Page (the documented behavior
+  // of AddAndReturnTabAt). This is the dedicated new-tab path and never goes
+  // through URL navigation or URL policy.
+  content::WebContents* contents =
+      chrome::AddAndReturnTabAt(browser, GURL(), /*index=*/-1, foreground);
+  if (!contents) {
+    return CommandErr(CommandError::kDispatchFailure);
+  }
+  if (out_tab) {
+    *out_tab = TabStripBridge::KeyForContents(contents);
+  }
+  return CommandOk();
+}
 
 CommandStatusResult ChromiumMutationAdapterImpl::OpenTab(
     Profile* profile,
