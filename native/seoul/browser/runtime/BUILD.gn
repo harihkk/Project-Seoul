@@ -1,0 +1,41 @@
+# Project Seoul runtime composition.
+# The per-profile composition that owns the capability graph, the connector
+# registry, the scene registry, and the reasoning policy - the production owner
+# for the product subsystems. Pure model: //base plus the Seoul subsystem
+# cores. The profile-keyed SeoulRuntimeService that instantiates this and is
+# registered at profile-service init is Chromium glue authored in the
+# integration patch (it needs //chrome/browser); this target stays pure and
+# unit-tested.
+
+import("//testing/test.gni")
+
+source_set("runtime") {
+  sources = [
+    "seoul_runtime.cc",
+    "seoul_runtime.h",
+  ]
+
+  deps = [
+    "//base",
+    "//seoul/browser/connectors:connectors_core",
+    "//seoul/browser/intelligence:intelligence_core",
+    "//seoul/browser/scenes:scenes_core",
+    "//seoul/browser/tools:tools_core",
+  ]
+}
+
+test("seoul_runtime_unittests") {
+  testonly = true
+  sources = [ "seoul_runtime_unittest.cc" ]
+  deps = [
+    ":runtime",
+    "//base",
+    "//base/test:test_support",
+    "//seoul/browser/connectors:connectors_core",
+    "//seoul/browser/connectors:connectors_test_support",
+    "//seoul/browser/intelligence:intelligence_core",
+    "//seoul/browser/scenes:scenes_core",
+    "//seoul/browser/tools:tools_core",
+    "//testing/gtest",
+  ]
+}
