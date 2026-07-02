@@ -2,6 +2,7 @@
 
 group("browser") {
   deps = [
+    "//seoul/browser/canvas",
     "//seoul/browser/commands:command_chromium",
     "//seoul/browser/connectors:connectors_core",
     "//seoul/browser/context:context_core",
@@ -9,9 +10,13 @@ group("browser") {
     "//seoul/browser/intelligence:intelligence_core",
     "//seoul/browser/lifecycle",
     "//seoul/browser/organization",
+    "//seoul/browser/product:product_core",
+    "//seoul/browser/product/browser:product_chromium",
     "//seoul/browser/projection:projection_chromium",
+    "//seoul/browser/runtime",
     "//seoul/browser/saui:saui_core",
     "//seoul/browser/scenes:scenes_core",
+    "//seoul/browser/semantic:semantic_core",
     "//seoul/browser/shell:shell_chromium",
     "//seoul/browser/site_layers:site_layers_core",
     "//seoul/browser/tasks:tasks_core",
@@ -20,6 +25,11 @@ group("browser") {
     "//seoul/browser/voice:voice_core",
     "//seoul/browser/workflows:workflows_core",
   ]
+
+  # The Apple speech adapters are macOS-only platform glue.
+  if (is_mac) {
+    deps += [ "//seoul/browser/voice/platform:voice_platform_apple" ]
+  }
 }
 
 # Aggregate of every Seoul unit-test target. A capable host builds and runs
@@ -37,9 +47,12 @@ group("seoul_unittests") {
     "//seoul/browser/lifecycle:seoul_lifecycle_core_unittests",
     "//seoul/browser/lifecycle:seoul_lifecycle_state_unittests",
     "//seoul/browser/organization:seoul_organization_unittests",
+    "//seoul/browser/product:seoul_product_unittests",
     "//seoul/browser/projection:seoul_projection_core_unittests",
+    "//seoul/browser/runtime:seoul_runtime_unittests",
     "//seoul/browser/saui:seoul_saui_unittests",
     "//seoul/browser/scenes:seoul_scenes_unittests",
+    "//seoul/browser/semantic:seoul_semantic_unittests",
     "//seoul/browser/shell:seoul_shell_core_unittests",
     "//seoul/browser/site_layers:seoul_site_layers_unittests",
     "//seoul/browser/tasks:seoul_tasks_unittests",

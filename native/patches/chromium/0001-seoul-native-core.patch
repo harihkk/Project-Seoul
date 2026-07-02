@@ -1,8 +1,8 @@
 diff --git a/chrome/browser/BUILD.gn b/chrome/browser/BUILD.gn
-index 63c2601cfc..fc90e7e1ca 100644
+index 63c2601cfc..1cca1ac19c 100644
 --- a/chrome/browser/BUILD.gn
 +++ b/chrome/browser/BUILD.gn
-@@ -295,6 +295,11 @@ static_library("browser") {
+@@ -295,6 +295,13 @@ static_library("browser") {
    allow_circular_includes_from = [
      # TODO(crbug.com/503408628): Remove this circular dependency.
      "//chrome/browser/first_run:impl",
@@ -11,19 +11,23 @@ index 63c2601cfc..fc90e7e1ca 100644
 +    "//seoul/browser/commands:command_chromium",
 +    "//seoul/browser/projection:projection_chromium",
 +    "//seoul/browser/shell:shell_chromium",
++    "//seoul/browser/product/browser:product_chromium",
++    "//seoul/browser/canvas",
 
      "//chrome/browser/browsing_data:impl",
      "//chrome/browser/accessibility:impl",
-@@ -912,6 +917,7 @@ static_library("browser") {
+@@ -912,6 +919,9 @@ static_library("browser") {
      "//chrome/browser/profiles:profile_io_data",
      "//chrome/browser/profiles:profile_manager",
      "//chrome/browser/profiles:profile_manager_impl",
 +    "//seoul/browser/organization",
++    "//seoul/browser/product/browser:product_chromium",
++    "//seoul/browser/canvas",
      "//chrome/browser/profiles:profile_util",
      "//chrome/browser/profiles:profile_util_impl",
      "//chrome/browser/profiles:profiles_extra_parts",
 diff --git a/chrome/browser/profiles/chrome_browser_main_extra_parts_profiles.cc b/chrome/browser/profiles/chrome_browser_main_extra_parts_profiles.cc
-index 1aab47b6d0..0f491246f3 100644
+index 1aab47b6d0..9e6a4664d1 100644
 --- a/chrome/browser/profiles/chrome_browser_main_extra_parts_profiles.cc
 +++ b/chrome/browser/profiles/chrome_browser_main_extra_parts_profiles.cc
 @@ -13,6 +13,7 @@
@@ -34,14 +38,47 @@ index 1aab47b6d0..0f491246f3 100644
  #include "chrome/browser/accessibility_annotator/accessibility_annotator_backend_factory.h"
  #include "chrome/browser/accessibility_annotator/accessibility_annotator_enablement_service_factory.h"
  #include "chrome/browser/accessibility_annotator/accessibility_annotator_service_factory.h"
-@@ -1514,6 +1515,7 @@ void ChromeBrowserMainExtraPartsProfiles::
+@@ -31,6 +32,7 @@
+ #include "chrome/browser/autocomplete/provider_state_service_factory.h"
+ #include "chrome/browser/autocomplete/shortcuts_backend_factory.h"
+ #include "chrome/browser/autofill/autocomplete_history_manager_factory.h"
++#include "seoul/browser/product/browser/seoul_runtime_service_factory.h"
+
+ #if BUILDFLAG(IS_WIN) || BUILDFLAG(IS_MAC) || BUILDFLAG(IS_LINUX) || \
+     BUILDFLAG(IS_CHROMEOS)
+@@ -1514,6 +1516,8 @@ void ChromeBrowserMainExtraPartsProfiles::
 
    WebDataServiceFactory::GetInstance();
    webrtc_event_logging::WebRtcEventLogManagerKeyedServiceFactory::GetInstance();
 +  seoul::SeoulOrganizationServiceFactory::GetInstance();
++  seoul::SeoulRuntimeServiceFactory::GetInstance();
  }
 
  void ChromeBrowserMainExtraPartsProfiles::PreProfileInit() {
+diff --git a/chrome/browser/resources/BUILD.gn b/chrome/browser/resources/BUILD.gn
+index b66098b14f..0584d50bea 100644
+--- a/chrome/browser/resources/BUILD.gn
++++ b/chrome/browser/resources/BUILD.gn
+@@ -81,6 +81,7 @@ group("resources") {
+       "side_panel/history_clusters:resources",
+       "side_panel/read_anything:resources",
+       "side_panel/reading_list:resources",
++      "//seoul/browser/canvas/resources:resources",
+       "side_panel/shared:resources",
+       "side_panel/tabs_from_other_devices:resources",
+       "signin:resources",
+diff --git a/chrome/browser/ui/side_panel/side_panel_entry_id.h b/chrome/browser/ui/side_panel/side_panel_entry_id.h
+index ac0e2c2d6a..7a32d68825 100644
+--- a/chrome/browser/ui/side_panel/side_panel_entry_id.h
++++ b/chrome/browser/ui/side_panel/side_panel_entry_id.h
+@@ -42,6 +42,7 @@
+   V(kGlic, kActionSidePanelShowGlic, "Glic")                                  \
+   V(kTabsFromOtherDevices, kActionSidePanelShowTabsFromOtherDevices,          \
+     "TabsFromOtherDevices")                                                   \
++  V(kSeoulCanvas, std::nullopt, "SeoulCanvas")                                \
+   V(kSidePanelDev, std::nullopt, "SidePanelDev")                              \
+   /* Extensions (nothing more should be added below here) */                  \
+   V(kExtension, std::nullopt, "Extension")
 diff --git a/chrome/browser/ui/views/frame/vertical_tab_strip_region_view.cc b/chrome/browser/ui/views/frame/vertical_tab_strip_region_view.cc
 index 25ffbdf18e..9c1d25d7ca 100644
 --- a/chrome/browser/ui/views/frame/vertical_tab_strip_region_view.cc
@@ -206,3 +243,57 @@ index 70c78e23c0..b599558b39 100644
    void DisableTabStripEditingForTesting() override;
    gfx::Rect GetLinkDropBoundsForTesting(
        const BrowserRootView::DropIndex& drop_index,
+diff --git a/chrome/browser/ui/webui/chrome_web_ui_configs.cc b/chrome/browser/ui/webui/chrome_web_ui_configs.cc
+index 9daef52054..5e4ccc17f9 100644
+--- a/chrome/browser/ui/webui/chrome_web_ui_configs.cc
++++ b/chrome/browser/ui/webui/chrome_web_ui_configs.cc
+@@ -13,6 +13,7 @@
+ #include "chrome/browser/ui/webui/about/about_ui.h"
+ #include "chrome/browser/ui/webui/accessibility/accessibility_ui.h"
+ #include "chrome/browser/ui/webui/accessibility_annotator_internals/accessibility_annotator_internals_ui.h"
++#include "seoul/browser/canvas/seoul_canvas_ui.h"
+ #include "chrome/browser/ui/webui/actor_internals/actor_internals_ui.h"
+ #include "chrome/browser/ui/webui/autofill_and_password_manager_internals/autofill_internals_ui.h"
+ #include "chrome/browser/ui/webui/autofill_and_password_manager_internals/password_manager_internals_ui.h"
+@@ -242,6 +243,7 @@ void RegisterChromeWebUIConfigs() {
+ #endif  // BUILDFLAG(IS_CHROMEOS)
+
+   auto& map = content::WebUIConfigMap::GetInstance();
++  map.AddWebUIConfig(std::make_unique<seoul::SeoulCanvasUIConfig>());
+   map.AddWebUIConfig(std::make_unique<AccessibilityUIConfig>());
+   map.AddWebUIConfig(
+       std::make_unique<AccessibilityAnnotatorInternalsUIConfig>());
+diff --git a/chrome/test/BUILD.gn b/chrome/test/BUILD.gn
+index 5a75b29519..631c51b80d 100644
+--- a/chrome/test/BUILD.gn
++++ b/chrome/test/BUILD.gn
+@@ -2596,6 +2596,10 @@ if (!is_android) {
+     defines = [ "HAS_OUT_OF_PROC_TEST_RUNNER" ]
+
+     deps = [
++      "//seoul/browser/commands:command_browser_tests",
++      "//seoul/browser/product/browser:product_browser_tests",
++      "//seoul/browser/projection:projection_browser_tests",
++      "//seoul/browser/shell:shell_browser_tests",
+       ":browser_tests_runner",
+       ":platform_browser_tests",
+       ":test_support",
+diff --git a/tools/gritsettings/resource_ids.spec b/tools/gritsettings/resource_ids.spec
+index 9d69921f81..6ea5983549 100644
+--- a/tools/gritsettings/resource_ids.spec
++++ b/tools/gritsettings/resource_ids.spec
+@@ -1738,6 +1738,14 @@
+     "messages": [10120],
+   },
+
++  # Project Seoul first-party Canvas WebUI (//seoul/browser/canvas/resources).
++  # Sits in the "everything else" section (not chrome/components/content/ios);
++  # occupies the free range below the placeholder at 12000.
++  "<(SHARED_INTERMEDIATE_DIR)/seoul/browser/canvas/resources/resources.grd": {
++    "META": {"sizes": {"includes": [50],}},
++    "includes": [10140],
++  },
++
+   "<(SHARED_INTERMEDIATE_DIR)/THIS_IS_A_PLACEHOLDER.grd": {
+     "META": {"sizes": {"includes": [800]}},
+     "includes": [12000],

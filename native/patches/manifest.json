@@ -21,7 +21,7 @@
   "patches": [
     {
       "id": "seoul-native-core",
-      "description": "Wire Seoul organization and lifecycle circular-implementation targets into //chrome/browser (deps + allow_circular_includes_from); register SeoulOrganizationServiceFactory once at profile-service init; register Seoul projection and shell against VerticalTabStripRegionView only AFTER RootTabCollectionNode::Init() and unregister them at the start of ResetTabStrip; expose a production GetSeoulRootNode() accessor (no testing-only accessor in production); forward collapse-state changes to the shell.",
+      "description": "Wire Seoul organization, lifecycle, command, projection, shell, product-runtime, and canvas targets into //chrome/browser (deps + allow_circular_includes_from); register SeoulOrganizationServiceFactory and SeoulRuntimeServiceFactory once at profile-service init; register Seoul projection and shell against VerticalTabStripRegionView only AFTER RootTabCollectionNode::Init() and unregister them at the start of ResetTabStrip; expose a production GetSeoulRootNode() accessor (no testing-only accessor in production); forward collapse-state changes to the shell; register the SeoulCanvasUIConfig (chrome://seoul-canvas) in the WebUI config map and package its resources (resource_ids.spec range plus chrome/browser/resources pack dep); add the kSeoulCanvas side-panel entry id; and wire the Seoul in-process browser-test source_sets (commands, projection, shell) into the //chrome/test:browser_tests target so they build and run under the standard browser_tests binary.",
       "rationale": "Chromium-facing Seoul glue includes //chrome/browser headers and must use the browser_public_dependencies circular-implementation pattern. A single patch avoids duplicate lifecycle linkage (organization already depends on lifecycle transitively) and keeps factory registration in one place.",
       "baseRevision": "6a7b3dbec3b2ca25877c2553b5473b2f277ef644",
       "order": 1,
@@ -29,11 +29,16 @@
       "affectedPaths": [
         "chrome/browser/BUILD.gn",
         "chrome/browser/profiles/chrome_browser_main_extra_parts_profiles.cc",
+        "chrome/browser/resources/BUILD.gn",
+        "chrome/browser/ui/side_panel/side_panel_entry_id.h",
         "chrome/browser/ui/views/frame/vertical_tab_strip_region_view.cc",
-        "chrome/browser/ui/views/frame/vertical_tab_strip_region_view.h"
+        "chrome/browser/ui/views/frame/vertical_tab_strip_region_view.h",
+        "chrome/browser/ui/webui/chrome_web_ui_configs.cc",
+        "chrome/test/BUILD.gn",
+        "tools/gritsettings/resource_ids.spec"
       ],
       "dependencies": [],
-      "sha256": "d37139af44ce9b8e026197d98afe5d7be5c588bc410cf56fe1e33105f5b6fd65",
+      "sha256": "f7f804a487127fc40e419f3e62f76051c7da1148b42de0218d69794647abef48",
       "applyVerify": "materialize.sh apply; git -C $SEOUL_CHROMIUM_ROOT/src apply --check native/patches/chromium/0001-seoul-native-core.patch",
       "reverseVerify": "git -C $SEOUL_CHROMIUM_ROOT/src apply -R native/patches/chromium/0001-seoul-native-core.patch",
       "reviewable": true
