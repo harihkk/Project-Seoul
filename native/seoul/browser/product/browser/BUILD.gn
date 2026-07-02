@@ -1,0 +1,86 @@
+# Project Seoul product runtime - Chromium-facing glue.
+# The profile-keyed SeoulRuntimeService and its factory, the concrete network
+# transport (Chromium network service), the macOS Keychain credential store,
+# the browser-owned page agent, and the browser/page capability executors.
+# This target includes //chrome/browser headers, so it uses the
+# circular-implementation pattern (public_dep on browser_public_dependencies).
+
+import("//testing/test.gni")
+
+source_set("product_chromium") {
+  sources = [
+    "browser_capabilities.cc",
+    "browser_capabilities.h",
+    "network_http_transport.cc",
+    "network_http_transport.h",
+    "page_agent.cc",
+    "page_agent.h",
+    "seoul_runtime_service.cc",
+    "seoul_runtime_service.h",
+    "seoul_runtime_service_factory.cc",
+    "seoul_runtime_service_factory.h",
+  ]
+
+  # The macOS Keychain store is Objective-C++ and only builds on Mac; the rest
+  # of the target is portable.
+  if (is_mac) {
+    sources += [
+      "keychain_credential_store.h",
+      "keychain_credential_store.mm",
+    ]
+    frameworks = [
+      "Foundation.framework",
+      "Security.framework",
+    ]
+  }
+
+  public_deps = [
+    "//chrome/browser:browser_public_dependencies",
+    "//seoul/browser/product:product_core",
+    "//seoul/browser/runtime",
+  ]
+
+  deps = [
+    "//base",
+    "//chrome/browser/profiles:profile",
+    "//chrome/browser/ui/browser_window",
+    "//chrome/browser/ui/tabs",
+    "//components/keyed_service/core",
+    "//components/pref_registry",
+    "//components/prefs",
+    "//components/sessions/content",
+    "//components/sessions/core",
+    "//components/tabs/public",
+    "//content/public/browser",
+    "//net/traffic_annotation",
+    "//seoul/browser/commands:command_chromium",
+    "//seoul/browser/connectors:connectors_core",
+    "//seoul/browser/lifecycle",
+    "//seoul/browser/lifecycle:lifecycle_core",
+    "//seoul/browser/organization",
+    "//seoul/browser/organization:organization_model",
+    "//seoul/browser/scenes:scenes_core",
+    "//seoul/browser/semantic:semantic_core",
+    "//seoul/browser/tasks:tasks_core",
+    "//seoul/browser/tools:tools_core",
+    "//services/network/public/cpp",
+    "//ui/accessibility",
+    "//url",
+  ]
+}
+
+source_set("product_browser_tests") {
+  testonly = true
+  sources = [ "seoul_runtime_browsertest.cc" ]
+  deps = [
+    ":product_chromium",
+    "//chrome/browser:browser_public_dependencies",
+    "//chrome/test:test_support",
+    "//content/public/browser",
+    "//content/test:test_support",
+    "//seoul/browser/product:product_core",
+    "//seoul/browser/tools:tools_core",
+    "//testing/gtest",
+    "//url",
+  ]
+}
