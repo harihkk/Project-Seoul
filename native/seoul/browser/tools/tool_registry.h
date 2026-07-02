@@ -44,21 +44,49 @@ class ToolRegistry {
   // Returns how many were removed.
   size_t UnregisterProvider(const std::string& provider);
 
+  // Replaces an existing descriptor with the same id (dynamic update, for
+  // example after a connector refresh changes a schema). The updating
+  // provider must own the capability; validation matches Register.
+  ToolStatusResult UpdateDescriptor(ToolDescriptor descriptor);
+
   // Null for unknown ids: the caller must treat that as a rejected plan step,
   // never as a soft failure.
   const ToolDescriptor* Find(const ToolId& id) const;
 
-  // Deterministic (id-ordered) list of tools permitted under `context`.
+  // Version negotiation: the descriptor if its version is at least
+  // `min_version`, else null (the caller treats it as unavailable).
+  const ToolDescriptor* FindCompatible(const ToolId& id,
+                                       int min_version) const;
+
+  // Dynamic availability and health, updated by connectors and health checks.
+  // Unavailable capabilities never appear in ListAvailable.
+  bool SetAvailability(const ToolId& id,
+                       AvailabilityState state,
+                       const std::string& reason);
+  AvailabilityState GetAvailability(const ToolId& id) const;
+  bool SetHealth(const ToolId& id, HealthState state);
+  HealthState GetHealth(const ToolId& id) const;
+
+  // Deterministic (id-ordered) list of tools permitted under `context`,
+  // excluding unavailable capabilities.
   std::vector<const ToolDescriptor*> ListAvailable(
       const ToolPermissionContext& context) const;
 
   size_t size() const { return tools_.size(); }
 
  private:
-  bool PermittedUnder(const ToolDescriptor& descriptor,
-                      const ToolPermissionContext& context) const;
+  struct Entry {
+    ToolDescriptor descriptor;
+    AvailabilityState availability = AvailabilityState::kAvailable;
+    std::string availability_reason;
+    HealthState health = HealthState::kUnknown;
+  };
 
-  std::map<ToolId, ToolDescriptor> tools_;
+  bool PermittedUnder(const Entry& entry,
+                      const ToolPermissionContext& context) const;
+  ToolStatusResult ValidateDescriptor(const ToolDescriptor& descriptor) const;
+
+  std::map<ToolId, Entry> tools_;
 };
 
 }  // namespace seoul

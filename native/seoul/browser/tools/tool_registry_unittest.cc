@@ -249,6 +249,79 @@ TEST(ToolRegistryTest, ListAvailableFiltersBySensitivityNetworkProvider) {
             nullptr);
 }
 
+TEST(CapabilityGraphTest, UnavailableCapabilitiesAreHiddenFromPlanning) {
+  ToolRegistry registry;
+  ASSERT_TRUE(registry.Register(SearchTool()).has_value());
+  const ToolId id = ToolId::FromString("info.search.web");
+
+  ToolPermissionContext context;
+  context.max_sensitivity = DataSensitivity::kPersonal;
+  context.allow_network = true;
+  ASSERT_EQ(registry.ListAvailable(context).size(), 1u);
+
+  // Provider outage: the capability stays registered but is never offered.
+  ASSERT_TRUE(registry.SetAvailability(
+      id, AvailabilityState::kUnavailable, "provider outage"));
+  EXPECT_TRUE(registry.ListAvailable(context).empty());
+  EXPECT_NE(registry.Find(id), nullptr);  // still resolvable for display
+  EXPECT_EQ(registry.GetAvailability(id), AvailabilityState::kUnavailable);
+
+  // Degraded capabilities remain plannable.
+  ASSERT_TRUE(registry.SetAvailability(id, AvailabilityState::kDegraded,
+                                       "slow backend"));
+  EXPECT_EQ(registry.ListAvailable(context).size(), 1u);
+
+  EXPECT_FALSE(registry.SetAvailability(ToolId::FromString("info.none.x"),
+                                        AvailabilityState::kAvailable, ""));
+}
+
+TEST(CapabilityGraphTest, HealthStateIsTracked) {
+  ToolRegistry registry;
+  ASSERT_TRUE(registry.Register(SearchTool()).has_value());
+  const ToolId id = ToolId::FromString("info.search.web");
+  EXPECT_EQ(registry.GetHealth(id), HealthState::kUnknown);
+  ASSERT_TRUE(registry.SetHealth(id, HealthState::kUnhealthy));
+  EXPECT_EQ(registry.GetHealth(id), HealthState::kUnhealthy);
+  EXPECT_EQ(registry.GetHealth(ToolId::FromString("info.none.x")),
+            HealthState::kUnknown);
+}
+
+TEST(CapabilityGraphTest, VersionNegotiationRejectsTooOldCapabilities) {
+  ToolRegistry registry;
+  ToolDescriptor tool = SearchTool();
+  tool.version = 2;
+  ASSERT_TRUE(registry.Register(tool).has_value());
+  const ToolId id = ToolId::FromString("info.search.web");
+  EXPECT_NE(registry.FindCompatible(id, 1), nullptr);
+  EXPECT_NE(registry.FindCompatible(id, 2), nullptr);
+  EXPECT_EQ(registry.FindCompatible(id, 3), nullptr);
+}
+
+TEST(CapabilityGraphTest, DynamicUpdateKeepsOwnershipAndValidates) {
+  ToolRegistry registry;
+  ASSERT_TRUE(registry.Register(SearchTool()).has_value());
+
+  // The owning provider may update the descriptor in place.
+  ToolDescriptor updated = SearchTool();
+  updated.version = 2;
+  updated.description = "Searches with pagination support.";
+  ASSERT_TRUE(registry.UpdateDescriptor(updated).has_value());
+  EXPECT_EQ(registry.Find(ToolId::FromString("info.search.web"))->version,
+            2);
+  EXPECT_EQ(registry.size(), 1u);
+
+  // Another provider can never take over the id.
+  ToolDescriptor takeover = SearchTool();
+  takeover.provider = "rogue";
+  EXPECT_EQ(registry.UpdateDescriptor(takeover).error(),
+            ToolError::kReservedNamespace);  // seoul namespace, rogue owner
+
+  ToolDescriptor unknown = SearchTool();
+  unknown.id = ToolId::FromString("info.search.images");
+  EXPECT_EQ(registry.UpdateDescriptor(unknown).error(),
+            ToolError::kUnknownTool);
+}
+
 TEST(ToolRegistryTest, InvalidDescriptorsAreRejected) {
   ToolRegistry registry;
   ToolDescriptor no_description = SearchTool();

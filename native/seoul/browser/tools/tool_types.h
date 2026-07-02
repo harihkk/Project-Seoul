@@ -90,8 +90,49 @@ enum class IdempotencyClass {
   kNotIdempotent,
 };
 
+// Capability availability, updated dynamically as providers connect,
+// disconnect, degrade, or fail health checks. Unavailable capabilities are
+// registered but never offered to a planner.
+enum class AvailabilityState {
+  kAvailable,
+  kDegraded,     // usable, with reduced quality or higher latency
+  kUnavailable,  // registered but not currently usable
+};
+
+const char* AvailabilityStateToString(AvailabilityState state);
+
+enum class HealthState {
+  kUnknown,
+  kHealthy,
+  kUnhealthy,
+};
+
+const char* HealthStateToString(HealthState state);
+
+// How current this capability's results are, declared by the provider.
+enum class FreshnessSemantics {
+  kRealTime,
+  kNearRealTime,
+  kCached,
+  kStatic,
+};
+
+struct RetryPolicy {
+  int max_attempts = 1;  // 1 = no automatic retry
+  int backoff_ms = 0;
+
+  friend bool operator==(const RetryPolicy&, const RetryPolicy&) = default;
+};
+
+// A capability descriptor: one typed operation Seoul can plan with,
+// regardless of who supplies it (native browser runtime, current page, local
+// or cloud model, first-party connector, MCP- or OpenAPI-imported service,
+// local file adapter, or an installed trusted package). "Tool" and
+// "capability" are the same concept in this codebase; ToolId is the stable
+// CapabilityId.
 struct ToolDescriptor {
   ToolId id;
+  int version = 1;          // bump on breaking schema changes
   std::string name;         // short human name
   std::string description;  // planner-facing behavior contract
   std::string provider;     // "seoul" for builtins; connector id otherwise
@@ -104,7 +145,10 @@ struct ToolDescriptor {
   ApprovalPolicy approval = ApprovalPolicy::kNeverRequired;
   base::TimeDelta timeout = base::Seconds(30);
   bool cancellable = true;
+  bool supports_streaming = false;
   IdempotencyClass idempotency = IdempotencyClass::kNotIdempotent;
+  FreshnessSemantics freshness = FreshnessSemantics::kCached;
+  RetryPolicy retry;
   // What observable state change proves the tool ran (consumed by the
   // execution layer's observe-verify step).
   std::string observation_contract;
@@ -114,6 +158,11 @@ struct ToolDescriptor {
   // Optional SAUI component wire name best suited to render results.
   std::string preferred_component;
 };
+
+// CapabilityId and capability descriptor aliases: the registry is the
+// Capability Graph.
+using CapabilityId = ToolId;
+using CapabilityDescriptor = ToolDescriptor;
 
 }  // namespace seoul
 

@@ -70,12 +70,14 @@ std::string ToolId::root_namespace() const {
 ToolRegistry::ToolRegistry() = default;
 ToolRegistry::~ToolRegistry() = default;
 
-ToolStatusResult ToolRegistry::Register(ToolDescriptor descriptor) {
+ToolStatusResult ToolRegistry::ValidateDescriptor(
+    const ToolDescriptor& descriptor) const {
   if (!descriptor.id.is_valid()) {
     return base::unexpected(ToolError::kInvalidId);
   }
   if (descriptor.name.empty() || descriptor.description.empty() ||
-      descriptor.provider.empty() ||
+      descriptor.provider.empty() || descriptor.version < 1 ||
+      descriptor.retry.max_attempts < 1 ||
       descriptor.capability_tags.size() > kMaxCapabilityTags ||
       !IsWellFormedSchema(descriptor.input_schema) ||
       !IsWellFormedSchema(descriptor.output_schema)) {
@@ -103,20 +105,46 @@ ToolStatusResult ToolRegistry::Register(ToolDescriptor descriptor) {
   } else {
     return base::unexpected(ToolError::kReservedNamespace);
   }
+  return base::ok();
+}
+
+ToolStatusResult ToolRegistry::Register(ToolDescriptor descriptor) {
+  if (auto valid = ValidateDescriptor(descriptor); !valid.has_value()) {
+    return valid;
+  }
   if (tools_.find(descriptor.id) != tools_.end()) {
     return base::unexpected(ToolError::kDuplicateId);
   }
   if (tools_.size() >= kMaxRegisteredTools) {
     return base::unexpected(ToolError::kLimitExceeded);
   }
-  tools_.emplace(descriptor.id, std::move(descriptor));
+  Entry entry;
+  const ToolId id = descriptor.id;
+  entry.descriptor = std::move(descriptor);
+  tools_.emplace(id, std::move(entry));
+  return base::ok();
+}
+
+ToolStatusResult ToolRegistry::UpdateDescriptor(ToolDescriptor descriptor) {
+  if (auto valid = ValidateDescriptor(descriptor); !valid.has_value()) {
+    return valid;
+  }
+  auto it = tools_.find(descriptor.id);
+  if (it == tools_.end()) {
+    return base::unexpected(ToolError::kUnknownTool);
+  }
+  if (it->second.descriptor.provider != descriptor.provider) {
+    // A different provider can never take over an existing capability id.
+    return base::unexpected(ToolError::kProviderMismatch);
+  }
+  it->second.descriptor = std::move(descriptor);
   return base::ok();
 }
 
 size_t ToolRegistry::UnregisterProvider(const std::string& provider) {
   size_t removed = 0;
   for (auto it = tools_.begin(); it != tools_.end();) {
-    if (it->second.provider == provider) {
+    if (it->second.descriptor.provider == provider) {
       it = tools_.erase(it);
       ++removed;
     } else {
@@ -128,11 +156,56 @@ size_t ToolRegistry::UnregisterProvider(const std::string& provider) {
 
 const ToolDescriptor* ToolRegistry::Find(const ToolId& id) const {
   auto it = tools_.find(id);
-  return it == tools_.end() ? nullptr : &it->second;
+  return it == tools_.end() ? nullptr : &it->second.descriptor;
 }
 
-bool ToolRegistry::PermittedUnder(const ToolDescriptor& descriptor,
+const ToolDescriptor* ToolRegistry::FindCompatible(const ToolId& id,
+                                                   int min_version) const {
+  const ToolDescriptor* descriptor = Find(id);
+  if (!descriptor || descriptor->version < min_version) {
+    return nullptr;
+  }
+  return descriptor;
+}
+
+bool ToolRegistry::SetAvailability(const ToolId& id,
+                                   AvailabilityState state,
+                                   const std::string& reason) {
+  auto it = tools_.find(id);
+  if (it == tools_.end()) {
+    return false;
+  }
+  it->second.availability = state;
+  it->second.availability_reason = reason;
+  return true;
+}
+
+AvailabilityState ToolRegistry::GetAvailability(const ToolId& id) const {
+  auto it = tools_.find(id);
+  return it == tools_.end() ? AvailabilityState::kUnavailable
+                            : it->second.availability;
+}
+
+bool ToolRegistry::SetHealth(const ToolId& id, HealthState state) {
+  auto it = tools_.find(id);
+  if (it == tools_.end()) {
+    return false;
+  }
+  it->second.health = state;
+  return true;
+}
+
+HealthState ToolRegistry::GetHealth(const ToolId& id) const {
+  auto it = tools_.find(id);
+  return it == tools_.end() ? HealthState::kUnknown : it->second.health;
+}
+
+bool ToolRegistry::PermittedUnder(const Entry& entry,
                                   const ToolPermissionContext& context) const {
+  if (entry.availability == AvailabilityState::kUnavailable) {
+    return false;
+  }
+  const ToolDescriptor& descriptor = entry.descriptor;
   if (static_cast<int>(descriptor.sensitivity) >
       static_cast<int>(context.max_sensitivity)) {
     return false;
@@ -151,12 +224,36 @@ bool ToolRegistry::PermittedUnder(const ToolDescriptor& descriptor,
 std::vector<const ToolDescriptor*> ToolRegistry::ListAvailable(
     const ToolPermissionContext& context) const {
   std::vector<const ToolDescriptor*> available;
-  for (const auto& [id, descriptor] : tools_) {
-    if (PermittedUnder(descriptor, context)) {
-      available.push_back(&descriptor);
+  for (const auto& [id, entry] : tools_) {
+    if (PermittedUnder(entry, context)) {
+      available.push_back(&entry.descriptor);
     }
   }
   return available;
+}
+
+const char* AvailabilityStateToString(AvailabilityState state) {
+  switch (state) {
+    case AvailabilityState::kAvailable:
+      return "available";
+    case AvailabilityState::kDegraded:
+      return "degraded";
+    case AvailabilityState::kUnavailable:
+      return "unavailable";
+  }
+  return "unavailable";
+}
+
+const char* HealthStateToString(HealthState state) {
+  switch (state) {
+    case HealthState::kUnknown:
+      return "unknown";
+    case HealthState::kHealthy:
+      return "healthy";
+    case HealthState::kUnhealthy:
+      return "unhealthy";
+  }
+  return "unknown";
 }
 
 const char* ToolErrorToString(ToolError error) {

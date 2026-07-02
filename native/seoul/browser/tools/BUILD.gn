@@ -1,6 +1,8 @@
 # Project Seoul general-purpose operator: tool layer.
-# Typed tool identities, schemas, argument validation, and the dynamic
-# registry with permission-scoped discovery. Pure model: //base and //url.
+# Typed capability identities, schemas, argument validation, the JSON Schema
+# importer, and the Capability Graph registry with permission-scoped
+# discovery, availability/health, and version negotiation. Pure model: //base
+# and //url.
 
 import("//testing/test.gni")
 
@@ -10,6 +12,8 @@ source_set("tools_core") {
     "tool_registry.h",
     "tool_schema.cc",
     "tool_schema.h",
+    "tool_schema_from_json.cc",
+    "tool_schema_from_json.h",
     "tool_types.h",
   ]
 
