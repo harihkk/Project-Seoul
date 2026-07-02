@@ -203,6 +203,30 @@ if (fs.existsSync(execPath) && declaredArgs.size > 0) {
   });
 }
 
+// --- 9: the task-to-surface path is wired in production, not only in tests --
+// A verified task result must reach the surface layer through a production
+// caller of SurfaceService::CreateFromSemantic. If the only callers are test
+// files (and its own definition), the product spine is broken: tasks would
+// complete with no artifact. This locks in the TaskSurfaceBridge.
+let productionCreateCallers = 0;
+for (const file of walk(productRoot, isProdCc)) {
+  // Exclude the method's own definition site.
+  if (path.basename(file) === 'surface_service.cc') {
+    continue;
+  }
+  const text = fs.readFileSync(file, 'utf8');
+  if (/->CreateFromSemantic\(|\.CreateFromSemantic\(/.test(text)) {
+    productionCreateCallers++;
+  }
+}
+if (productionCreateCallers === 0) {
+  problems.push(
+    'SurfaceService::CreateFromSemantic has no production caller; a completed ' +
+      'task would produce no surface. Wire it through a production observer ' +
+      '(TaskSurfaceBridge), not only tests.',
+  );
+}
+
 if (problems.length) {
   console.error('product-architecture: FAILED');
   for (const p of problems) console.error('  - ' + p);
@@ -212,5 +236,5 @@ console.log(
   `product-architecture: OK (dispatch-registry, fail-closed, no placeholders, ` +
     `real workspace names, no empty browser tests, window-bound Canvas, ` +
     `${executorNames.size} executors all registered, capability arg names ` +
-    `consistent)`,
+    `consistent, task-to-surface bridge wired)`,
 );

@@ -39,6 +39,7 @@
 #include "seoul/browser/product/provider_registry.h"
 #include "seoul/browser/product/surface_service.h"
 #include "seoul/browser/product/task_service.h"
+#include "seoul/browser/product/task_surface_bridge.h"
 #include "seoul/browser/product/thread_service.h"
 #include "seoul/browser/product/workflow_service.h"
 #include "seoul/browser/runtime/seoul_runtime.h"
@@ -169,6 +170,10 @@ class SeoulRuntimeService : public KeyedService {
   std::unique_ptr<Planner> planner_;
   std::unique_ptr<TaskService> task_service_;
   std::unique_ptr<SurfaceService> surface_service_;
+  // Projects verified task results into surfaces; observes task_service_ and
+  // drives surface_service_, so it is constructed after both and destroyed
+  // before either.
+  std::unique_ptr<TaskSurfaceBridge> task_surface_bridge_;
   std::unique_ptr<ThreadService> thread_service_;
   std::unique_ptr<WorkflowService> workflow_service_;
 

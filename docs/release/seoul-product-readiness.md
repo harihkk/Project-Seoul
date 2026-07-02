@@ -8,17 +8,39 @@ it says so.
 
 ## Verdict
 
-SEOUL PRODUCT SOURCE INCOMPLETE
+SEOUL PRODUCT BUILD INCOMPLETE
 
-This verdict is narrower than the prior pass. The native browser-test blocker
-is now cleared, the product runtime and Canvas WebUI are source-connected into
-the integration patch, and Canvas turns no longer infer their target window
-from active or last-focused browser state. The product is still not complete:
-the first-party Canvas side-panel entry is not registered, no native target has
-compiled or run on this host, and shell interaction polish remains. The stricter
-verdict "SOURCE COMPLETE - BUILD BLOCKED BY HOST" is defined to require that no
-empty test and no placeholder integration remain; the items below are real, so
-it cannot honestly be used.
+The build was attempted on this host and cannot run. The authoritative
+build-host gate (`native/scripts/build-host-check.sh`) hard-fails on physical
+resource limits, not policy:
+
+- RAM 8 GiB (the Chromium link needs >= 16 GiB; it would thrash or OOM).
+- Free storage 64 GiB (a full build needs >= 150 GiB).
+- depot_tools is not bootstrapped on this host (`python3_bin_reldir.txt`
+  missing), so even `gn gen` cannot run its build scripts without a network
+  CIPD re-initialization, and compile/link/`browser_tests`/Chrome are out of
+  reach regardless.
+
+Xcode 26.6 with a usable macOS SDK is present, and the pinned checkout verifies
+clean, so the blocker is exclusively RAM and disk. Per this project's rule, the
+only permitted deferral is heavy Chromium compilation and execution the host
+cannot support; that is exactly what is deferred here. No compilation, linking,
+native-test run, browser-test run, Chrome build, or profile launch was faked.
+The verdict is `SEOUL PRODUCT BUILD INCOMPLETE` and cannot honestly be raised to
+`FUNCTIONAL ALPHA` without a capable build host.
+
+Progress this pass (source-level, fully verifiable without a build): the
+task-to-surface production path is now closed. `SurfaceService::CreateFromSemantic`
+was previously called only by tests, so a completed task produced no artifact.
+A runtime-owned `TaskSurfaceBridge` now observes the task service and compiles
+each verified semantic result into a surface (creating once, patching the same
+surface in place on streaming/terminal updates, one surface per task, nothing
+for a data-less or failed task). Three unit tests prove a surface appears with
+no test calling `CreateFromSemantic`, and a new `check:product-arch` rule fails
+CI if the production caller ever disappears. The Canvas `kNavigate` action, which
+previously did nothing, now opens its validated URL through the same capability
+path; `kBrowserCommand`/`kWorkflowEdit` report an explicit unsupported state
+instead of failing silently.
 
 Cleared since the prior pass:
 

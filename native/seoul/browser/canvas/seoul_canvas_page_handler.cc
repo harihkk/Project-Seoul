@@ -141,12 +141,32 @@ void SeoulCanvasPageHandler::NotifyComponentEvent(
       }
       break;
     }
-    case SurfaceEventOutcome::Kind::kNavigate:
+    case SurfaceEventOutcome::Kind::kNavigate: {
+      // A navigate action opens its (already http(s)-validated) URL in the
+      // bound window through the same validated capability path as any other
+      // tab open - it never bypasses the command layer.
+      const std::optional<LiveWindowKey> window = ResolveBoundWindow();
+      if (window.has_value()) {
+        base::Value::Dict args;
+        args.Set("url", outcome.target);
+        runtime_->StartCapability("browser.tabs.open", std::move(args),
+                                  window.value());
+      } else {
+        PushStatus("window_unbound");
+      }
+      break;
+    }
     case SurfaceEventOutcome::Kind::kBrowserCommand:
     case SurfaceEventOutcome::Kind::kWorkflowEdit:
+      // These action kinds are only emitted by surfaces the runtime does not
+      // render yet (the launcher and the workflow editor). Rather than fail
+      // silently, tell the renderer so it can show an explicit "not available
+      // yet" state; the interface compiler never emits them today.
+      PushStatus("action_unsupported");
+      break;
     case SurfaceEventOutcome::Kind::kNone:
-      // Navigate/browser-command routing flows through the command layer in a
-      // later step; local-state and unresolved events are renderer-local.
+      // Genuinely renderer-local (local-state toggles) or an unresolved event;
+      // nothing for the browser to do.
       break;
   }
 }

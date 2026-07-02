@@ -84,6 +84,10 @@ SeoulRuntimeService::SeoulRuntimeService(
       std::make_unique<TaskService>(&runtime_.capabilities(), &executors_,
                                     planner_.get(), base::BindRepeating(&Now));
   surface_service_ = std::make_unique<SurfaceService>();
+  // The bridge is the production path that turns a verified task result into a
+  // Canvas surface; without it, tasks would complete with no artifact.
+  task_surface_bridge_ = std::make_unique<TaskSurfaceBridge>(
+      task_service_.get(), surface_service_.get());
   thread_service_ = std::make_unique<ThreadService>(base::BindRepeating(&Now));
   workflow_service_ = std::make_unique<WorkflowService>(task_service_.get());
 
@@ -326,6 +330,9 @@ void SeoulRuntimeService::Shutdown() {
   if (task_service_) {
     task_service_->Shutdown();
   }
+  // The bridge observes the task service and drives the surface service; drop
+  // it before either so no notification arrives after teardown.
+  task_surface_bridge_.reset();
   workflow_service_.reset();
   thread_service_.reset();
   surface_service_.reset();
