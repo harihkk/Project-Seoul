@@ -1,0 +1,71 @@
+# Project Seoul product runtime - pure product services.
+# The capability executor registry, general planner, task service, surface
+# service, thread service, workflow service, and provider registry. Everything
+# here is //base plus Seoul cores: no Views, no WebUI, no networking, no
+# platform implementation. The Chromium-facing owners (SeoulRuntimeService,
+# executors, transports) live in product/browser (product_chromium).
+
+import("//testing/test.gni")
+
+source_set("product_core") {
+  sources = [
+    "capability_executor.cc",
+    "capability_executor.h",
+    "plan_json.cc",
+    "plan_json.h",
+    "planner.cc",
+    "planner.h",
+    "provider_registry.cc",
+    "provider_registry.h",
+    "surface_service.cc",
+    "surface_service.h",
+    "task_service.cc",
+    "task_service.h",
+    "thread_service.cc",
+    "thread_service.h",
+    "workflow_service.cc",
+    "workflow_service.h",
+  ]
+
+  deps = [
+    "//base",
+    "//seoul/browser/context:context_core",
+    "//seoul/browser/intelligence:intelligence_core",
+    "//seoul/browser/lifecycle:lifecycle_core",
+    "//seoul/browser/saui:saui_core",
+    "//seoul/browser/semantic:semantic_core",
+    "//seoul/browser/tasks:tasks_core",
+    "//seoul/browser/tools:tools_core",
+    "//seoul/browser/workflows:workflows_core",
+    "//url",
+  ]
+}
+
+test("seoul_product_unittests") {
+  testonly = true
+  sources = [
+    "capability_executor_unittest.cc",
+    "planner_unittest.cc",
+    "product_e2e_unittest.cc",
+    "provider_registry_unittest.cc",
+    "surface_service_unittest.cc",
+    "task_service_unittest.cc",
+    "thread_workflow_service_unittest.cc",
+  ]
+  deps = [
+    ":product_core",
+    "//base",
+    "//base/test:test_support",
+    "//seoul/browser/context:context_core",
+    "//seoul/browser/intelligence:intelligence_core",
+    "//seoul/browser/intelligence:intelligence_test_support",
+    "//seoul/browser/lifecycle:lifecycle_core",
+    "//seoul/browser/saui:saui_core",
+    "//seoul/browser/semantic:semantic_core",
+    "//seoul/browser/tasks:tasks_core",
+    "//seoul/browser/tools:tools_core",
+    "//seoul/browser/workflows:workflows_core",
+    "//testing/gtest",
+    "//url",
+  ]
+}
