@@ -1,0 +1,77 @@
+// Project Seoul product runtime: the Context Thread service.
+// Production owner of context threads: create, rename, archive, reopen,
+// delete, and typed attach/detach operations. Nothing is captured silently:
+// every item is added by an explicit user action carried through a typed
+// call, and the underlying thread model rejects sensitive classes outright.
+//
+// STATE OWNERSHIP
+//   owner:        one ThreadService per profile runtime.
+//   lifetime:     the profile runtime.
+//   persistence:  serialized through TakePersistedState()/Restore (the
+//                 runtime service owns the pref write).
+//   recovery:     corrupt entries are skipped on restore, never guessed at.
+//   teardown:     dropped with the runtime.
+//   bounds:       kMaxThreads threads, model-enforced items per thread.
+//   isolation:    per profile.
+
+#ifndef SEOUL_BROWSER_PRODUCT_THREAD_SERVICE_H_
+#define SEOUL_BROWSER_PRODUCT_THREAD_SERVICE_H_
+
+#include <map>
+#include <memory>
+#include <optional>
+#include <string>
+#include <vector>
+
+#include "base/functional/callback.h"
+#include "base/values.h"
+#include "seoul/browser/context/context_thread.h"
+
+namespace seoul {
+
+inline constexpr size_t kMaxThreads = 100;
+
+struct ThreadSummary {
+  std::string id;
+  std::string name;
+  bool archived = false;
+  size_t item_count = 0;
+};
+
+class ThreadService {
+ public:
+  explicit ThreadService(base::RepeatingCallback<base::Time()> clock);
+  ThreadService(const ThreadService&) = delete;
+  ThreadService& operator=(const ThreadService&) = delete;
+  ~ThreadService();
+
+  // Returns the new thread id, or empty at the bound / invalid name.
+  std::string CreateThread(const std::string& name);
+  bool RenameThread(const std::string& thread_id, const std::string& name);
+  bool ArchiveThread(const std::string& thread_id);
+  bool ReopenThread(const std::string& thread_id);
+  bool DeleteThread(const std::string& thread_id);
+
+  // Typed attachment. The item's kind-specific validation (and the sensitive
+  // rejection) happens in the thread model. Returns the item id.
+  ContextResult<std::string> AttachItem(const std::string& thread_id,
+                                        ContextItem item);
+  bool DetachItem(const std::string& thread_id, const std::string& item_id);
+
+  const ContextThread* FindThread(const std::string& thread_id) const;
+  std::vector<ThreadSummary> Summaries() const;
+
+  base::Value::Dict TakePersistedState() const;
+  void RestorePersistedState(const base::Value::Dict& state);
+
+  size_t size() const { return threads_.size(); }
+
+ private:
+  base::RepeatingCallback<base::Time()> clock_;
+  std::map<std::string, std::unique_ptr<ContextThread>> threads_;
+  uint64_t next_id_ = 1;
+};
+
+}  // namespace seoul
+
+#endif  // SEOUL_BROWSER_PRODUCT_THREAD_SERVICE_H_
