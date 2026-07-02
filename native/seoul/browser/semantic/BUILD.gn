@@ -1,0 +1,35 @@
+# Project Seoul semantic data fabric.
+# The generic, versioned result model every capability outcome flows through:
+# shapes plus semantic roles, provenance, and the partial/streaming envelope.
+# Deliberately domain-neutral: no business-domain type exists here. Pure
+# model: //base plus the provenance envelope.
+
+import("//testing/test.gni")
+
+source_set("semantic_core") {
+  sources = [
+    "semantic_inspection.cc",
+    "semantic_inspection.h",
+    "semantic_types.cc",
+    "semantic_types.h",
+    "semantic_validation.cc",
+    "semantic_validation.h",
+  ]
+
+  deps = [
+    "//base",
+    "//seoul/browser/data:data_core",
+  ]
+}
+
+test("seoul_semantic_unittests") {
+  testonly = true
+  sources = [ "semantic_validation_unittest.cc" ]
+  deps = [
+    ":semantic_core",
+    "//base",
+    "//base/test:test_support",
+    "//seoul/browser/data:data_core",
+    "//testing/gtest",
+  ]
+}
