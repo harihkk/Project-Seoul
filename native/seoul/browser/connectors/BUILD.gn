@@ -1,7 +1,10 @@
 # Project Seoul connected tools.
-# Provider-neutral connector seam and registry that mirrors connector-owned
-# typed tools into the shared Tool Registry. An external connector can never
-# register outside its own namespace. Pure model: //base plus the tool layer.
+# Provider-neutral connector seam, the registry mirroring connector-owned
+# typed capabilities into the shared Capability Graph, and the generic
+# capability paths: OpenAPI import, MCP import, local-file selection, generic
+# search/extraction seams, and the browser capability catalog. No connector
+# can register outside its namespace, and no business-domain module exists
+# here. Pure model: //base plus the tool and semantic layers.
 
 import("//testing/test.gni")
 
@@ -10,10 +13,20 @@ source_set("connectors_core") {
     "connector.h",
     "connector_registry.cc",
     "connector_registry.h",
+    "generic_capabilities.cc",
+    "generic_capabilities.h",
+    "local_file_capability.cc",
+    "local_file_capability.h",
+    "mcp_capability_importer.cc",
+    "mcp_capability_importer.h",
+    "openapi_capability_importer.cc",
+    "openapi_capability_importer.h",
   ]
 
   deps = [
     "//base",
+    "//seoul/browser/data:data_core",
+    "//seoul/browser/semantic:semantic_core",
     "//seoul/browser/tools:tools_core",
   ]
 }
@@ -33,12 +46,17 @@ source_set("connectors_test_support") {
 
 test("seoul_connectors_unittests") {
   testonly = true
-  sources = [ "connector_registry_unittest.cc" ]
+  sources = [
+    "capability_importers_unittest.cc",
+    "connector_registry_unittest.cc",
+  ]
   deps = [
     ":connectors_core",
     ":connectors_test_support",
     "//base",
     "//base/test:test_support",
+    "//seoul/browser/data:data_core",
+    "//seoul/browser/semantic:semantic_core",
     "//seoul/browser/tools:tools_core",
     "//testing/gtest",
   ]
