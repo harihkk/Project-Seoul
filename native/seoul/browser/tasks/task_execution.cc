@@ -77,7 +77,7 @@ bool TaskExecution::GuardSatisfied(const PlanStep& step, bool* should_skip) {
   }
   const StepStatus dependency = step_status(step.guard->depends_on_step);
   if (!IsTerminalStep(dependency)) {
-    return false;  // dependency still in flight; not eligible yet
+    return false;  // dependency still running; not eligible yet
   }
   const bool dependency_succeeded = dependency == StepStatus::kSucceeded;
   if (step.guard->require_success != dependency_succeeded) {
