@@ -67,16 +67,17 @@ enum class ComponentCategory {
   kInput,
   kData,
   kChart,
-  kDomain,
   kWorkflow,
   kTask,
   kMap,
   kCode,
 };
 
-// The trusted component catalog. Every renderable component type is listed
-// here; unknown types are rejected at parse time. Catalog metadata for each
-// type lives in saui_catalog.cc.
+// The trusted, domain-neutral component catalog. Every renderable component
+// type is a generic primitive selected by data shape and semantics, never by
+// business domain; unknown types are rejected at parse time. Catalog metadata
+// for each type lives in saui_catalog.cc. Keep kFileTree last: the catalog
+// table's static_assert uses it as the enum bound.
 enum class ComponentType {
   // Foundation.
   kText,
@@ -117,9 +118,15 @@ enum class ComponentType {
   kSearchField,
   kFilePicker,
   kConfirmation,
+  // A form generated dynamically from a typed schema bound as data (used for
+  // missing task parameters and connector inputs).
+  kSchemaForm,
   // Data.
   kKeyValueCard,
   kMetric,
+  // Generic entity presentation: any record with an identifier/name and
+  // typed fields renders as an entity card regardless of domain.
+  kEntityCard,
   kList,
   kTable,
   kSortableTable,
@@ -129,7 +136,11 @@ enum class ComponentType {
   kTree,
   kPagination,
   kFilterChips,
-  // Charts.
+  kDocument,
+  kMedia,
+  kFile,
+  // Charts and visualizations. Candlestick is retained as a generic
+  // open/high/low/close interval-summary primitive, not a finance widget.
   kLineChart,
   kAreaChart,
   kBarChart,
@@ -140,46 +151,17 @@ enum class ComponentType {
   kRangeChart,
   kSparkline,
   kHistogram,
-  // Domain: weather.
-  kWeatherCurrent,
-  kWeatherHourly,
-  kWeatherDaily,
-  kWeatherAlert,
-  // Domain: markets.
-  kSecurityQuote,
-  kWatchlistControl,
-  // Domain: products.
-  kProductCard,
-  kSellerCard,
-  kPriceComparison,
-  // Domain: travel.
-  kLocationCard,
-  kRouteCard,
-  kItineraryCard,
-  kFlightCard,
-  kHotelCard,
-  // Domain: calendar.
-  kAgendaView,
-  kAvailabilityGrid,
-  kEventCard,
-  // Domain: research.
-  kSourceCard,
-  kEvidenceTable,
-  kClaimComparison,
-  kCitationGraph,
-  kOutline,
-  kReportPreview,
-  // Domain: files.
-  kFileCard,
-  kAttachmentList,
-  kDocumentViewer,
-  kImageGallery,
-  kExtractionTable,
+  kHeatMap,
+  kNetworkGraph,
+  // Maps.
+  kMap,
+  kGeoLayer,
+  kMapMarkerList,
   // Workflow.
   kTaskGraph,
   kWorkflowNode,
+  kWorkflowEdge,
   kTriggerCard,
-  kParameterForm,
   kApprovalRequest,
   kExecutionStatus,
   kResultCard,
@@ -191,17 +173,13 @@ enum class ComponentType {
   kBlockerList,
   kCostSummary,
   kProviderIndicator,
-  // Maps.
-  kMap,
-  kMapMarkerList,
   // Code and technical.
   kCodeBlock,
   kDiffView,
   kDiagnosticList,
   kLogViewer,
   kStackTrace,
-  kFileTree,
-  kApiResultTable,
+  kFileTree,  // keep last: catalog static_assert bound
 };
 
 enum class ComponentState {
