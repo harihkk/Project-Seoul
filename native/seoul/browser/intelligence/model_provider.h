@@ -85,7 +85,7 @@ class ModelProvider {
                         GenerateCallback callback) = 0;
   virtual void Cancel() = 0;
 
-  // Pre-flight cost estimate in microdollars for a request of the given
+  // Up-front cost estimate in microdollars for a request of the given
   // approximate token sizes (0 for local providers).
   virtual int64_t EstimateCostMicrodollars(int input_tokens,
                                            int output_tokens) const = 0;

@@ -1,23 +1,44 @@
 # Project Seoul hybrid intelligence.
-# Provider-neutral model interface and the deterministic-first reasoning
-# router. Pure model: //base only. Concrete local-runtime and cloud-API
-# adapters live in later glue targets and are not authored blind here.
+# Provider-neutral model interface, the deterministic-first reasoning router,
+# the pure provider protocol (request building, SSE parsing, streaming
+# accumulation, local-only endpoint guard, error mapping), and the local and
+# cloud model-provider adapters over an injected HTTP transport and credential
+# store. Pure model plus //url. The concrete Chromium URLLoader transport and
+# the Keychain credential store are capable-host glue targets (they perform the
+# only build-blocked I/O); everything here is unit-tested with fakes.
 
 import("//testing/test.gni")
 
 source_set("intelligence_core") {
   sources = [
+    "cloud_model_provider.cc",
+    "cloud_model_provider.h",
+    "credential_store.h",
+    "http_transport.h",
+    "local_model_provider.cc",
+    "local_model_provider.h",
     "model_provider.h",
+    "provider_protocol.cc",
+    "provider_protocol.h",
     "reasoning_router.cc",
     "reasoning_router.h",
+    "sse_parser.cc",
+    "sse_parser.h",
+    "streaming_accumulator.cc",
+    "streaming_accumulator.h",
   ]
 
-  deps = [ "//base" ]
+  deps = [
+    "//base",
+    "//url",
+  ]
 }
 
 source_set("intelligence_test_support") {
   testonly = true
   sources = [
+    "fake_http_transport.cc",
+    "fake_http_transport.h",
     "fake_model_provider.cc",
     "fake_model_provider.h",
   ]
@@ -29,12 +50,18 @@ source_set("intelligence_test_support") {
 
 test("seoul_intelligence_unittests") {
   testonly = true
-  sources = [ "reasoning_router_unittest.cc" ]
+  sources = [
+    "model_provider_unittest.cc",
+    "provider_protocol_unittest.cc",
+    "reasoning_router_unittest.cc",
+    "sse_parser_unittest.cc",
+  ]
   deps = [
     ":intelligence_core",
     ":intelligence_test_support",
     "//base",
     "//base/test:test_support",
     "//testing/gtest",
+    "//url",
   ]
 }
