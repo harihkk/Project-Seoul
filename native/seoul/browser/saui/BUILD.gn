@@ -1,14 +1,18 @@
 # Project Seoul Adaptive UI (SAUI).
 # Seoul-owned declarative surface protocol: typed document model, trusted
-# component catalog, structural parsing, semantic validation, incremental
-# patches, typed events, and presentation selection. Pure model: //base,
-# //url, and the Seoul data contracts only. No rendering here; the trusted
+# domain-neutral component catalog, structural parsing, semantic validation,
+# incremental patches, typed events, presentation selection, and the adaptive
+# interface compiler that turns generic semantic results into validated
+# surfaces by shape-and-role reasoning. Pure model: //base, //url, the Seoul
+# provenance layer, and the semantic fabric. No rendering here; the trusted
 # renderer consumes validated surfaces.
 
 import("//testing/test.gni")
 
 source_set("saui_core") {
   sources = [
+    "interface_compiler.cc",
+    "interface_compiler.h",
     "saui_catalog.cc",
     "saui_catalog.h",
     "saui_document.cc",
@@ -23,11 +27,14 @@ source_set("saui_core") {
     "saui_types.h",
     "saui_validator.cc",
     "saui_validator.h",
+    "semantic_to_saui.cc",
+    "semantic_to_saui.h",
   ]
 
   deps = [
     "//base",
     "//seoul/browser/data:data_core",
+    "//seoul/browser/semantic:semantic_core",
     "//url",
   ]
 }
@@ -35,6 +42,7 @@ source_set("saui_core") {
 test("seoul_saui_unittests") {
   testonly = true
   sources = [
+    "interface_compiler_unittest.cc",
     "saui_document_unittest.cc",
     "saui_patch_unittest.cc",
     "saui_selection_unittest.cc",
@@ -45,6 +53,7 @@ test("seoul_saui_unittests") {
     "//base",
     "//base/test:test_support",
     "//seoul/browser/data:data_core",
+    "//seoul/browser/semantic:semantic_core",
     "//testing/gtest",
     "//url",
   ]
