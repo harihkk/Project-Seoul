@@ -39,3 +39,9 @@ jobs:
         run: npm run check:manifest
       - name: Repository-boundary check
         run: npm run check:boundary
+      - name: Domain-neutrality check (core is not domain-routed)
+        run: npm run check:neutrality
+      - name: Harness architecture gate
+        run: npm run check:harness-arch
+      - name: Native architecture gate
+        run: npm run check:native-arch

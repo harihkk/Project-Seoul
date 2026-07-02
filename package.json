@@ -8,20 +8,25 @@
     "clean": "node scripts/build-extension.mjs --clean-only",
     "build": "node scripts/build-extension.mjs",
     "validate": "node scripts/validate-extension.mjs",
-    "test": "node --test apps/browser-harness/tests/protocol.test.mjs apps/browser-harness/tests/validation.test.mjs apps/browser-harness/tests/control-session-machine.test.mjs apps/browser-harness/tests/control-session-store.test.mjs apps/browser-harness/tests/session.test.mjs apps/browser-harness/tests/sidepanel-ui.test.mjs",
+    "test": "node --test apps/browser-harness/tests/protocol.test.mjs apps/browser-harness/tests/validation.test.mjs apps/browser-harness/tests/control-session-machine.test.mjs apps/browser-harness/tests/control-session-store.test.mjs apps/browser-harness/tests/session.test.mjs apps/browser-harness/tests/sidepanel-ui.test.mjs apps/browser-harness/tests/action-handlers.test.mjs apps/browser-harness/tests/panel-invocation-context.test.mjs apps/browser-harness/tests/content-router.test.mjs apps/browser-harness/tests/content-shared-safety.test.mjs",
     "check": "tsc --noEmit -p tsconfig.json && npm run build && npm run validate && npm test",
     "check:scripts": "for f in $(git ls-files '*.sh'); do bash -n \"$f\" || exit 1; done && echo 'bash -n: OK'",
     "check:json": "node -e \"for (const f of ['native/chromium.lock.json','native/patches/manifest.json','package.json','tsconfig.json','apps/browser-harness/manifest.json']) { JSON.parse(require('fs').readFileSync(f,'utf8')); console.log('json OK:', f); }\"",
     "check:manifest": "node native/scripts/check-patch-manifest.mjs",
     "check:boundary": "node scripts/check-repo-boundary.mjs",
+    "check:neutrality": "node scripts/check-domain-neutrality.mjs",
+    "check:harness-arch": "node scripts/check-harness-architecture.mjs",
+    "check:native-arch": "node scripts/check-native-architecture.mjs",
+    "check:product-arch": "node scripts/check-product-architecture.mjs",
     "verify:checkout": "native/scripts/verify-checkout.sh",
-    "ci": "npm run check && npm run check:scripts && npm run check:json && npm run check:manifest && npm run check:boundary",
+    "ci": "npm run check && npm run check:scripts && npm run check:json && npm run check:manifest && npm run check:boundary && npm run check:neutrality && npm run check:harness-arch && npm run check:native-arch && npm run check:product-arch",
     "itest": "npm run build && node --test --test-concurrency=1 apps/browser-harness/itest/action-panel.itest.mjs apps/browser-harness/itest/tab-isolation.itest.mjs apps/browser-harness/itest/panel-lifecycle.itest.mjs apps/browser-harness/itest/navigation-invalidation.itest.mjs apps/browser-harness/itest/security.itest.mjs",
     "itest:headful": "npm run build && SEOUL_HEADFUL=1 node --test --test-concurrency=1 apps/browser-harness/itest/action-panel.itest.mjs apps/browser-harness/itest/tab-isolation.itest.mjs apps/browser-harness/itest/panel-lifecycle.itest.mjs apps/browser-harness/itest/navigation-invalidation.itest.mjs apps/browser-harness/itest/security.itest.mjs",
     "itest:resilience": "npm run build && node --test --test-concurrency=1 apps/browser-harness/itest/worker-recovery-storage.resilience.mjs apps/browser-harness/itest/forced-worker-loss.resilience.mjs"
   },
   "devDependencies": {
     "@types/chrome": "0.2.0",
+    "esbuild": "0.25.0",
     "puppeteer": "25.2.1",
     "typescript": "6.0.3"
   }
