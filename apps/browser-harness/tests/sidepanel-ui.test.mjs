@@ -17,12 +17,19 @@ const ts = readFileSync(path.join(panelDir, 'index.ts'), 'utf8');
 const protocol = readFileSync(path.join(srcDir, 'protocol.ts'), 'utf8');
 const background = readFileSync(path.join(srcDir, 'background.ts'), 'utf8');
 const sessionSrc = readFileSync(path.join(srcDir, 'session.ts'), 'utf8');
+// getPanelContext moved from background.ts into the session controller during
+// the module-split refactor; read it from its new home.
+const controller = readFileSync(
+  path.join(srcDir, 'background', 'session-controller.ts'),
+  'utf8',
+);
 const manifest = JSON.parse(readFileSync(path.join(dir, '..', 'manifest.json'), 'utf8'));
 
 const applyFn = ts.match(/function applyPanelContext\b[\s\S]*?\n\}/)[0];
 const initFn = ts.match(/async function init\b[\s\S]*?\n\}/)[0];
 const updateFn = ts.match(/function updateControls\b[\s\S]*?\n\}/)[0];
-const contextFn = background.match(/async function getPanelContext\b[\s\S]*?\n\}/)[0];
+// The controller method is indented; match up to its 2-space-indented brace.
+const contextFn = controller.match(/async getPanelContext\b[\s\S]*?\n {2}\}/)[0];
 
 // --- Error-container rendering ---
 
@@ -77,7 +84,7 @@ test('no speculative runtime-task types remain in the source', () => {
     'RUNTIME_TASK_STATES',
     'PanelView',
   ];
-  for (const file of [protocol, background, sessionSrc, ts]) {
+  for (const file of [protocol, background, sessionSrc, controller, ts]) {
     for (const id of forbidden) {
       assert.equal(file.includes(id), false, `${id} should be removed`);
     }
@@ -87,7 +94,7 @@ test('no speculative runtime-task types remain in the source', () => {
 test('the panel-context response has no task field', () => {
   const iface = protocol.match(/export interface PanelContextResult \{[\s\S]*?\n\}/)[0];
   assert.equal(/\btask\b/.test(iface), false);
-  const resultLiteral = contextFn.match(/const result: PanelContextResult = \{[\s\S]*?\n {2}\};/)[0];
+  const resultLiteral = contextFn.match(/const result: PanelContextResult = \{[\s\S]*?\n {4}\};/)[0];
   assert.equal(/\btask\b/.test(resultLiteral), false);
 });
 
