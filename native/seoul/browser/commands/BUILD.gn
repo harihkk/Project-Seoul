@@ -87,8 +87,15 @@ source_set("command_browser_tests") {
   deps = [
     ":command_chromium",
     "//chrome/browser:browser_public_dependencies",
+    "//chrome/browser/ui/tabs",
     "//chrome/test:test_support",
+    "//components/sessions/core",
+    "//components/tabs/public",
     "//content/test:test_support",
+    "//seoul/browser/lifecycle",
+    "//seoul/browser/lifecycle:lifecycle_core",
+    "//seoul/browser/organization",
+    "//seoul/browser/organization:organization_model",
     "//testing/gtest",
   ]
 }

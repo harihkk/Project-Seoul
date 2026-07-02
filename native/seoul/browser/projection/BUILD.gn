@@ -1,4 +1,10 @@
 # Project Seoul workspace projection engine V0.
+#
+# projection_core is the pure projection model (calculators, ordering, filter,
+# the workspace switcher, the window projection controller). projection_chromium
+# is the Chromium-facing layer: the presentation adapter AND ProjectionService,
+# which holds VerticalPresentationAdapter by value and returns views::View*, so
+# it depends on //ui/views and cannot live in the pure core.
 
 import("//testing/test.gni")
 
@@ -11,8 +17,6 @@ source_set("projection_core") {
     "projection_observer.h",
     "projection_ordering.cc",
     "projection_ordering.h",
-    "projection_service.cc",
-    "projection_service.h",
     "projection_types.h",
     "vertical_presentation_filter.cc",
     "vertical_presentation_filter.h",
@@ -33,6 +37,8 @@ source_set("projection_core") {
 
 source_set("projection_chromium") {
   sources = [
+    "projection_service.cc",
+    "projection_service.h",
     "vertical_presentation_adapter.cc",
     "vertical_presentation_adapter.h",
   ]
@@ -45,7 +51,10 @@ source_set("projection_chromium") {
   deps = [
     "//base",
     "//chrome/browser/ui/views/tabs/vertical",
+    "//seoul/browser/commands:command_core",
     "//seoul/browser/lifecycle",
+    "//seoul/browser/lifecycle:lifecycle_core",
+    "//seoul/browser/organization:organization_model",
     "//ui/views",
   ]
 }
@@ -71,15 +80,20 @@ test("seoul_projection_core_unittests") {
   ]
 }
 
-# Future browser/view tests; not executed in this milestone.
+# In-process browser tests wired into //chrome/test:browser_tests via the
+# integration patch.
 source_set("projection_browser_tests") {
   testonly = true
   sources = [ "vertical_presentation_browsertest.cc" ]
   deps = [
     ":projection_chromium",
     "//chrome/browser:browser_public_dependencies",
+    "//chrome/browser/ui/tabs",
     "//chrome/test:test_support",
     "//content/test:test_support",
+    "//seoul/browser/lifecycle:lifecycle_core",
+    "//seoul/browser/organization",
+    "//seoul/browser/organization:organization_model",
     "//testing/gtest",
   ]
 }
