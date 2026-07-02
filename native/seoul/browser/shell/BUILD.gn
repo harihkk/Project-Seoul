@@ -2,18 +2,18 @@
 
 import("//testing/test.gni")
 
+# shell_core is the pure shell model: the view model, section/item types,
+# errors, the launcher catalog. shell_chromium is the Chromium-facing layer:
+# ShellService and ShellController (which drive ProjectionService and the
+# region host and hold a VerticalTabStripRegionView) plus the Views.
 source_set("shell_core") {
   sources = [
     "command_launcher_catalog.cc",
     "command_launcher_catalog.h",
     "shell_actions.h",
-    "shell_controller.cc",
-    "shell_controller.h",
     "shell_errors.cc",
     "shell_errors.h",
     "shell_observer.h",
-    "shell_service.cc",
-    "shell_service.h",
     "shell_types.h",
     "shell_view_model.cc",
     "shell_view_model.h",
@@ -31,6 +31,10 @@ source_set("shell_core") {
 
 source_set("shell_chromium") {
   sources = [
+    "shell_controller.cc",
+    "shell_controller.h",
+    "shell_service.cc",
+    "shell_service.h",
     "views/seoul_command_launcher_view.cc",
     "views/seoul_command_launcher_view.h",
     "views/seoul_shell_footer_view.cc",
@@ -41,6 +45,8 @@ source_set("shell_chromium") {
     "views/seoul_shell_region_host.h",
     "views/seoul_workspace_menu.cc",
     "views/seoul_workspace_menu.h",
+    "views/seoul_workspace_name_dialog.cc",
+    "views/seoul_workspace_name_dialog.h",
   ]
 
   public_deps = [
@@ -51,8 +57,14 @@ source_set("shell_chromium") {
   deps = [
     "//base",
     "//chrome/browser/ui/views/tabs/vertical",
+    "//components/constrained_window",
     "//components/vector_icons",
+    "//seoul/browser/commands:command_core",
     "//seoul/browser/lifecycle",
+    "//seoul/browser/lifecycle:lifecycle_core",
+    "//seoul/browser/organization:organization_model",
+    "//seoul/browser/projection:projection_chromium",
+    "//seoul/browser/projection:projection_core",
     "//ui/accessibility:ax_enums",
     "//ui/base",
     "//ui/menus",
@@ -82,8 +94,12 @@ source_set("shell_browser_tests") {
   deps = [
     ":shell_chromium",
     "//chrome/browser:browser_public_dependencies",
+    "//chrome/browser/ui/tabs",
     "//chrome/test:test_support",
     "//content/test:test_support",
+    "//seoul/browser/organization",
+    "//seoul/browser/organization:organization_model",
+    "//seoul/browser/projection:projection_chromium",
     "//testing/gtest",
   ]
 }

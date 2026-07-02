@@ -2,12 +2,14 @@
 
 #include "seoul/browser/shell/views/seoul_workspace_menu.h"
 
+#include "base/functional/bind.h"
 #include "base/strings/utf_string_conversions.h"
 #include "seoul/browser/commands/browser_command.h"
 #include "seoul/browser/commands/command_id.h"
 #include "seoul/browser/organization/organization_model.h"
 #include "seoul/browser/organization/organization_types.h"
 #include "seoul/browser/shell/shell_controller.h"
+#include "seoul/browser/shell/views/seoul_workspace_name_dialog.h"
 #include "ui/menus/simple_menu_model.h"
 #include "ui/views/controls/menu/menu_runner.h"
 #include "ui/views/widget/widget.h"
@@ -23,9 +25,12 @@ constexpr int kWorkspaceBase = 2000;
 class WorkspaceMenuModel : public ui::SimpleMenuModel,
                            public ui::SimpleMenuModel::Delegate {
  public:
-  WorkspaceMenuModel(ShellController* controller, std::vector<WorkspaceId> ids)
+  WorkspaceMenuModel(ShellController* controller,
+                     gfx::NativeWindow parent,
+                     std::vector<WorkspaceId> ids)
       : ui::SimpleMenuModel(this),
         controller_(controller),
+        parent_(parent),
         workspace_ids_(std::move(ids)) {
     if (!controller_ || !controller_->model()) {
       return;
@@ -57,25 +62,50 @@ class WorkspaceMenuModel : public ui::SimpleMenuModel,
       }
       return;
     }
-    BrowserCommand command;
-    command.id = CommandId::Next();
     switch (command_id) {
-      case kCreateWorkspace:
-        command.kind = CommandKind::kCreateWorkspace;
-        command.name = "Workspace";
-        controller_->DispatchModelCommand(std::move(command));
+      case kCreateWorkspace: {
+        // Real name input: create with exactly what the user typed.
+        ShellController* controller = controller_;
+        ShowWorkspaceNameDialog(
+            parent_, u"Create workspace", std::u16string(),
+            base::BindOnce(
+                [](ShellController* controller, std::string name) {
+                  BrowserCommand command;
+                  command.id = CommandId::Next();
+                  command.kind = CommandKind::kCreateWorkspace;
+                  command.name = std::move(name);
+                  controller->DispatchModelCommand(std::move(command));
+                },
+                controller));
         return;
-      case kRenameWorkspace:
-        command.kind = CommandKind::kRenameWorkspace;
-        command.workspace_id = controller_->snapshot().workspace.workspace_id;
-        command.name = controller_->snapshot().workspace.name + " Renamed";
-        controller_->DispatchModelCommand(std::move(command));
+      }
+      case kRenameWorkspace: {
+        ShellController* controller = controller_;
+        const WorkspaceId id = controller_->snapshot().workspace.workspace_id;
+        ShowWorkspaceNameDialog(
+            parent_, u"Rename workspace",
+            base::UTF8ToUTF16(controller_->snapshot().workspace.name),
+            base::BindOnce(
+                [](ShellController* controller, WorkspaceId id,
+                   std::string name) {
+                  BrowserCommand command;
+                  command.id = CommandId::Next();
+                  command.kind = CommandKind::kRenameWorkspace;
+                  command.workspace_id = id;
+                  command.name = std::move(name);
+                  controller->DispatchModelCommand(std::move(command));
+                },
+                controller, id));
         return;
-      case kArchiveWorkspace:
+      }
+      case kArchiveWorkspace: {
+        BrowserCommand command;
+        command.id = CommandId::Next();
         command.kind = CommandKind::kArchiveWorkspace;
         command.workspace_id = controller_->snapshot().workspace.workspace_id;
         controller_->DispatchModelCommand(std::move(command));
         return;
+      }
       default:
         return;
     }
@@ -83,6 +113,7 @@ class WorkspaceMenuModel : public ui::SimpleMenuModel,
 
  private:
   raw_ptr<ShellController> controller_;
+  gfx::NativeWindow parent_;
   std::vector<WorkspaceId> workspace_ids_;
 };
 
@@ -95,7 +126,7 @@ void SeoulWorkspaceMenu::Show(gfx::NativeWindow parent,
   if (!anchor || !controller) {
     return;
   }
-  WorkspaceMenuModel model(controller, {});
+  WorkspaceMenuModel model(controller, parent, {});
   views::MenuRunner menu_runner(&model, views::MenuRunner::HAS_MNEMONICS);
   menu_runner.RunMenuAt(
       anchor->GetWidget(), nullptr, anchor->GetAnchorBoundsInScreen(),
