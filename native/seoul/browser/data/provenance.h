@@ -24,8 +24,8 @@ enum class FreshnessState {
 const char* FreshnessStateToString(FreshnessState state);
 
 // Attribution and timing for one data result. `retrieved_at` is when Seoul
-// obtained the data; `effective_at` is the moment the data describes (a quote
-// time, a forecast issue time). Both are required for chart eligibility.
+// obtained the data; `effective_at` is the moment the data describes. Both
+// are required for chart eligibility.
 struct DataProvenance {
   std::string source_name;  // human-readable provider name; never empty
   std::string source_url;   // link to the source when the provider permits

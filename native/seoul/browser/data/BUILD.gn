@@ -1,6 +1,7 @@
 # Project Seoul grounded data layer.
-# Provider-neutral data contracts (weather, market, product), the provenance
-# envelope, and contract/chart-eligibility validation. Pure model: //base only.
+# Domain-neutral provenance envelope, data errors, and provenance validation.
+# Domain result contracts do not exist here: capability results flow through
+# the generic semantic fabric (//seoul/browser/semantic). Pure model: //base.
 
 import("//testing/test.gni")
 
@@ -9,13 +10,7 @@ source_set("data_core") {
     "data_errors.h",
     "data_validation.cc",
     "data_validation.h",
-    "market_data_provider.h",
-    "market_types.h",
-    "product_types.h",
     "provenance.h",
-    "shopping_provider.h",
-    "weather_provider.h",
-    "weather_types.h",
   ]
 
   deps = [ "//base" ]

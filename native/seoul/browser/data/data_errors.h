@@ -1,7 +1,8 @@
 // Project Seoul grounded data layer.
-// Precise error results for data providers and validation. When no provider is
-// configured the result is an explicit kNoProvider error surfaced to the user
-// as "unavailable"; Seoul never substitutes fabricated or placeholder values.
+// Precise, domain-neutral error results for capability data acquisition. When
+// no capability can supply requested data the result is an explicit
+// kNoProvider error surfaced to the user as "unavailable"; Seoul never
+// substitutes fabricated or placeholder values.
 
 #ifndef SEOUL_BROWSER_DATA_DATA_ERRORS_H_
 #define SEOUL_BROWSER_DATA_DATA_ERRORS_H_
@@ -11,13 +12,12 @@
 namespace seoul {
 
 enum class DataError {
-  kNoProvider,           // no provider configured for this data family
-  kProviderUnavailable,  // provider configured but unreachable/disabled
+  kNoProvider,           // no capability supplies this data family
+  kProviderUnavailable,  // capability registered but unreachable/disabled
   kProviderError,        // provider returned an error
-  kMalformedResult,      // provider result failed contract validation
+  kMalformedResult,      // result failed contract validation
   kMissingProvenance,    // result lacked source or timing attribution
-  kUnknownLocation,      // geocoding/location resolution failed
-  kUnknownInstrument,    // symbol/instrument resolution failed
+  kUnresolvedEntity,     // an input entity could not be resolved
   kEmptyResult,          // provider returned no data for the request
   kStaleBeyondPolicy,    // cached data older than the configured maximum
   kBudgetExceeded,       // request rejected by the task/network budget
