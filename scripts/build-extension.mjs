@@ -1,10 +1,18 @@
 #!/usr/bin/env node
 // Project Seoul Development Harness - build script.
 //
-// Uses only the TypeScript compiler and the Node standard library (no bundler).
-// It removes and recreates the output directory, compiles the sources, copies
-// the static manifest/HTML/CSS, then fails if an expected file is missing or an
-// unexpected executable artifact slipped into the build.
+// The background service worker is an ES module (manifest type: module), so tsc
+// emits it and its ./background/* modules as separate files that import each
+// other at runtime - no bundling needed. The content script is injected as a
+// classic script and cannot use runtime ES module imports, so its split source
+// modules (src/content/*) are bundled by esbuild into a single content.js. This
+// bundling is what lets the content script consume the shared validation source
+// of truth directly instead of mirroring it.
+//
+// Steps: recreate the output dir, run tsc (type-check + emit the module graph),
+// bundle the content entry with esbuild, drop the redundant per-module content
+// output, copy static assets, then fail if an expected file is missing or an
+// unexpected executable artifact slipped in.
 
 import { spawnSync } from 'node:child_process';
 import {
@@ -13,15 +21,19 @@ import {
   copyFileSync,
   rmSync,
   readdirSync,
+  readFileSync,
   statSync,
 } from 'node:fs';
 import path from 'node:path';
 import process from 'node:process';
+import { buildSync } from 'esbuild';
 
 const ROOT = process.cwd();
 const SRC = path.join(ROOT, 'apps', 'browser-harness');
 const DIST_ROOT = path.join(ROOT, 'dist');
 const DIST = path.join(DIST_ROOT, 'browser-harness');
+const CONTENT_ENTRY = path.join(SRC, 'src', 'content', 'entry.ts');
+const CONTENT_OUT = path.join(DIST, 'content.js');
 
 const ALLOWED_OUTPUT_EXTENSIONS = new Set(['.js', '.html', '.css', '.json', '.png', '.svg']);
 
@@ -60,6 +72,45 @@ function compileTypeScript() {
   });
   if (result.error) fail(`failed to launch tsc: ${result.error.message}`);
   if (result.status !== 0) fail(`tsc exited with status ${result.status}`);
+}
+
+// Bundle the content-script module graph (src/content/* plus the shared
+// validation/protocol sources it imports) into a single classic script. IIFE
+// format with no imports/exports, no minification (deterministic, reviewable
+// output), targeting the manifest's minimum Chrome version. esbuild output is
+// deterministic for a fixed input and pinned version, so two builds produce an
+// identical content.js.
+function bundleContentScript() {
+  if (!existsSync(CONTENT_ENTRY)) fail(`missing content entry: ${CONTENT_ENTRY}`);
+  const result = buildSync({
+    entryPoints: [CONTENT_ENTRY],
+    outfile: CONTENT_OUT,
+    bundle: true,
+    format: 'iife',
+    platform: 'browser',
+    target: ['chrome116'],
+    minify: false,
+    sourcemap: false,
+    legalComments: 'none',
+    logLevel: 'silent',
+  });
+  if (result.errors && result.errors.length > 0) {
+    fail(`esbuild failed to bundle the content script:\n${JSON.stringify(result.errors)}`);
+  }
+  // The redundant per-module tsc output for the content graph is not used at
+  // runtime (the bundle is authoritative); drop it so dist has one content
+  // artifact and cannot drift from the tested source.
+  rmSync(path.join(DIST, 'content'), { recursive: true, force: true });
+
+  // Consistency guard: the bundle must actually contain the shared field-safety
+  // implementation, not a divergent copy. This exact message is defined only in
+  // src/validation.ts (classifyTypeTarget); its presence in the built artifact
+  // proves the content script uses the shared source.
+  const SHARED_SAFETY_MARKER = 'Refusing to type into a password field.';
+  const bundled = readFileSync(CONTENT_OUT, 'utf8');
+  if (!bundled.includes(SHARED_SAFETY_MARKER)) {
+    fail('content.js does not contain the shared validation implementation; the content build has diverged from validation.ts.');
+  }
 }
 
 function copyInto(relSource, relDest) {
@@ -128,6 +179,7 @@ function main() {
   mkdirSync(DIST, { recursive: true });
 
   compileTypeScript();
+  bundleContentScript();
 
   copyInto('manifest.json', 'manifest.json');
   copyInto('src/sidepanel/index.html', 'sidepanel/index.html');
