@@ -1,0 +1,35 @@
+<!doctype html>
+<!--
+  Project Seoul Canvas - first-party WebUI document.
+  Strict CSP is set by the WebUIDataSource (script-src 'self', no eval, no
+  remote); this document loads only the packaged module. No inline scripts and
+  no inline event handlers.
+-->
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Seoul Canvas</title>
+    <link rel="stylesheet" href="canvas.css" />
+  </head>
+  <body>
+    <main id="canvas-root" aria-live="polite">
+      <div id="idle" class="idle">Ask Seoul by voice or text.</div>
+      <section id="surface" hidden aria-label="Result surface"></section>
+    </main>
+    <footer id="canvas-input-bar">
+      <button id="voice-toggle" type="button" aria-label="Toggle voice input">
+        Voice
+      </button>
+      <input
+        id="turn-input"
+        type="text"
+        aria-label="Message Seoul"
+        placeholder="Message Seoul"
+      />
+      <button id="turn-send" type="button">Send</button>
+      <span id="route-indicator" class="route" aria-live="polite"></span>
+    </footer>
+    <script type="module" src="canvas.js"></script>
+  </body>
+</html>

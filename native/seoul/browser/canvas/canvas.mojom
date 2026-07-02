@@ -1,0 +1,73 @@
+// Project Seoul Canvas - Mojo boundary between the trusted C++ services and the
+// first-party WebUI renderer. The browser pushes only validated SAUI surface
+// documents (already parsed and validated in C++) as JSON strings; the renderer
+// builds the interface from the trusted component catalog and never executes
+// anything from the payload. The renderer sends back only typed component
+// events (stable ids and a typed value) - never DOM state, coordinates, or
+// arbitrary script. This is the strict typed boundary the product requires.
+
+module seoul.canvas.mojom;
+
+// A typed interaction the renderer reports for a rendered component. The value
+// is a JSON-encoded primitive or small dict, re-validated by the browser
+// against the surface's declared actions before anything happens.
+enum ComponentEventKind {
+  kActivate,
+  kValueChanged,
+  kSubmit,
+  kSelect,
+  kDismiss,
+};
+
+struct ComponentEvent {
+  string surface_id;
+  string component_id;
+  ComponentEventKind kind;
+  // Present only when the component declared a surface action id.
+  string? action_id;
+  // JSON-encoded typed value (string/number/bool/small dict). Bounded by the
+  // browser on receipt.
+  string value_json;
+};
+
+// A spoken/typed follow-up from the Canvas conversation input. Routed into the
+// same voice/task session on the browser side.
+struct TurnInput {
+  string text;
+};
+
+// Implemented in the browser. The renderer calls these.
+interface PageHandler {
+  // The renderer is ready; the browser replies by pushing the current surface
+  // (if any) via the Page interface.
+  RequestInitialState();
+
+  // Report a typed component interaction.
+  NotifyComponentEvent(ComponentEvent event);
+
+  // A conversational follow-up typed into the Canvas.
+  SubmitTurn(TurnInput input);
+
+  // Voice control from Canvas UI affordances.
+  StartVoice();
+  StopVoice();
+  CancelActiveTask(string task_id);
+};
+
+// Implemented in the renderer. The browser calls these to drive the Canvas.
+interface Page {
+  // Replace or install a surface. `surface_json` is a validated SAUI document.
+  PushSurface(string surface_id, string surface_json);
+
+  // Apply a validated incremental patch to an existing surface.
+  ApplySurfacePatch(string surface_id, string patch_json);
+
+  // Live voice/session/status indicators (route: "local" or "cloud").
+  SetStatus(string status_json);
+};
+
+// Bootstraps the pair. The WebUIController implements this factory.
+interface PageHandlerFactory {
+  CreatePageHandler(pending_remote<Page> page,
+                    pending_receiver<PageHandler> handler);
+};

@@ -1,0 +1,152 @@
+/* Project Seoul Canvas - first-party WebUI styles.
+   Token-driven and theme-neutral; the Theme system supplies concrete values.
+   No remote fonts or assets (CSP default-src 'self'). */
+
+:root {
+  --seoul-bg: Canvas;
+  --seoul-fg: CanvasText;
+  --seoul-accent: Highlight;
+  --seoul-border: GrayText;
+  --seoul-gap: 12px;
+  --seoul-radius: 8px;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  display: flex;
+  flex-direction: column;
+  height: 100vh;
+  color: var(--seoul-fg);
+  background: var(--seoul-bg);
+  font: 13px/1.5 system-ui, sans-serif;
+}
+
+#canvas-root {
+  flex: 1 1 auto;
+  overflow-y: auto;
+  padding: var(--seoul-gap);
+}
+
+.idle {
+  color: var(--seoul-border);
+  padding: 24px 8px;
+  text-align: center;
+}
+
+.saui-title {
+  font-size: 1.15rem;
+  margin: 0 0 var(--seoul-gap);
+}
+
+.saui-heading {
+  font-size: 1rem;
+  margin: var(--seoul-gap) 0 4px;
+}
+
+.saui-stack {
+  display: flex;
+  flex-direction: column;
+  gap: var(--seoul-gap);
+}
+
+.saui-row {
+  display: flex;
+  flex-direction: row;
+  gap: var(--seoul-gap);
+  flex-wrap: wrap;
+}
+
+.saui-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));
+  gap: var(--seoul-gap);
+}
+
+.saui-metric-value {
+  font-size: 1.5rem;
+  font-weight: 600;
+}
+
+.saui-metric-label {
+  color: var(--seoul-border);
+}
+
+.saui-table {
+  border-collapse: collapse;
+  width: 100%;
+  font-variant-numeric: tabular-nums;
+}
+
+.saui-table th,
+.saui-table td {
+  border: 1px solid var(--seoul-border);
+  padding: 4px 8px;
+  text-align: left;
+}
+
+.saui-record {
+  display: grid;
+  grid-template-columns: max-content 1fr;
+  gap: 2px 12px;
+  margin: 0;
+}
+
+.saui-record dt {
+  color: var(--seoul-border);
+}
+
+.saui-badge {
+  display: inline-block;
+  padding: 1px 8px;
+  border: 1px solid var(--seoul-border);
+  border-radius: 999px;
+}
+
+.saui-button {
+  padding: 6px 12px;
+  border: 1px solid var(--seoul-accent);
+  border-radius: var(--seoul-radius);
+  background: transparent;
+  color: inherit;
+  cursor: pointer;
+}
+
+.saui-error {
+  color: #b00020;
+}
+
+.saui-empty {
+  color: var(--seoul-border);
+  font-style: italic;
+}
+
+#canvas-input-bar {
+  flex: 0 0 auto;
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  padding: 8px var(--seoul-gap);
+  border-top: 1px solid var(--seoul-border);
+}
+
+#turn-input {
+  flex: 1 1 auto;
+  padding: 6px 8px;
+  border: 1px solid var(--seoul-border);
+  border-radius: var(--seoul-radius);
+  background: var(--seoul-bg);
+  color: inherit;
+}
+
+.route {
+  color: var(--seoul-border);
+  font-size: 11px;
+}
+
+[hidden] {
+  display: none !important;
+}

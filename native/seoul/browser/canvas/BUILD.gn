@@ -1,0 +1,42 @@
+# Project Seoul Canvas.
+# The Mojo boundary between the trusted C++ services and the first-party WebUI
+# renderer, plus the browser-side WebUI controller and page handler. The
+# renderer receives only validated SAUI surfaces (JSON) and returns only typed
+# component events. Chromium-facing; compiles on a capable host.
+
+import("//mojo/public/tools/bindings/mojom.gni")
+
+mojom("mojo_bindings") {
+  sources = [ "canvas.mojom" ]
+  webui_module_path = "/"
+  public_deps = [ "//mojo/public/mojom/base" ]
+}
+
+source_set("canvas") {
+  sources = [
+    "seoul_canvas_page_handler.cc",
+    "seoul_canvas_page_handler.h",
+    "seoul_canvas_ui.cc",
+    "seoul_canvas_ui.h",
+  ]
+
+  public_deps = [
+    ":mojo_bindings",
+    "//chrome/browser:browser_public_dependencies",
+  ]
+
+  deps = [
+    "//base",
+    "//chrome/browser/profiles:profile",
+    "//chrome/browser/ui/webui:webui_util",
+    "//content/public/browser",
+    "//mojo/public/cpp/bindings",
+    "//seoul/browser/canvas/resources",
+    "//seoul/browser/product:product_core",
+    "//seoul/browser/product/browser:product_chromium",
+    "//seoul/browser/saui:saui_core",
+    "//seoul/browser/tasks:tasks_core",
+    "//services/network/public/mojom",
+    "//ui/webui",
+  ]
+}
