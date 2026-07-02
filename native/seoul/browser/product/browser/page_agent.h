@@ -1,0 +1,137 @@
+// Project Seoul product runtime - the browser-owned page agent.
+// The model never supplies executable JavaScript. This fixed, reviewed agent
+// observes a tab through the accessibility tree and performs typed actions
+// through AXActionData. Element handles are opaque (window/tab/generation/
+// node); they expire on navigation, document replacement, or a new
+// observation generation, so a stale handle can never act on a fresh
+// document.
+
+#ifndef SEOUL_BROWSER_PRODUCT_BROWSER_PAGE_AGENT_H_
+#define SEOUL_BROWSER_PRODUCT_BROWSER_PAGE_AGENT_H_
+
+#include <cstdint>
+#include <map>
+#include <optional>
+#include <string>
+#include <vector>
+
+#include "base/functional/callback.h"
+#include "base/memory/weak_ptr.h"
+#include "seoul/browser/lifecycle/lifecycle_identity.h"
+#include "seoul/browser/semantic/semantic_types.h"
+
+namespace content {
+class WebContents;
+}
+
+namespace seoul {
+
+// A bounded semantic observation of one document: identity plus visible
+// accessible elements. No raw HTML, no coordinates.
+struct PageObservation {
+  PageObservation();
+  PageObservation(const PageObservation&);
+  PageObservation(PageObservation&&);
+  PageObservation& operator=(const PageObservation&);
+  PageObservation& operator=(PageObservation&&);
+  ~PageObservation();
+
+  LiveTabKey tab;
+  uint64_t generation = 0;  // increments per observation of this tab
+  std::string url;          // origin + path, no fragments/credentials
+  std::string title;
+  bool loaded = false;
+
+  struct Element {
+    std::string handle;  // opaque, generation-scoped
+    std::string role;    // accessible role (button, textbox, link, ...)
+    std::string name;    // accessible name
+    std::string value;   // current value for inputs
+    bool enabled = true;
+    bool focusable = false;
+    bool editable = false;
+  };
+  std::vector<Element> elements;
+};
+
+// A typed page action. No arbitrary script; every action maps to an
+// AXActionData against a live node resolved from a non-expired handle.
+enum class PageActionKind {
+  kClick,
+  kType,
+  kClear,
+  kSelectOption,
+  kToggle,
+  kScrollToElement,
+  kFocus,
+};
+
+struct PageActionRequest {
+  PageActionKind kind = PageActionKind::kClick;
+  std::string handle;  // element handle from the current observation
+  std::string value;   // kType / kSelectOption text
+};
+
+enum class PageActionStatus {
+  kOk,
+  kUnknownTab,
+  kExpiredHandle,  // navigation/replacement/new generation since capture
+  kElementGone,    // handle valid but the node no longer exists
+  kNotActionable,  // element not enabled/editable for this action
+  kActionFailed,
+};
+
+// Resolves a Seoul tab key to its live WebContents. Injected so the agent
+// stays independent of the tab strip wiring.
+using WebContentsResolver =
+    base::RepeatingCallback<content::WebContents*(const LiveTabKey&)>;
+
+class PageAgent {
+ public:
+  explicit PageAgent(WebContentsResolver resolver);
+  PageAgent(const PageAgent&) = delete;
+  PageAgent& operator=(const PageAgent&) = delete;
+  ~PageAgent();
+
+  // Captures a fresh observation of `tab`, bumping its generation and
+  // expiring all prior handles for that tab. Asynchronous (the AX snapshot is
+  // async); the callback carries nullopt when the tab is not resolvable.
+  void Observe(
+      const LiveTabKey& tab,
+      base::OnceCallback<void(std::optional<PageObservation>)> callback);
+
+  // Performs a typed action. Revalidates window/tab/generation/handle before
+  // touching the page; a stale handle is rejected, never coerced.
+  PageActionStatus PerformAction(const LiveTabKey& tab,
+                                 const PageActionRequest& request);
+
+  // Invalidates all handles for a tab (called by the runtime on navigation or
+  // document replacement so the next action re-observes).
+  void InvalidateTab(const LiveTabKey& tab);
+
+ private:
+  struct NodeBinding {
+    int32_t ax_node_id = 0;
+    std::string role;
+    bool editable = false;
+    bool enabled = true;
+  };
+  struct TabGeneration {
+    uint64_t generation = 0;
+    std::map<std::string, NodeBinding> handles;  // handle -> node
+  };
+
+  void OnSnapshot(
+      LiveTabKey tab,
+      uint64_t expected_generation,
+      base::OnceCallback<void(std::optional<PageObservation>)> callback,
+      /* ui::AXTreeUpdate */ void* update_ptr);
+
+  WebContentsResolver resolver_;
+  std::map<LiveTabKey, TabGeneration> tabs_;
+  base::WeakPtrFactory<PageAgent> weak_factory_{this};
+};
+
+}  // namespace seoul
+
+#endif  // SEOUL_BROWSER_PRODUCT_BROWSER_PAGE_AGENT_H_
