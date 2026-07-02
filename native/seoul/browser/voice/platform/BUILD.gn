@@ -1,0 +1,29 @@
+# Project Seoul voice operating layer - Apple platform adapters.
+# Real on-device STT (SFSpeechRecognizer) and TTS (AVSpeechSynthesizer)
+# implementations of the provider-neutral seams. macOS-only Objective-C++;
+# links the Speech and AVFoundation frameworks. This target builds only on a
+# capable macOS host and is gated on is_mac.
+
+source_set("voice_platform_apple") {
+  # Apple frameworks are macOS-only; the pure voice_core seams are used on all
+  # platforms, but these concrete adapters compile only for Mac.
+  assert(is_mac)
+
+  sources = [
+    "apple_speech_recognizer.h",
+    "apple_speech_recognizer.mm",
+    "apple_tts_engine.h",
+    "apple_tts_engine.mm",
+  ]
+
+  deps = [
+    "//base",
+    "//seoul/browser/voice:voice_core",
+  ]
+
+  frameworks = [
+    "AVFoundation.framework",
+    "Speech.framework",
+    "Foundation.framework",
+  ]
+}
