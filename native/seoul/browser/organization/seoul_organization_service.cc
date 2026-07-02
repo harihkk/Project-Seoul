@@ -14,6 +14,7 @@
 #include "seoul/browser/commands/command_executor.h"
 #include "seoul/browser/commands/live_target_resolver.h"
 #include "seoul/browser/lifecycle/lifecycle_events.h"
+#include "seoul/browser/lifecycle/live_window_state.h"
 #include "seoul/browser/lifecycle/persistence_scheduler.h"
 #include "seoul/browser/lifecycle/session_restore_watcher.h"
 #include "seoul/browser/lifecycle/window_watcher.h"
@@ -74,6 +75,11 @@ SeoulOrganizationService::SeoulOrganizationService(Profile* profile,
 }
 
 SeoulOrganizationService::~SeoulOrganizationService() = default;
+
+LiveWindowStateProvider*
+SeoulOrganizationService::live_window_state_provider() {
+  return window_watcher_ ? window_watcher_->live_state_provider() : nullptr;
+}
 
 // static
 void SeoulOrganizationService::RegisterProfilePrefs(

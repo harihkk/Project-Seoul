@@ -35,6 +35,7 @@ class ProjectionService;
 class ShellService;
 class CommandExecutor;
 class LifecycleCoordinator;
+class LiveWindowStateProvider;
 class PersistenceScheduler;
 class SessionRestoreWatcher;
 class WindowWatcher;
@@ -89,6 +90,11 @@ class SeoulOrganizationService : public KeyedService,
   }
   ShellService* shell_service() { return shell_service_.get(); }
   const ShellService* shell_service() const { return shell_service_.get(); }
+
+  // Narrow accessor for the product runtime service: the per-profile live
+  // window-state provider (owned by the window watcher). Used to read the
+  // live tab strip for read-only capabilities and to find the active tab.
+  LiveWindowStateProvider* live_window_state_provider();
 
   // KeyedService:
   void Shutdown() override;

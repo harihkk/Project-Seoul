@@ -26,6 +26,15 @@ std::optional<LiveWindowSnapshot> LiveWindowStateProvider::GetSnapshot(
   return it->second;
 }
 
+std::vector<LiveWindowKey> LiveWindowStateProvider::Windows() const {
+  std::vector<LiveWindowKey> keys;
+  keys.reserve(snapshots_.size());
+  for (const auto& [key, snapshot] : snapshots_) {
+    keys.push_back(key);
+  }
+  return keys;
+}
+
 LiveWindowSnapshot LiveWindowStateProvider::BuildSnapshot(
     LiveWindowKey window,
     TabStripModel* model) const {

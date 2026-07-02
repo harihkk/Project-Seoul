@@ -50,7 +50,14 @@ source_set("organization") {
     "//seoul/browser/commands:command_chromium",
     "//seoul/browser/lifecycle",
     "//seoul/browser/lifecycle:lifecycle_core",
-    "//seoul/browser/projection:projection_core",
+
+    # The service owns a ProjectionService (projection_chromium) and a
+    # ShellService (shell_chromium); it constructs both, so it must depend on
+    # the Chromium-facing targets, not just projection_core. The former missing
+    # shell dependency (constructing ShellService with no shell dep) is fixed
+    # here.
+    "//seoul/browser/projection:projection_chromium",
+    "//seoul/browser/shell:shell_chromium",
   ]
 }
 

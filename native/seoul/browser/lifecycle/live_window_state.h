@@ -5,6 +5,7 @@
 
 #include <map>
 #include <optional>
+#include <vector>
 
 #include "base/functional/callback.h"
 #include "base/observer_list.h"
@@ -32,6 +33,8 @@ class LiveWindowStateProvider {
   void SetLifecycleDegraded(bool degraded);
 
   std::optional<LiveWindowSnapshot> GetSnapshot(LiveWindowKey window) const;
+  // Keys of every window with a published snapshot, in deterministic order.
+  std::vector<LiveWindowKey> Windows() const;
   void PublishSnapshot(LiveWindowKey window, TabStripModel* model);
   void RemoveWindow(LiveWindowKey window);
 
