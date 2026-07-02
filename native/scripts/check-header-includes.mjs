@@ -110,6 +110,12 @@ if (!fs.existsSync(chromiumSrc)) {
       if (!m) {
         return;
       }
+      // Generated Mojo bindings headers (*.mojom.h / *.mojom-*.h) are build
+      // outputs, not source files, so they never exist in the checkout tree.
+      // Their generating .mojom is depended on via the BUILD graph instead.
+      if (/\.mojom(-[a-z]+)?\.h$/.test(m[1])) {
+        return;
+      }
       checked++;
       if (!fs.existsSync(path.join(chromiumSrc, m[1]))) {
         const rel = path.relative(repoRoot, file);

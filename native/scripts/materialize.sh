@@ -26,7 +26,7 @@ case "$CMD" in
   apply)
     stage "materialize native/seoul/ -> $SEOUL_OVERLAY_DEST"
     mkdir -p "$SEOUL_OVERLAY_DEST"
-    rsync -a --delete "$SEOUL_SRC_DIR"/ "$SEOUL_OVERLAY_DEST"/
+    rsync -a --delete --exclude='.DS_Store' "$SEOUL_SRC_DIR"/ "$SEOUL_OVERLAY_DEST"/
     log "OK: Seoul source materialized"
     ;;
   verify)
@@ -35,7 +35,7 @@ case "$CMD" in
       log "overlay not present at $SEOUL_OVERLAY_DEST (run: materialize.sh apply)"
       exit 1
     fi
-    diff_out="$(rsync -a --delete --dry-run --itemize-changes "$SEOUL_SRC_DIR"/ "$SEOUL_OVERLAY_DEST"/)"
+    diff_out="$(rsync -a --delete --dry-run --itemize-changes --exclude='.DS_Store' "$SEOUL_SRC_DIR"/ "$SEOUL_OVERLAY_DEST"/)"
     if [ -n "$diff_out" ]; then
       warn "overlay differs from native/seoul/:"
       printf '%s\n' "$diff_out"
