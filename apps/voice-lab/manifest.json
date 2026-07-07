@@ -1,0 +1,50 @@
+{
+  "note": "Seoul Voice Lab: pinned runtime and model candidates. sha256 values are recorded on first fetch and verified on every later fetch; a hash mismatch is a hard failure. Licenses are recorded per artifact. No artifact here ships in the product until it wins on measurement (docs/release readiness gates).",
+  "runtime": {
+    "id": "sherpa-onnx",
+    "version": "v1.13.3",
+    "license": "Apache-2.0",
+    "source": "https://github.com/k2-fsa/sherpa-onnx",
+    "url": "https://github.com/k2-fsa/sherpa-onnx/releases/download/v1.13.3/sherpa-onnx-v1.13.3-onnxruntime-1.24.4-osx-arm64-shared.tar.bz2",
+    "sha256": "dc101812665f9c6a68b8256fa80baf201795b572ea213d5b08735d2cedf9cc22"
+  },
+  "models": [
+    {
+      "id": "kokoro-en-tts",
+      "role": "tts-primary-candidate",
+      "voice_focus": "female (af_* voices), Seoul default identity candidate",
+      "license": "Apache-2.0 (model), Apache-2.0 (runtime)",
+      "url": "https://github.com/k2-fsa/sherpa-onnx/releases/download/tts-models/kokoro-en-v0_19.tar.bz2",
+      "sha256": "912804855a04745fa77a30be545b3f9a5d15c4d66db00b88cbcd4921df605ac7"
+    },
+    {
+      "id": "zipformer-streaming-en",
+      "role": "asr-streaming-candidate",
+      "license": "Apache-2.0 (k2-fsa icefall)",
+      "url": "https://github.com/k2-fsa/sherpa-onnx/releases/download/asr-models/sherpa-onnx-streaming-zipformer-en-2023-06-26.tar.bz2",
+      "sha256": "639e25b578e9e997131402199419c13a941f8e4e198e2da1ce57dbf5cf401282"
+    },
+    {
+      "id": "silero-vad",
+      "role": "vad",
+      "license": "MIT (snakers4/silero-vad)",
+      "url": "https://github.com/k2-fsa/sherpa-onnx/releases/download/asr-models/silero_vad.onnx",
+      "sha256": "9e2449e1087496d8d4caba907f23e0bd3f78d91fa552479bb9c23ac09cbb1fd6"
+    },
+    {
+      "id": "whisper-small-en",
+      "role": "asr-final-pass-candidate",
+      "license": "MIT (upstream Whisper weights), Apache-2.0 (ONNX export)",
+      "url": "https://github.com/k2-fsa/sherpa-onnx/releases/download/asr-models/sherpa-onnx-whisper-small.en.tar.bz2",
+      "sha256": "0cdba2b8aaab69e04847f3427cc9709574112e67913a1a84b7fec3a8729faa9a"
+    },
+    {
+      "id": "piper-amy-medium",
+      "role": "tts-latency-candidate",
+      "voice_focus": "female (en_US amy medium)",
+      "license": "MIT (piper), model card per voice (amy: public domain source corpus)",
+      "url": "https://github.com/k2-fsa/sherpa-onnx/releases/download/tts-models/vits-piper-en_US-amy-medium.tar.bz2",
+      "sha256": "9a5d1fc497f85e8022b785bff5f8105203b1e33099ee6265203efc70b0cb0264"
+    }
+  ]
+}
