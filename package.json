@@ -19,13 +19,17 @@
     "check:native-arch": "node scripts/check-native-architecture.mjs",
     "check:product-arch": "node scripts/check-product-architecture.mjs",
     "build:canvas": "node apps/canvas-prototype/build.mjs",
-    "test:canvas": "cd apps/canvas-prototype && npx tsc --noEmit -p tsconfig.json && cd ../.. && node --test apps/canvas-prototype/tests/generalization.test.mjs apps/canvas-prototype/tests/render.smoke.mjs",
+    "test:canvas": "cd apps/canvas-prototype && npx tsc --noEmit -p tsconfig.json && cd ../.. && npm run build:canvas && node --test apps/canvas-prototype/tests/generalization.test.mjs apps/canvas-prototype/tests/patch-engine.test.mjs apps/canvas-prototype/tests/render.smoke.mjs",
     "canvas": "node apps/canvas-prototype/build.mjs && open apps/canvas-prototype/dist/index.html",
     "verify:checkout": "native/scripts/verify-checkout.sh",
-    "ci": "npm run check && npm run check:scripts && npm run check:json && npm run check:manifest && npm run check:boundary && npm run check:neutrality && npm run check:harness-arch && npm run check:native-arch && npm run check:product-arch",
+    "ci": "npm run check && npm run check:scripts && npm run check:json && npm run check:manifest && npm run check:boundary && npm run check:neutrality && npm run check:harness-arch && npm run check:native-arch && npm run check:product-arch && npm run check:syntax && npm run check:protocol && npm run test:protocol && npm run test:canvas",
     "itest": "npm run build && node --test --test-concurrency=1 apps/browser-harness/itest/action-panel.itest.mjs apps/browser-harness/itest/tab-isolation.itest.mjs apps/browser-harness/itest/panel-lifecycle.itest.mjs apps/browser-harness/itest/navigation-invalidation.itest.mjs apps/browser-harness/itest/security.itest.mjs",
     "itest:headful": "npm run build && SEOUL_HEADFUL=1 node --test --test-concurrency=1 apps/browser-harness/itest/action-panel.itest.mjs apps/browser-harness/itest/tab-isolation.itest.mjs apps/browser-harness/itest/panel-lifecycle.itest.mjs apps/browser-harness/itest/navigation-invalidation.itest.mjs apps/browser-harness/itest/security.itest.mjs",
-    "itest:resilience": "npm run build && node --test --test-concurrency=1 apps/browser-harness/itest/worker-recovery-storage.resilience.mjs apps/browser-harness/itest/forced-worker-loss.resilience.mjs"
+    "itest:resilience": "npm run build && node --test --test-concurrency=1 apps/browser-harness/itest/worker-recovery-storage.resilience.mjs apps/browser-harness/itest/forced-worker-loss.resilience.mjs",
+    "generate:protocol": "node scripts/generate-protocol-types.mjs && node scripts/generate-component-catalog.mjs",
+    "check:protocol": "node scripts/check-protocol.mjs",
+    "test:protocol": "node --test protocol/tests/protocol-conformance.test.mjs",
+    "check:syntax": "bash native/scripts/syntax-check.sh"
   },
   "devDependencies": {
     "@types/chrome": "0.2.0",
