@@ -1,9 +1,12 @@
 // Headless render smoke test: loads the built self-contained HTML in a real
-// browser and drives the actual product loop - run a goal, confirm an adaptive
-// artifact renders (a real SVG chart), switch its representation and confirm
-// the SAME artifact patches to a table in place, and run a different capability
-// to confirm a second, differently-shaped artifact appears. Fails on any
-// console error. This proves the prototype runs, not just compiles.
+// browser and drives the actual fixture loop - run a goal, confirm an
+// adaptive artifact renders (a real SVG chart), switch its representation and
+// confirm the SAME artifact element is PATCHED (only the root component's
+// element is re-rendered; the artifact, its margin, and focus/scroll/selection
+// all survive), receive a synthetic stream batch through the patch engine,
+// and confirm the catalog is generated from the registered descriptors with
+// honest wording ("fixture contract validated", "synthetic demo data").
+// Fails on any console error.
 
 import test from 'node:test';
 import assert from 'node:assert/strict';
@@ -14,7 +17,7 @@ import { pathToFileURL } from 'node:url';
 const here = path.dirname(new URL(import.meta.url).pathname);
 const htmlUrl = pathToFileURL(path.join(here, '..', 'dist', 'index.html')).href;
 
-test('canvas prototype renders and drives the full loop headlessly', async () => {
+test('design lab renders, patches in place, and preserves focus and scroll', async () => {
   const browser = await puppeteer.launch({ args: ['--no-sandbox'] });
   try {
     const page = await browser.newPage();
@@ -23,45 +26,128 @@ test('canvas prototype renders and drives the full loop headlessly', async () =>
     page.on('pageerror', (e) => errors.push(String(e)));
     await page.goto(htmlUrl, { waitUntil: 'networkidle0' });
 
-    // The Canvas opens with a first artifact (the latency timeline -> a chart).
+    // The Canvas opens with a first artifact (the latency timeline -> chart).
     await page.waitForSelector('.artifact', { timeout: 5000 });
-    const firstIsChart = await page.$('.artifact .chart-svg');
-    assert.ok(firstIsChart, 'first artifact should render a real SVG chart');
-
-    // Real axes/series were drawn (not an empty SVG).
+    assert.ok(await page.$('.artifact .chart-svg'), 'first artifact should render a real SVG chart');
     const pathCount = await page.$$eval('.artifact .chart-svg path', (n) => n.length);
     assert.ok(pathCount >= 1, 'chart should draw at least one series path');
 
-    // Switch the chart to a table, in place: same artifact count, now a table.
+    // Honest wording: the margin says the fixture CONTRACT was validated and
+    // labels the data synthetic; it never claims observation-verified.
+    const marginText = await page.$eval('.artifact-margin', (el) => el.textContent);
+    assert.match(marginText, /fixture contract validated/);
+    assert.match(marginText, /synthetic demo data/);
+    assert.doesNotMatch(marginText, /(^|[^"])verified/);
+
+    // Every artifact carries a visible spoken-insight line, and the voice
+    // toggle is explicit and default-off.
+    const insight = await page.$eval('.artifact .artifact-insight', (el) => el.textContent);
+    assert.ok(insight && insight.length > 10, 'artifact renders its insight line');
+    const voiceDefaultOff = await page.$$eval('.ghost-btn', (btns) => {
+      const b = btns.find((x) => /Voice/.test(x.textContent));
+      return b ? { pressed: b.getAttribute('aria-pressed'), label: b.textContent } : null;
+    });
+    assert.ok(voiceDefaultOff, 'voice toggle exists');
+    assert.equal(voiceDefaultOff.pressed, 'false', 'voice is opt-in, never on by default');
+    await page.$$eval('.ghost-btn', (btns) => btns.find((x) => /Voice/.test(x.textContent)).click());
+    const voiceOn = await page.$$eval('.ghost-btn', (btns) => btns.find((x) => /Voice/.test(x.textContent)).getAttribute('aria-pressed'));
+    assert.equal(voiceOn, 'true', 'toggle turns voice on');
+
+    // The catalog index is generated from the registered descriptors.
+    const indexRows = await page.$$eval('.index-row', (rows) => rows.length);
+    assert.equal(indexRows, 20, 'catalog rows come from the 20 registered fixture descriptors');
+    assert.match(await page.$eval('.index-note', (el) => el.textContent), /[Ss]ynthetic/);
+
+    // Representation switch = a real incremental patch: mark the artifact,
+    // its margin, and the body wrapper; focus the composer with a selection;
+    // record the stack scroll. All must survive the patch, and only the root
+    // component's element may be replaced.
+    await page.evaluate(() => {
+      const artifact = document.querySelector('.artifact');
+      artifact.__seoulMarker = 'artifact';
+      artifact.querySelector('.artifact-margin').__seoulMarker = 'margin';
+      artifact.querySelector('.artifact-body').__seoulMarker = 'body';
+      const input = document.querySelector('.composer-input');
+      input.value = 'inspect selection survives';
+      input.focus();
+      input.setSelectionRange(8, 17);
+      const stack = document.querySelector('.stack');
+      stack.scrollTo({ top: 40, behavior: 'instant' });
+    });
+
     const artifactsBefore = await page.$$eval('.artifact', (n) => n.length);
-    const tableBtn = await page.$$eval('.rep-btn', (btns) => {
+    const clicked = await page.$$eval('.rep-btn', (btns) => {
       const t = btns.find((b) => b.textContent.trim() === 'Table');
       if (t) t.click();
       return !!t;
     });
-    assert.ok(tableBtn, 'a Table representation switch should be available');
-    await page.waitForSelector('.artifact .data-table', { timeout: 3000 });
-    const artifactsAfter = await page.$$eval('.artifact', (n) => n.length);
-    assert.equal(artifactsAfter, artifactsBefore, 'switching representation must patch in place, not duplicate');
+    assert.ok(clicked, 'a Table representation switch should be offered');
+    await page.waitForSelector('.artifact .data-table');
 
-    // Run a different capability (a record -> a card), a new artifact appears.
+    const after = await page.evaluate(() => {
+      const artifact = document.querySelector('.artifact');
+      const input = document.querySelector('.composer-input');
+      return {
+        artifactCount: document.querySelectorAll('.artifact').length,
+        artifactMarker: artifact.__seoulMarker ?? null,
+        marginMarker: artifact.querySelector('.artifact-margin').__seoulMarker ?? null,
+        bodyMarker: artifact.querySelector('.artifact-body').__seoulMarker ?? null,
+        activeIsComposer: document.activeElement === input,
+        selection: [input.selectionStart, input.selectionEnd],
+        stackScroll: document.querySelector('.stack').scrollTop,
+        hasChart: !!artifact.querySelector('.chart-svg'),
+      };
+    });
+    assert.equal(after.artifactCount, artifactsBefore, 'switch must not duplicate the artifact');
+    assert.equal(after.artifactMarker, 'artifact', 'the artifact element must keep its DOM identity');
+    assert.equal(after.marginMarker, 'margin', 'the margin receipt must keep its DOM identity');
+    assert.equal(after.bodyMarker, 'body', 'the body wrapper is patched within, not replaced');
+    assert.equal(after.activeIsComposer, true, 'focus must survive the patch');
+    assert.deepEqual(after.selection, [8, 17], 'text selection must survive the patch');
+    assert.equal(after.stackScroll, 40, 'scroll position must survive the patch');
+    assert.equal(after.hasChart, false, 'the chart was replaced by the table');
+
+    // A different capability appends a second, differently-shaped artifact.
+    await page.evaluate(() => { document.querySelector('.composer-input').value = ''; });
     await page.type('.composer-input', 'describe the compute node profile with region and status');
-    await page.click('.primary-btn');
+    await page.keyboard.press('Enter');
     await page.waitForFunction(
       (n) => document.querySelectorAll('.artifact').length > n,
-      { timeout: 3000 },
-      artifactsAfter,
+      {},
+      artifactsBefore,
     );
-    const hasCard = await page.$('.artifact .card-grid, .artifact .kv');
-    assert.ok(hasCard, 'a record result should render as a card/details, not a chart');
+    assert.ok(await page.$('.artifact .card-grid, .artifact .kv'), 'record renders as a card');
 
-    // Run a hierarchy capability -> a tree.
-    await page.$eval('.composer-input', (el) => (el.value = ''));
+    // Hierarchy renders a tree.
     await page.type('.composer-input', 'list the workspace project hierarchy tree');
-    await page.click('.primary-btn');
-    await page.waitForSelector('.artifact .tree', { timeout: 3000 });
+    await page.keyboard.press('Enter');
+    await page.waitForSelector('.artifact .tree');
 
-    assert.deepEqual(errors, [], 'no console/page errors during the loop');
+    // Streaming: the artifact updates in place through the patch engine.
+    await page.type('.composer-input', 'stream the live queue depth');
+    await page.keyboard.press('Enter');
+    await page.waitForSelector('.stream-controls');
+    const streamState = await page.evaluate(() => {
+      const root = document.getElementById('root');
+      const before = root.seoulDesignLab.surfaces()[0];
+      const artifact = [...document.querySelectorAll('.artifact')].at(-1);
+      artifact.__seoulMarker = 'stream-artifact';
+      document.querySelector('.stream-controls .rep-btn').click();
+      const afterRev = root.seoulDesignLab.surfaces()[0];
+      return {
+        surfaceUnchanged: before.surfaceId === afterRev.surfaceId,
+        revisionBefore: before.revision,
+        revisionAfter: afterRev.revision,
+        markerSurvived: artifact.__seoulMarker === 'stream-artifact',
+        stillHasChart: !!artifact.querySelector('.chart-svg'),
+      };
+    });
+    assert.equal(streamState.surfaceUnchanged, true, 'the stream batch updates the SAME surface');
+    assert.equal(streamState.revisionAfter, streamState.revisionBefore + 1, 'one atomic patch, one revision bump');
+    assert.equal(streamState.markerSurvived, true, 'the streaming artifact keeps its DOM identity');
+    assert.equal(streamState.stillHasChart, true, 'the chart survives the in-place data patch');
+
+    assert.deepEqual(errors, [], `no console errors during the loop:\n${errors.join('\n')}`);
   } finally {
     await browser.close();
   }
