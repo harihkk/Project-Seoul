@@ -26,6 +26,7 @@
 #include "base/values.h"
 #include "seoul/browser/product/task_service.h"
 #include "seoul/browser/tasks/plan_types.h"
+#include "seoul/browser/workflows/workflow_editor.h"
 #include "seoul/browser/workflows/workflow_graph.h"
 #include "seoul/browser/workflows/workflow_types.h"
 
@@ -35,8 +36,9 @@ inline constexpr size_t kMaxWorkflows = 200;
 
 class WorkflowService {
  public:
-  // `tasks` must outlive this service (the runtime owns both).
-  explicit WorkflowService(TaskService* tasks);
+  // `tasks` must outlive this service (the runtime owns both). Edits stamp
+  // `modified_at` through `clock`.
+  WorkflowService(TaskService* tasks, WorkflowClock clock);
   WorkflowService(const WorkflowService&) = delete;
   WorkflowService& operator=(const WorkflowService&) = delete;
   ~WorkflowService();
@@ -49,8 +51,11 @@ class WorkflowService {
   const WorkflowDefinition* Find(const WorkflowId& id) const;
   std::vector<WorkflowId> All() const;
 
-  // Applies one typed edit; the definition revalidates atomically.
-  WorkflowStatusResult AddNode(const WorkflowId& id, WorkflowNode node);
+  // Applies one typed edit; the definition revalidates atomically. `node` is
+  // inserted after `after_node_id`, or appended when it is empty.
+  WorkflowStatusResult AddNode(const WorkflowId& id,
+                               WorkflowNode node,
+                               const std::string& after_node_id);
   WorkflowStatusResult RemoveNode(const WorkflowId& id,
                                   const std::string& node_id);
   WorkflowStatusResult AddEdge(const WorkflowId& id, WorkflowEdge edge);
@@ -71,15 +76,16 @@ class WorkflowService {
 
   // Import/export through the workflow codec (user-driven).
   std::optional<WorkflowId> Import(const base::Value& value);
-  std::optional<base::Value::Dict> Export(const WorkflowId& id) const;
+  std::optional<base::DictValue> Export(const WorkflowId& id) const;
 
-  base::Value::Dict TakePersistedState() const;
-  void RestorePersistedState(const base::Value::Dict& state);
+  base::DictValue TakePersistedState() const;
+  void RestorePersistedState(const base::DictValue& state);
 
   size_t size() const { return workflows_.size(); }
 
  private:
   raw_ptr<TaskService> tasks_;
+  WorkflowClock clock_;
   std::map<WorkflowId, WorkflowDefinition> workflows_;
 };
 

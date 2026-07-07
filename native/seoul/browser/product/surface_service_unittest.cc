@@ -38,8 +38,8 @@ SemanticResult OrchardYields() {
   SemanticResult result;
   result.schema.shape = SemanticShape::kEntityCollection;
   result.schema.fields = {
-      Field("orchard", FieldPrimitive::kText, SemanticRole::kIdentifier),
-      Field("cultivar", FieldPrimitive::kText, SemanticRole::kCategory),
+      Field("orchard", FieldPrimitive::kString, SemanticRole::kIdentifier),
+      Field("cultivar", FieldPrimitive::kString, SemanticRole::kCategory),
       Field("yield_kg", FieldPrimitive::kNumber, SemanticRole::kMeasure)};
   result.data = base::test::ParseJson(R"json([
       {"orchard": "north-slope", "cultivar": "jonagold", "yield_kg": 412.5},
@@ -129,7 +129,7 @@ TEST(SurfaceServiceTest, PinPersistsAndRestores) {
   ASSERT_TRUE(service.SetPinned(id, true));
   ASSERT_EQ(service.PinnedSurfaces().size(), 1u);
 
-  const base::Value::Dict persisted = service.TakePersistedState();
+  const base::DictValue persisted = service.TakePersistedState();
 
   SurfaceService restored;
   restored.RestorePersistedState(persisted);
@@ -162,7 +162,7 @@ TEST(SurfaceServiceTest, EventResolutionFailsClosed) {
   submit.surface_id = id;
   submit.component_id = "form";
   submit.kind = ComponentEventKind::kSubmit;
-  base::Value::Dict fields;
+  base::DictValue fields;
   fields.Set("note", "hello");
   submit.value = base::Value(std::move(fields));
   const SurfaceEventOutcome outcome = service.HandleComponentEvent(submit);
@@ -174,25 +174,25 @@ TEST(SurfaceServiceTest, DeclaredToolCallActionResolvesToCapability) {
   // Inject a surface that declares a tool-call action through the persistence
   // path (ParseSurface accepts declared actions), then resolve an event
   // against it.
-  base::Value::Dict surface;
+  base::DictValue surface;
   surface.Set("kind", "response");
   surface.Set("schema_version", 1);
   surface.Set("title", "Fixture");
-  base::Value::List components;
-  base::Value::Dict button;
+  base::ListValue components;
+  base::DictValue button;
   button.Set("id", "refresh-btn");
   button.Set("type", "button");
   button.Set("accessible_name", "Refresh");
-  base::Value::Dict props;
+  base::DictValue props;
   props.Set("label", "Refresh");
   button.Set("props", std::move(props));
-  base::Value::List action_refs;
+  base::ListValue action_refs;
   action_refs.Append("refresh");
   button.Set("actions", std::move(action_refs));
   components.Append(std::move(button));
   surface.Set("components", std::move(components));
-  base::Value::List actions;
-  base::Value::Dict action;
+  base::ListValue actions;
+  base::DictValue action;
   action.Set("id", "refresh");
   action.Set("label", "Refresh");
   action.Set("kind", "tool_call");
@@ -201,9 +201,9 @@ TEST(SurfaceServiceTest, DeclaredToolCallActionResolvesToCapability) {
   surface.Set("actions", std::move(actions));
   surface.Set("pinned", true);
 
-  base::Value::Dict persisted;
-  base::Value::List pinned;
-  base::Value::Dict entry;
+  base::DictValue persisted;
+  base::ListValue pinned;
+  base::DictValue entry;
   entry.Set("surface", std::move(surface));
   pinned.Append(std::move(entry));
   persisted.Set("pinned", std::move(pinned));
@@ -231,6 +231,83 @@ TEST(SurfaceServiceTest, RefreshSemanticKeepsIdAndRejectsBadData) {
   SemanticResult refreshed = OrchardYields();
   EXPECT_TRUE(service.RefreshSemantic(id, refreshed));
   EXPECT_EQ(service.AllSurfaces().size(), 1u);
+}
+
+}  // namespace
+}  // namespace seoul
+
+namespace seoul {
+namespace {
+
+// Every declared surface-action kind must resolve to a typed outcome the
+// Canvas handler dispatches; a kind that resolved to nothing would be a
+// silently dead control. local_state is the one deliberate renderer-local
+// kind and maps to kNone by design. Injection uses the persistence path, the
+// same untrusted-document route pinned surfaces take.
+TEST(SurfaceActionCompletenessTest, EveryDeclaredActionKindHasAnOutcome) {
+  const struct {
+    const char* wire_kind;
+    const char* target;
+    SurfaceEventOutcome::Kind expected;
+  } kCases[] = {
+      {"tool_call", "fixture.tool.call",
+       SurfaceEventOutcome::Kind::kRunCapability},
+      {"local_state", "panel_open", SurfaceEventOutcome::Kind::kNone},
+      {"workflow_edit", "node-1", SurfaceEventOutcome::Kind::kWorkflowEdit},
+      {"browser_action", "browser.tabs.open",
+       SurfaceEventOutcome::Kind::kBrowserCommand},
+      {"task_approval", "step-1", SurfaceEventOutcome::Kind::kTaskApproval},
+      {"navigate", "https://example.test/x",
+       SurfaceEventOutcome::Kind::kNavigate},
+  };
+  for (const auto& test_case : kCases) {
+    SCOPED_TRACE(test_case.wire_kind);
+    base::DictValue surface;
+    surface.Set("kind", "response");
+    surface.Set("schema_version", 1);
+    surface.Set("title", "Fixture");
+    base::ListValue components;
+    base::DictValue button;
+    button.Set("id", "go");
+    button.Set("type", "button");
+    button.Set("accessible_name", "Go");
+    base::DictValue props;
+    props.Set("label", "Go");
+    button.Set("props", std::move(props));
+    base::ListValue action_refs;
+    action_refs.Append("act");
+    button.Set("actions", std::move(action_refs));
+    components.Append(std::move(button));
+    surface.Set("components", std::move(components));
+    base::ListValue actions;
+    base::DictValue action;
+    action.Set("id", "act");
+    action.Set("label", "Go");
+    action.Set("kind", test_case.wire_kind);
+    action.Set("target", test_case.target);
+    actions.Append(std::move(action));
+    surface.Set("actions", std::move(actions));
+    surface.Set("pinned", true);
+
+    base::DictValue persisted;
+    base::ListValue pinned;
+    base::DictValue entry;
+    entry.Set("surface", std::move(surface));
+    pinned.Append(std::move(entry));
+    persisted.Set("pinned", std::move(pinned));
+
+    SurfaceService service;
+    service.RestorePersistedState(persisted);
+    const std::vector<SurfaceId> ids = service.AllSurfaces();
+    ASSERT_EQ(ids.size(), 1u);
+
+    ComponentEvent event;
+    event.surface_id = ids[0];
+    event.component_id = "go";
+    event.kind = ComponentEventKind::kActivate;
+    event.action_id = "act";
+    EXPECT_EQ(service.HandleComponentEvent(event).kind, test_case.expected);
+  }
 }
 
 }  // namespace

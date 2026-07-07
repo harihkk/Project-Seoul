@@ -111,18 +111,18 @@ std::vector<ThreadSummary> ThreadService::Summaries() const {
   return out;
 }
 
-base::Value::Dict ThreadService::TakePersistedState() const {
-  base::Value::Dict state;
+base::DictValue ThreadService::TakePersistedState() const {
+  base::DictValue state;
   state.Set("next_id", static_cast<double>(next_id_));
-  base::Value::List threads;
+  base::ListValue threads;
   for (const auto& [id, thread] : threads_) {
-    base::Value::Dict entry;
+    base::DictValue entry;
     entry.Set("id", id);
     entry.Set("name", thread->name());
     entry.Set("archived", thread->archived());
-    base::Value::List items;
+    base::ListValue items;
     for (const ContextItem& item : thread->items()) {
-      base::Value::Dict item_value;
+      base::DictValue item_value;
       item_value.Set("id", item.id);
       item_value.Set("kind", ItemKindKey(item.kind));
       item_value.Set("title", item.title);
@@ -138,14 +138,14 @@ base::Value::Dict ThreadService::TakePersistedState() const {
   return state;
 }
 
-void ThreadService::RestorePersistedState(const base::Value::Dict& state) {
+void ThreadService::RestorePersistedState(const base::DictValue& state) {
   next_id_ = static_cast<uint64_t>(state.FindDouble("next_id").value_or(1.0));
-  const base::Value::List* threads = state.FindList("threads");
+  const base::ListValue* threads = state.FindList("threads");
   if (!threads) {
     return;
   }
   for (const base::Value& entry : *threads) {
-    const base::Value::Dict* dict = entry.GetIfDict();
+    const base::DictValue* dict = entry.GetIfDict();
     if (!dict) {
       continue;
     }
@@ -159,9 +159,9 @@ void ThreadService::RestorePersistedState(const base::Value::Dict& state) {
     if (dict->FindBool("archived").value_or(false)) {
       thread->Archive();
     }
-    if (const base::Value::List* items = dict->FindList("items")) {
+    if (const base::ListValue* items = dict->FindList("items")) {
       for (const base::Value& item_entry : *items) {
-        const base::Value::Dict* item_dict = item_entry.GetIfDict();
+        const base::DictValue* item_dict = item_entry.GetIfDict();
         if (!item_dict) {
           continue;
         }

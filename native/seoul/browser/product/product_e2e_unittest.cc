@@ -56,9 +56,9 @@ class UnseenSchemaExecutor : public CapabilityExecutor {
         field("station", FieldPrimitive::kString, SemanticRole::kIdentifier),
         field("substrate", FieldPrimitive::kString, SemanticRole::kCategory),
         field("reading", FieldPrimitive::kNumber, SemanticRole::kMeasure)};
-    base::Value::List rows;
+    base::ListValue rows;
     for (int i = 0; i < 3; ++i) {
-      base::Value::Dict row;
+      base::DictValue row;
       row.Set("station", "s" + base::NumberToString(i));
       row.Set("substrate", i % 2 ? "loam" : "silt");
       row.Set("reading", 10.0 + i);

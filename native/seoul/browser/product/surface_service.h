@@ -57,7 +57,7 @@ struct SurfaceEventOutcome {
 
   Kind kind = Kind::kNone;
   std::string target;
-  base::Value::Dict payload;  // declared action payload merged with the value
+  base::DictValue payload;  // declared action payload merged with the value
   SurfaceId surface_id;
 };
 
@@ -117,8 +117,8 @@ class SurfaceService {
   std::vector<CompilerReason> ReasonsFor(const SurfaceId& id) const;
 
   // Pinned-surface persistence, owned by the runtime service's pref plumbing.
-  base::Value::Dict TakePersistedState() const;
-  void RestorePersistedState(const base::Value::Dict& state);
+  base::DictValue TakePersistedState() const;
+  void RestorePersistedState(const base::DictValue& state);
 
   void AddObserver(SurfaceServiceObserver* observer);
   void RemoveObserver(SurfaceServiceObserver* observer);

@@ -114,12 +114,12 @@ TEST(PlannerTest, ModelOutputIsValidatedAndFallsBackWhenInvalid) {
   // path must reject it and fall back to the deterministic plan.
   ModelPlanRequester requester = base::BindRepeating(
       [](const std::string& prompt, bool prefer_local,
-         base::OnceCallback<void(std::optional<base::Value::Dict>, PlanOrigin)>
+         base::OnceCallback<void(std::optional<base::DictValue>, PlanOrigin)>
              callback) {
-        base::Value::Dict plan;
+        base::DictValue plan;
         plan.Set("goal", "x");
-        base::Value::List steps;
-        base::Value::Dict step;
+        base::ListValue steps;
+        base::DictValue step;
         step.Set("id", "step_1");
         step.Set("kind", "tool_call");
         step.Set("tool", "info.invented.capability");
@@ -180,10 +180,10 @@ TEST(PlanJsonTest, RoundTripsAndRejectsMalformed) {
   EXPECT_EQ(round->steps[1].guard->depends_on_step, "step_1");
 
   // Unknown step kinds and invalid tool ids are rejected, not skipped.
-  base::Value::Dict bad;
+  base::DictValue bad;
   bad.Set("goal", "g");
-  base::Value::List steps;
-  base::Value::Dict bad_step;
+  base::ListValue steps;
+  base::DictValue bad_step;
   bad_step.Set("id", "s");
   bad_step.Set("kind", "shell_command");
   steps.Append(std::move(bad_step));

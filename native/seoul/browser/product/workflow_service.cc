@@ -8,7 +8,8 @@
 
 namespace seoul {
 
-WorkflowService::WorkflowService(TaskService* tasks) : tasks_(tasks) {}
+WorkflowService::WorkflowService(TaskService* tasks, WorkflowClock clock)
+    : tasks_(tasks), clock_(std::move(clock)) {}
 
 WorkflowService::~WorkflowService() = default;
 
@@ -60,12 +61,13 @@ std::vector<WorkflowId> WorkflowService::All() const {
 }
 
 WorkflowStatusResult WorkflowService::AddNode(const WorkflowId& id,
-                                              WorkflowNode node) {
+                                              WorkflowNode node,
+                                              const std::string& after_node_id) {
   auto it = workflows_.find(id);
   if (it == workflows_.end()) {
     return base::unexpected(WorkflowError::kUnknownNode);
   }
-  return AddWorkflowNode(it->second, std::move(node));
+  return AddWorkflowNode(it->second, std::move(node), after_node_id, clock_);
 }
 
 WorkflowStatusResult WorkflowService::RemoveNode(const WorkflowId& id,
@@ -74,7 +76,7 @@ WorkflowStatusResult WorkflowService::RemoveNode(const WorkflowId& id,
   if (it == workflows_.end()) {
     return base::unexpected(WorkflowError::kUnknownNode);
   }
-  return RemoveWorkflowNode(it->second, node_id);
+  return RemoveWorkflowNode(it->second, node_id, clock_);
 }
 
 WorkflowStatusResult WorkflowService::AddEdge(const WorkflowId& id,
@@ -83,7 +85,7 @@ WorkflowStatusResult WorkflowService::AddEdge(const WorkflowId& id,
   if (it == workflows_.end()) {
     return base::unexpected(WorkflowError::kUnknownNode);
   }
-  return AddWorkflowEdge(it->second, edge);
+  return AddWorkflowEdge(it->second, edge, clock_);
 }
 
 WorkflowStatusResult WorkflowService::RemoveEdge(const WorkflowId& id,
@@ -93,7 +95,7 @@ WorkflowStatusResult WorkflowService::RemoveEdge(const WorkflowId& id,
   if (it == workflows_.end()) {
     return base::unexpected(WorkflowError::kUnknownNode);
   }
-  return RemoveWorkflowEdge(it->second, from, to);
+  return RemoveWorkflowEdge(it->second, from, to, clock_);
 }
 
 TaskId WorkflowService::RunWorkflow(const WorkflowId& id,
@@ -104,7 +106,7 @@ TaskId WorkflowService::RunWorkflow(const WorkflowId& id,
     return TaskId();
   }
   WorkflowResult<Plan> plan =
-      CompileWorkflow(it->second, base::Value::Dict(), TaskBudgets());
+      CompileWorkflow(it->second, base::DictValue(), TaskBudgets());
   if (!plan.has_value()) {
     return TaskId();
   }
@@ -181,7 +183,7 @@ std::optional<WorkflowId> WorkflowService::Import(const base::Value& value) {
   return id;
 }
 
-std::optional<base::Value::Dict> WorkflowService::Export(
+std::optional<base::DictValue> WorkflowService::Export(
     const WorkflowId& id) const {
   auto it = workflows_.find(id);
   if (it == workflows_.end()) {
@@ -190,9 +192,9 @@ std::optional<base::Value::Dict> WorkflowService::Export(
   return ExportWorkflow(it->second);
 }
 
-base::Value::Dict WorkflowService::TakePersistedState() const {
-  base::Value::Dict state;
-  base::Value::List workflows;
+base::DictValue WorkflowService::TakePersistedState() const {
+  base::DictValue state;
+  base::ListValue workflows;
   for (const auto& [id, definition] : workflows_) {
     workflows.Append(ExportWorkflow(definition));
   }
@@ -200,8 +202,8 @@ base::Value::Dict WorkflowService::TakePersistedState() const {
   return state;
 }
 
-void WorkflowService::RestorePersistedState(const base::Value::Dict& state) {
-  const base::Value::List* workflows = state.FindList("workflows");
+void WorkflowService::RestorePersistedState(const base::DictValue& state) {
+  const base::ListValue* workflows = state.FindList("workflows");
   if (!workflows) {
     return;
   }

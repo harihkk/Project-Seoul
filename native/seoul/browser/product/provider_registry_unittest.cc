@@ -90,7 +90,7 @@ TEST_F(ProviderRegistryTest, PlanRequesterFallsBackToNulloptWithNoProvider) {
   ProviderRegistry registry(&local_transport_, &cloud_transport_,
                             &credentials_);
   ModelPlanRequester requester = registry.MakePlanRequester();
-  base::test::TestFuture<std::optional<base::Value::Dict>, PlanOrigin> future;
+  base::test::TestFuture<std::optional<base::DictValue>, PlanOrigin> future;
   requester.Run("{\"goal\": \"x\"}", /*prefer_local=*/true,
                 future.GetCallback());
   EXPECT_FALSE(std::get<0>(future.Get()).has_value());
@@ -104,7 +104,7 @@ TEST_F(ProviderRegistryTest, SettingsPersistWithoutSecrets) {
   ASSERT_TRUE(registry.ConfigureCloud("cloud-model", true));
   credentials_.Set("cloud_reasoning", "secret-value");
 
-  const base::Value::Dict persisted = registry.TakePersistedState();
+  const base::DictValue persisted = registry.TakePersistedState();
   // No secret material in the persisted settings.
   std::string serialized;
   for (const auto [key, value] : persisted) {

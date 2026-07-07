@@ -61,8 +61,8 @@ class ThreadService {
   const ContextThread* FindThread(const std::string& thread_id) const;
   std::vector<ThreadSummary> Summaries() const;
 
-  base::Value::Dict TakePersistedState() const;
-  void RestorePersistedState(const base::Value::Dict& state);
+  base::DictValue TakePersistedState() const;
+  void RestorePersistedState(const base::DictValue& state);
 
   size_t size() const { return threads_.size(); }
 

@@ -19,6 +19,8 @@
 #ifndef SEOUL_BROWSER_PRODUCT_TASK_SURFACE_BRIDGE_H_
 #define SEOUL_BROWSER_PRODUCT_TASK_SURFACE_BRIDGE_H_
 
+#include <optional>
+
 #include <map>
 
 #include "base/memory/raw_ptr.h"

@@ -90,9 +90,9 @@ std::string FirstUrlInGoal(const std::string& goal) {
 // goal text itself (the capability's own contract decides how to interpret
 // it). Other required kinds are left unset and surface as validation
 // failures rather than fabricated values.
-base::Value::Dict SynthesizeArgs(const ToolSchema& schema,
+base::DictValue SynthesizeArgs(const ToolSchema& schema,
                                  const std::string& goal) {
-  base::Value::Dict args;
+  base::DictValue args;
   for (const SchemaField& field : schema.fields) {
     if (!field.required) {
       continue;
@@ -154,7 +154,7 @@ Planner::~Planner() = default;
 std::string Planner::BuildPlanningPrompt(
     const std::string& goal,
     const std::vector<const ToolDescriptor*>& capabilities) {
-  base::Value::Dict request;
+  base::DictValue request;
   request.Set("instruction",
               "Produce a plan as JSON with fields goal and steps. Each step "
               "is {id, kind, tool, args} with kind tool_call, or {id, kind, "
@@ -162,14 +162,14 @@ std::string Planner::BuildPlanningPrompt(
               "capabilities listed. Do not invent capabilities. Do not emit "
               "code.");
   request.Set("goal", goal);
-  base::Value::List capability_list;
+  base::ListValue capability_list;
   for (const ToolDescriptor* descriptor : capabilities) {
-    base::Value::Dict entry;
+    base::DictValue entry;
     entry.Set("id", descriptor->id.value());
     entry.Set("description", descriptor->description);
-    base::Value::Dict input;
+    base::DictValue input;
     for (const SchemaField& field : descriptor->input_schema.fields) {
-      base::Value::Dict field_spec;
+      base::DictValue field_spec;
       field_spec.Set("type", SchemaFieldKindName(field.kind));
       field_spec.Set("required", field.required);
       if (!field.description.empty()) {
@@ -275,7 +275,7 @@ void Planner::BuildPlan(const std::string& goal,
 void Planner::OnModelOutput(const std::string& goal,
                             ToolPermissionContext context,
                             base::OnceCallback<void(PlannerResult)> callback,
-                            std::optional<base::Value::Dict> output,
+                            std::optional<base::DictValue> output,
                             PlanOrigin origin) {
   if (output.has_value()) {
     std::optional<Plan> plan = PlanFromValue(output.value());

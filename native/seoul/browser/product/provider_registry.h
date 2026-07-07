@@ -87,8 +87,8 @@ class ProviderRegistry {
                 bool prefer_local,
                 ModelProvider::GenerateCallback callback);
 
-  base::Value::Dict TakePersistedState() const;
-  void RestorePersistedState(const base::Value::Dict& state);
+  base::DictValue TakePersistedState() const;
+  void RestorePersistedState(const base::DictValue& state);
 
   void Shutdown();
 
@@ -96,9 +96,9 @@ class ProviderRegistry {
   ModelProvider* PickProvider(bool prefer_local) const;
   void RequestPlan(const std::string& prompt,
                    bool prefer_local,
-                   base::OnceCallback<void(std::optional<base::Value::Dict>,
+                   base::OnceCallback<void(std::optional<base::DictValue>,
                                            PlanOrigin)> callback);
-  void OnPlanGenerated(base::OnceCallback<void(std::optional<base::Value::Dict>,
+  void OnPlanGenerated(base::OnceCallback<void(std::optional<base::DictValue>,
                                                PlanOrigin)> callback,
                        PlanOrigin origin,
                        base::expected<GenerationResult, std::string> result);

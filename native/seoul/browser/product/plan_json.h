@@ -15,12 +15,12 @@
 
 namespace seoul {
 
-base::Value::Dict PlanToValue(const Plan& plan);
+base::DictValue PlanToValue(const Plan& plan);
 
 // Parses an untrusted plan value. Structural failures return nullopt; the
 // result must still pass ValidatePlan against the permitted capability set
 // before any execution.
-std::optional<Plan> PlanFromValue(const base::Value::Dict& value);
+std::optional<Plan> PlanFromValue(const base::DictValue& value);
 
 }  // namespace seoul
 

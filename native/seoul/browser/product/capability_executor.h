@@ -38,7 +38,7 @@ struct CapabilityRequest {
 
   ToolId capability;
   int version = 1;
-  base::Value::Dict args;
+  base::DictValue args;
   TaskId task_id;
   std::string step_id;
   // The window the task was started from; window-scoped capabilities act here.

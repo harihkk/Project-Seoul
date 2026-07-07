@@ -80,7 +80,7 @@ class WorkflowServiceTest : public testing::Test {
   WorkflowServiceTest()
       : planner_(registry_, ModelPlanRequester()),
         tasks_(&registry_, &executors_, &planner_, FixedClock()),
-        workflows_(&tasks_) {
+        workflows_(&tasks_, FixedClock()) {
     ToolDescriptor descriptor;
     descriptor.id = ToolId::FromString("info.read.inventory");
     descriptor.name = "inventory reader";
@@ -123,13 +123,14 @@ TEST_F(WorkflowServiceTest, SaveEditExportImportRoundTrip) {
   second.label = "Read again";
   second.tool = ToolId::FromString("info.read.inventory");
   second.args.Set("query", "all");
-  ASSERT_TRUE(workflows_.AddNode(id, std::move(second)).has_value());
+  ASSERT_TRUE(
+      workflows_.AddNode(id, std::move(second), std::string()).has_value());
   WorkflowEdge edge;
   edge.from = "read_1";
   edge.to = "read_2";
   ASSERT_TRUE(workflows_.AddEdge(id, edge).has_value());
 
-  const std::optional<base::Value::Dict> exported = workflows_.Export(id);
+  const std::optional<base::DictValue> exported = workflows_.Export(id);
   ASSERT_TRUE(exported.has_value());
   const std::optional<WorkflowId> imported =
       workflows_.Import(base::Value(exported->Clone()));

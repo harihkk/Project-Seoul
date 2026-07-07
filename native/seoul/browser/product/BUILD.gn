@@ -21,6 +21,8 @@ source_set("product_core") {
     "surface_service.h",
     "task_service.cc",
     "task_service.h",
+    "task_snapshot_wire.cc",
+    "task_snapshot_wire.h",
     "task_surface_bridge.cc",
     "task_surface_bridge.h",
     "thread_service.cc",
@@ -52,6 +54,7 @@ test("seoul_product_unittests") {
     "provider_registry_unittest.cc",
     "surface_service_unittest.cc",
     "task_service_unittest.cc",
+    "task_snapshot_wire_unittest.cc",
     "task_surface_bridge_unittest.cc",
     "thread_workflow_service_unittest.cc",
   ]
@@ -71,4 +74,8 @@ test("seoul_product_unittests") {
     "//testing/gtest",
     "//url",
   ]
+
+  # The cross-language conformance corpus, mirrored from the repository's
+  # protocol/ directory by materialize.sh.
+  data = [ "//seoul/protocol/" ]
 }

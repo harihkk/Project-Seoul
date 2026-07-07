@@ -97,6 +97,9 @@ class SeoulRuntimeService : public KeyedService {
   SurfaceService* surfaces() { return surface_service_.get(); }
   ThreadService* threads() { return thread_service_.get(); }
   WorkflowService* workflows() { return workflow_service_.get(); }
+  TaskSurfaceBridge* task_surface_bridge() {
+    return task_surface_bridge_.get();
+  }
   ProviderRegistry* providers() { return provider_registry_.get(); }
   ToolRegistry& capabilities() { return runtime_.capabilities(); }
   PageAgent* page_agent() { return page_agent_.get(); }
@@ -126,7 +129,7 @@ class SeoulRuntimeService : public KeyedService {
   // capability or window (StartTaskWithPlan re-validates against the schema
   // and permission context).
   TaskId StartCapability(const std::string& capability_id,
-                         base::Value::Dict args,
+                         base::DictValue args,
                          const LiveWindowKey& window);
 
   // Credential writes go straight to the OS store; the value never returns to

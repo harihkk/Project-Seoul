@@ -334,14 +334,14 @@ std::vector<CompilerReason> SurfaceService::ReasonsFor(
                                : std::vector<CompilerReason>();
 }
 
-base::Value::Dict SurfaceService::TakePersistedState() const {
-  base::Value::Dict state;
-  base::Value::List pinned;
+base::DictValue SurfaceService::TakePersistedState() const {
+  base::DictValue state;
+  base::ListValue pinned;
   for (const auto& [id, stored] : surfaces_) {
     if (!stored->surface.pinned) {
       continue;
     }
-    base::Value::Dict entry;
+    base::DictValue entry;
     entry.Set("surface", SurfaceToValue(stored->surface));
     pinned.Append(std::move(entry));
   }
@@ -349,17 +349,17 @@ base::Value::Dict SurfaceService::TakePersistedState() const {
   return state;
 }
 
-void SurfaceService::RestorePersistedState(const base::Value::Dict& state) {
-  const base::Value::List* pinned = state.FindList("pinned");
+void SurfaceService::RestorePersistedState(const base::DictValue& state) {
+  const base::ListValue* pinned = state.FindList("pinned");
   if (!pinned) {
     return;
   }
   for (const base::Value& entry : *pinned) {
-    const base::Value::Dict* dict = entry.GetIfDict();
+    const base::DictValue* dict = entry.GetIfDict();
     if (!dict) {
       continue;
     }
-    const base::Value::Dict* surface_value = dict->FindDict("surface");
+    const base::DictValue* surface_value = dict->FindDict("surface");
     if (!surface_value) {
       continue;
     }

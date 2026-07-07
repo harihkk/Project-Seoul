@@ -23,41 +23,41 @@ constexpr char kCloudCredentialAccount[] = "cloud_reasoning";
 // it mirrors what PlanFromValue accepts. Providers that enforce json_schema
 // therefore return a plan-shaped object, and PlanFromValue + ValidatePlan
 // still re-check it defensively before anything runs.
-base::Value::Dict BuildPlanResponseSchema() {
-  base::Value::Dict step_properties;
-  step_properties.Set("id", base::Value::Dict().Set("type", "string"));
-  base::Value::List kind_enum;
+base::DictValue BuildPlanResponseSchema() {
+  base::DictValue step_properties;
+  step_properties.Set("id", base::DictValue().Set("type", "string"));
+  base::ListValue kind_enum;
   kind_enum.Append("tool_call");
   kind_enum.Append("approval_gate");
   kind_enum.Append("user_input");
-  step_properties.Set("kind", base::Value::Dict()
+  step_properties.Set("kind", base::DictValue()
                                   .Set("type", "string")
                                   .Set("enum", std::move(kind_enum)));
-  step_properties.Set("tool", base::Value::Dict().Set("type", "string"));
-  step_properties.Set("args", base::Value::Dict().Set("type", "object"));
-  step_properties.Set("prompt", base::Value::Dict().Set("type", "string"));
+  step_properties.Set("tool", base::DictValue().Set("type", "string"));
+  step_properties.Set("args", base::DictValue().Set("type", "object"));
+  step_properties.Set("prompt", base::DictValue().Set("type", "string"));
 
-  base::Value::List step_required;
+  base::ListValue step_required;
   step_required.Append("id");
   step_required.Append("kind");
-  base::Value::Dict step_schema;
+  base::DictValue step_schema;
   step_schema.Set("type", "object");
   step_schema.Set("properties", std::move(step_properties));
   step_schema.Set("required", std::move(step_required));
 
-  base::Value::Dict steps_schema;
+  base::DictValue steps_schema;
   steps_schema.Set("type", "array");
   steps_schema.Set("items", std::move(step_schema));
 
-  base::Value::Dict properties;
-  properties.Set("goal", base::Value::Dict().Set("type", "string"));
+  base::DictValue properties;
+  properties.Set("goal", base::DictValue().Set("type", "string"));
   properties.Set("steps", std::move(steps_schema));
 
-  base::Value::List required;
+  base::ListValue required;
   required.Append("goal");
   required.Append("steps");
 
-  base::Value::Dict schema;
+  base::DictValue schema;
   schema.Set("type", "object");
   schema.Set("properties", std::move(properties));
   schema.Set("required", std::move(required));
@@ -172,11 +172,11 @@ void ProviderRegistry::OnHealthResponse(base::OnceCallback<void(bool)> callback,
   local_models_discovered_.clear();
   if (local_healthy_) {
     // Chat-completions convention: {"data": [{"id": "<model>"}, ...]}.
-    std::optional<base::Value> parsed = base::JSONReader::Read(body);
+    std::optional<base::Value> parsed = base::JSONReader::Read(body, base::JSON_PARSE_RFC);
     if (parsed.has_value() && parsed->is_dict()) {
-      if (const base::Value::List* data = parsed->GetDict().FindList("data")) {
+      if (const base::ListValue* data = parsed->GetDict().FindList("data")) {
         for (const base::Value& entry : *data) {
-          const base::Value::Dict* dict = entry.GetIfDict();
+          const base::DictValue* dict = entry.GetIfDict();
           const std::string* id = dict ? dict->FindString("id") : nullptr;
           if (id && !id->empty() && local_models_discovered_.size() < 64) {
             local_models_discovered_.push_back(*id);
@@ -236,7 +236,7 @@ ModelPlanRequester ProviderRegistry::MakePlanRequester() {
 void ProviderRegistry::RequestPlan(
     const std::string& prompt,
     bool prefer_local,
-    base::OnceCallback<void(std::optional<base::Value::Dict>, PlanOrigin)>
+    base::OnceCallback<void(std::optional<base::DictValue>, PlanOrigin)>
         callback) {
   ModelProvider* provider = PickProvider(prefer_local);
   if (!provider || shutting_down_) {
@@ -259,7 +259,7 @@ void ProviderRegistry::RequestPlan(
 }
 
 void ProviderRegistry::OnPlanGenerated(
-    base::OnceCallback<void(std::optional<base::Value::Dict>, PlanOrigin)>
+    base::OnceCallback<void(std::optional<base::DictValue>, PlanOrigin)>
         callback,
     PlanOrigin origin,
     base::expected<GenerationResult, std::string> result) {
@@ -276,7 +276,7 @@ void ProviderRegistry::OnPlanGenerated(
     return;
   }
   // Some providers return the JSON as text; parse defensively.
-  std::optional<base::Value> parsed = base::JSONReader::Read(result->text);
+  std::optional<base::Value> parsed = base::JSONReader::Read(result->text, base::JSON_PARSE_RFC);
   if (parsed.has_value() && parsed->is_dict()) {
     std::move(callback).Run(parsed->GetDict().Clone(), origin);
     return;
@@ -296,8 +296,8 @@ void ProviderRegistry::Generate(const GenerationRequest& request,
   provider->Generate(request, std::move(callback));
 }
 
-base::Value::Dict ProviderRegistry::TakePersistedState() const {
-  base::Value::Dict state;
+base::DictValue ProviderRegistry::TakePersistedState() const {
+  base::DictValue state;
   state.Set("local_endpoint", local_endpoint_);
   state.Set("local_model", local_model_);
   state.Set("cloud_model", cloud_model_);
@@ -305,7 +305,7 @@ base::Value::Dict ProviderRegistry::TakePersistedState() const {
   return state;
 }
 
-void ProviderRegistry::RestorePersistedState(const base::Value::Dict& state) {
+void ProviderRegistry::RestorePersistedState(const base::DictValue& state) {
   const std::string* local_endpoint = state.FindString("local_endpoint");
   const std::string* local_model = state.FindString("local_model");
   if (local_endpoint && local_model && !local_endpoint->empty() &&

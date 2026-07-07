@@ -58,7 +58,7 @@ struct PlannerResult {
 using ModelPlanRequester = base::RepeatingCallback<void(
     const std::string& prompt,
     bool prefer_local,
-    base::OnceCallback<void(std::optional<base::Value::Dict> output,
+    base::OnceCallback<void(std::optional<base::DictValue> output,
                             PlanOrigin origin)>)>;
 
 class Planner {
@@ -98,7 +98,7 @@ class Planner {
   void OnModelOutput(const std::string& goal,
                      ToolPermissionContext context,
                      base::OnceCallback<void(PlannerResult)> callback,
-                     std::optional<base::Value::Dict> output,
+                     std::optional<base::DictValue> output,
                      PlanOrigin origin);
 
   const raw_ref<const ToolRegistry> registry_;

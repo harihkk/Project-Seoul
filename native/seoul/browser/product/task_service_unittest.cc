@@ -83,7 +83,7 @@ class ManualExecutor : public CapabilityExecutor {
 
   int executions() const { return executions_; }
   int cancels() const { return cancels_; }
-  const base::Value::Dict& last_args() const { return last_args_; }
+  const base::DictValue& last_args() const { return last_args_; }
   void set_synchronous(bool synchronous) {
     complete_synchronously_ = synchronous;
   }
@@ -95,7 +95,7 @@ class ManualExecutor : public CapabilityExecutor {
   bool complete_synchronously_ = true;
   int executions_ = 0;
   int cancels_ = 0;
-  base::Value::Dict last_args_;
+  base::DictValue last_args_;
   CapabilityCallback pending_;
 };
 

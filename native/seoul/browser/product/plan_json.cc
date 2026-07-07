@@ -37,12 +37,12 @@ std::optional<PlanStepKind> StepKindFromString(std::string_view kind) {
 
 }  // namespace
 
-base::Value::Dict PlanToValue(const Plan& plan) {
-  base::Value::Dict dict;
+base::DictValue PlanToValue(const Plan& plan) {
+  base::DictValue dict;
   dict.Set("goal", plan.goal);
-  base::Value::List steps;
+  base::ListValue steps;
   for (const PlanStep& step : plan.steps) {
-    base::Value::Dict s;
+    base::DictValue s;
     s.Set("id", step.id);
     s.Set("kind", StepKindToString(step.kind));
     if (step.kind == PlanStepKind::kToolCall) {
@@ -55,7 +55,7 @@ base::Value::Dict PlanToValue(const Plan& plan) {
       s.Set("requires_approval", true);
     }
     if (step.guard.has_value()) {
-      base::Value::Dict guard;
+      base::DictValue guard;
       guard.Set("depends_on_step", step.guard->depends_on_step);
       guard.Set("require_success", step.guard->require_success);
       s.Set("guard", std::move(guard));
@@ -73,9 +73,9 @@ base::Value::Dict PlanToValue(const Plan& plan) {
   return dict;
 }
 
-std::optional<Plan> PlanFromValue(const base::Value::Dict& value) {
+std::optional<Plan> PlanFromValue(const base::DictValue& value) {
   const std::string* goal = value.FindString("goal");
-  const base::Value::List* steps = value.FindList("steps");
+  const base::ListValue* steps = value.FindList("steps");
   if (!goal || !steps || steps->empty() ||
       steps->size() > kMaxSerializedSteps) {
     return std::nullopt;
@@ -83,7 +83,7 @@ std::optional<Plan> PlanFromValue(const base::Value::Dict& value) {
   Plan plan;
   plan.goal = *goal;
   for (const base::Value& entry : *steps) {
-    const base::Value::Dict* s = entry.GetIfDict();
+    const base::DictValue* s = entry.GetIfDict();
     if (!s) {
       return std::nullopt;
     }
@@ -105,7 +105,7 @@ std::optional<Plan> PlanFromValue(const base::Value::Dict& value) {
         return std::nullopt;
       }
       step.tool = ToolId::FromString(*tool);
-      if (const base::Value::Dict* args = s->FindDict("args")) {
+      if (const base::DictValue* args = s->FindDict("args")) {
         step.args = args->Clone();
       }
     } else {
@@ -116,7 +116,7 @@ std::optional<Plan> PlanFromValue(const base::Value::Dict& value) {
       step.prompt = *prompt;
     }
     step.requires_approval = s->FindBool("requires_approval").value_or(false);
-    if (const base::Value::Dict* guard = s->FindDict("guard")) {
+    if (const base::DictValue* guard = s->FindDict("guard")) {
       const std::string* depends = guard->FindString("depends_on_step");
       if (!depends || depends->empty()) {
         return std::nullopt;

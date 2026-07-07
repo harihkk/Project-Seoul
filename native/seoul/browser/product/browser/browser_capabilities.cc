@@ -227,13 +227,13 @@ void EnumerateTabsExecutor::Execute(CapabilityRequest request,
       Field("pinned", FieldPrimitive::kBoolean, SemanticRole::kCategory),
       Field("active", FieldPrimitive::kBoolean, SemanticRole::kStatus)};
 
-  base::Value::List rows;
+  base::ListValue rows;
   if (live_state_) {
     const std::optional<LiveWindowSnapshot> snapshot =
         live_state_->GetSnapshot(request.window);
     if (snapshot.has_value()) {
       for (const LiveTabDescriptor& tab : snapshot->tabs) {
-        base::Value::Dict row;
+        base::DictValue row;
         row.Set("tab", tab.tab.value());
         row.Set("order", tab.strip_order);
         row.Set("pinned", tab.chromium_pinned);
@@ -298,9 +298,9 @@ void PageObserveExecutor::OnObserved(
       Field("name", FieldPrimitive::kString, SemanticRole::kName),
       Field("value", FieldPrimitive::kString, SemanticRole::kDescription),
       Field("editable", FieldPrimitive::kBoolean, SemanticRole::kStatus)};
-  base::Value::List rows;
+  base::ListValue rows;
   for (const PageObservation::Element& element : observation->elements) {
-    base::Value::Dict row;
+    base::DictValue row;
     row.Set("handle", element.handle);
     row.Set("role", element.role);
     row.Set("name", element.name);

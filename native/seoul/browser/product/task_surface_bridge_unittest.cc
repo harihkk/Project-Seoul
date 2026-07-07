@@ -35,9 +35,9 @@ SemanticResult UnseenCollection(int rows) {
   result.schema.shape = SemanticShape::kEntityCollection;
   result.schema.fields = {Field("orchard", SemanticRole::kIdentifier),
                           Field("cultivar", SemanticRole::kCategory)};
-  base::Value::List data;
+  base::ListValue data;
   for (int i = 0; i < rows; ++i) {
-    base::Value::Dict row;
+    base::DictValue row;
     row.Set("orchard", "o" + base::NumberToString(i));
     row.Set("cultivar", i % 2 ? "opal" : "jonagold");
     data.Append(std::move(row));

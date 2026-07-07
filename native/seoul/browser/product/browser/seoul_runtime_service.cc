@@ -89,7 +89,8 @@ SeoulRuntimeService::SeoulRuntimeService(
   task_surface_bridge_ = std::make_unique<TaskSurfaceBridge>(
       task_service_.get(), surface_service_.get());
   thread_service_ = std::make_unique<ThreadService>(base::BindRepeating(&Now));
-  workflow_service_ = std::make_unique<WorkflowService>(task_service_.get());
+  workflow_service_ = std::make_unique<WorkflowService>(
+      task_service_.get(), base::BindRepeating(&Now));
 
   RegisterBuiltinExecutors();
   LoadState();
@@ -236,7 +237,7 @@ void SeoulRuntimeService::OnWindowBindingClosed(
 }
 
 TaskId SeoulRuntimeService::StartCapability(const std::string& capability_id,
-                                            base::Value::Dict args,
+                                            base::DictValue args,
                                             const LiveWindowKey& window) {
   if (shutting_down_ || !task_service_ || !window.is_valid()) {
     return TaskId();
@@ -285,7 +286,7 @@ void SeoulRuntimeService::PersistState() {
   if (!prefs_ || shutting_down_) {
     return;
   }
-  base::Value::Dict state;
+  base::DictValue state;
   if (surface_service_) {
     state.Set("surfaces", surface_service_->TakePersistedState());
   }
@@ -305,17 +306,17 @@ void SeoulRuntimeService::LoadState() {
   if (!prefs_) {
     return;
   }
-  const base::Value::Dict& state = prefs_->GetDict(kProductRuntimePref);
-  if (const base::Value::Dict* surfaces = state.FindDict("surfaces")) {
+  const base::DictValue& state = prefs_->GetDict(kProductRuntimePref);
+  if (const base::DictValue* surfaces = state.FindDict("surfaces")) {
     surface_service_->RestorePersistedState(*surfaces);
   }
-  if (const base::Value::Dict* threads = state.FindDict("threads")) {
+  if (const base::DictValue* threads = state.FindDict("threads")) {
     thread_service_->RestorePersistedState(*threads);
   }
-  if (const base::Value::Dict* workflows = state.FindDict("workflows")) {
+  if (const base::DictValue* workflows = state.FindDict("workflows")) {
     workflow_service_->RestorePersistedState(*workflows);
   }
-  if (const base::Value::Dict* providers = state.FindDict("providers")) {
+  if (const base::DictValue* providers = state.FindDict("providers")) {
     provider_registry_->RestorePersistedState(*providers);
   }
 }
