@@ -1,0 +1,58 @@
+{
+  "schema": {
+    "schema_version": 1,
+    "shape": "action_set",
+    "fields": [
+      {
+        "id": "action_id",
+        "label": "Action",
+        "primitive": "string",
+        "role": "identifier",
+        "nullable": false
+      },
+      {
+        "id": "label",
+        "label": "Label",
+        "primitive": "string",
+        "role": "name",
+        "nullable": false
+      },
+      {
+        "id": "summary",
+        "label": "Summary",
+        "primitive": "string",
+        "role": "description"
+      }
+    ]
+  },
+  "data": [
+    {
+      "action_id": "rerun_sweep",
+      "label": "Re-run sweep",
+      "summary": "Repeat the last survey sweep with identical parameters."
+    },
+    {
+      "action_id": "export_readings",
+      "label": "Export readings",
+      "summary": "Write the current readings to the workspace archive."
+    },
+    {
+      "action_id": "flag_station",
+      "label": "Flag station",
+      "summary": "Mark the selected station for a follow-up visit."
+    }
+  ],
+  "provenance": {
+    "source_name": "Seoul Design Lab fixture corpus",
+    "retrieved_at_ms": 1767247200000,
+    "effective_at_ms": 1767247200000,
+    "timezone": "Etc/UTC",
+    "freshness": "cached",
+    "completeness": 1,
+    "provider": "fixture",
+    "transformations": [
+      "synthetic_generation"
+    ]
+  },
+  "state": "complete"
+}

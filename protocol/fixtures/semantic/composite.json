@@ -1,0 +1,79 @@
+{
+  "schema": {
+    "schema_version": 1,
+    "shape": "composite",
+    "fields": [],
+    "parts": [
+      {
+        "schema_version": 1,
+        "shape": "scalar",
+        "fields": [
+          {
+            "id": "open_flags",
+            "label": "Open flags",
+            "primitive": "integer",
+            "role": "count",
+            "nullable": false
+          }
+        ]
+      },
+      {
+        "schema_version": 1,
+        "shape": "time_series",
+        "fields": [
+          {
+            "id": "sampled_at",
+            "label": "Sampled",
+            "primitive": "timestamp",
+            "role": "timestamp",
+            "nullable": false
+          },
+          {
+            "id": "resolved",
+            "label": "Resolved",
+            "primitive": "integer",
+            "role": "count"
+          }
+        ]
+      }
+    ],
+    "part_names": [
+      "headline",
+      "trend"
+    ]
+  },
+  "data": {
+    "headline": 4,
+    "trend": [
+      {
+        "sampled_at": 1767225600000,
+        "resolved": 2
+      },
+      {
+        "sampled_at": 1767247200000,
+        "resolved": 5
+      },
+      {
+        "sampled_at": 1767268800000,
+        "resolved": 3
+      },
+      {
+        "sampled_at": 1767290400000,
+        "resolved": 7
+      }
+    ]
+  },
+  "provenance": {
+    "source_name": "Seoul Design Lab fixture corpus",
+    "retrieved_at_ms": 1767247200000,
+    "effective_at_ms": 1767247200000,
+    "timezone": "Etc/UTC",
+    "freshness": "cached",
+    "completeness": 1,
+    "provider": "fixture",
+    "transformations": [
+      "synthetic_generation"
+    ]
+  },
+  "state": "complete"
+}

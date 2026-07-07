@@ -1,0 +1,39 @@
+{
+  "schema_version": 1,
+  "id": "9b3f6d44-1e5a-4c7b-8f0d-3a2c4e6b8d0f",
+  "goal": "export the current readings to the workspace archive",
+  "state": "awaiting_approval",
+  "failure": "none",
+  "plan_origin": "deterministic",
+  "receipts": [
+    {
+      "step_id": "step-read",
+      "tool": "fixture.survey.readings",
+      "status": "succeeded",
+      "started_at_ms": 1767250800000,
+      "finished_at_ms": 1767250801200,
+      "observed_summary": "Fixture returned the registered entity_collection payload.",
+      "verification": {
+        "verified": true,
+        "method": "fixture_contract",
+        "detail": "fixture contract validated"
+      },
+      "route": "deterministic",
+      "cost_microdollars": 0,
+      "model_calls": 0,
+      "navigations": 0
+    }
+  ],
+  "usage": {
+    "steps_executed": 1,
+    "model_calls": 0,
+    "navigations": 0,
+    "cloud_cost_microdollars": 0,
+    "replans_used": 0
+  },
+  "pending_approval_step": "step-export",
+  "pending_approval_prompt": "Write 3 readings to the workspace archive?",
+  "has_semantic_result": false,
+  "window": "w-1",
+  "replans_used": 0
+}

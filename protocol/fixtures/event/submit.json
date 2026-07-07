@@ -1,0 +1,10 @@
+{
+  "surface_id": "3f2c9a10-5b7e-4c1d-9e2f-8a6b4c0d1e2f",
+  "component_id": "intake-form",
+  "kind": "submit",
+  "value": {
+    "station": "st-01",
+    "depth_cm": 40,
+    "notify": true
+  }
+}

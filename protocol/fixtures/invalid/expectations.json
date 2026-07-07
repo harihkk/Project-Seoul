@@ -1,0 +1,39 @@
+{
+  "cases": [
+    {
+      "file": "invalid/surface-unknown-component.json",
+      "schema": "adaptive-surface",
+      "valid": false
+    },
+    {
+      "file": "invalid/surface-event-handler-prop.json",
+      "schema": "adaptive-surface",
+      "valid": false
+    },
+    {
+      "file": "invalid/patch-unknown-op.json",
+      "schema": "surface-patch",
+      "valid": false
+    },
+    {
+      "file": "invalid/patch-empty-ops.json",
+      "schema": "surface-patch",
+      "valid": false
+    },
+    {
+      "file": "invalid/semantic-unknown-role.json",
+      "schema": "semantic-result",
+      "valid": false
+    },
+    {
+      "file": "invalid/semantic-extra-key.json",
+      "schema": "semantic-result",
+      "valid": false
+    },
+    {
+      "file": "invalid/event-bad-kind.json",
+      "schema": "component-event",
+      "valid": false
+    }
+  ]
+}

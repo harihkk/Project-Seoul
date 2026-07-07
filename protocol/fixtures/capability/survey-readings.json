@@ -1,0 +1,47 @@
+{
+  "schema_version": 1,
+  "id": "info.survey.readings",
+  "version": 1,
+  "name": "substrate survey readings",
+  "description": "collects substrate survey readings per station from the field log",
+  "provider": "fixture",
+  "input_schema": {
+    "type": "object",
+    "properties": {},
+    "required": []
+  },
+  "output_schema": {
+    "type": "object",
+    "properties": {
+      "result": {
+        "type": "object",
+        "description": "A canonical semantic result document."
+      }
+    },
+    "required": [
+      "result"
+    ]
+  },
+  "capability_tags": [
+    "survey",
+    "station",
+    "substrate",
+    "readings"
+  ],
+  "requires_network": false,
+  "sensitivity": "none",
+  "risk": "read_only",
+  "approval": "never_required",
+  "timeout_ms": 5000,
+  "cancellable": true,
+  "supports_streaming": false,
+  "idempotency": "idempotent",
+  "freshness": "static",
+  "retry": {
+    "max_attempts": 1,
+    "backoff_ms": 0
+  },
+  "observation_contract": "None. This is a synthetic Design Lab fixture: execution returns a canned payload and no real browser or provider state is observed.",
+  "verifier_id": "",
+  "preferred_component": "sortable_table"
+}

@@ -1,0 +1,168 @@
+{
+  "schema": {
+    "schema_version": 1,
+    "shape": "time_series",
+    "fields": [
+      {
+        "id": "sampled_at",
+        "label": "Sampled",
+        "primitive": "timestamp",
+        "role": "timestamp",
+        "timezone": "Etc/UTC",
+        "nullable": false
+      },
+      {
+        "id": "latency_ms",
+        "label": "Queue latency",
+        "primitive": "number",
+        "role": "measure",
+        "unit": "ms",
+        "precision": 1
+      },
+      {
+        "id": "throughput",
+        "label": "Throughput",
+        "primitive": "number",
+        "role": "measure",
+        "unit": "items/min",
+        "precision": 1
+      }
+    ]
+  },
+  "data": [
+    {
+      "sampled_at": 1767225600000,
+      "latency_ms": 42,
+      "throughput": 870
+    },
+    {
+      "sampled_at": 1767229200000,
+      "latency_ms": 44.3,
+      "throughput": 854.5
+    },
+    {
+      "sampled_at": 1767232800000,
+      "latency_ms": 46.5,
+      "throughput": 840
+    },
+    {
+      "sampled_at": 1767236400000,
+      "latency_ms": 48.4,
+      "throughput": 827.6
+    },
+    {
+      "sampled_at": 1767240000000,
+      "latency_ms": 49.8,
+      "throughput": 818
+    },
+    {
+      "sampled_at": 1767243600000,
+      "latency_ms": 50.7,
+      "throughput": 812
+    },
+    {
+      "sampled_at": 1767247200000,
+      "latency_ms": 51,
+      "throughput": 810
+    },
+    {
+      "sampled_at": 1767250800000,
+      "latency_ms": 50.7,
+      "throughput": 812
+    },
+    {
+      "sampled_at": 1767254400000,
+      "latency_ms": 49.8,
+      "throughput": 818
+    },
+    {
+      "sampled_at": 1767258000000,
+      "latency_ms": 48.4,
+      "throughput": 827.6
+    },
+    {
+      "sampled_at": 1767261600000,
+      "latency_ms": 46.5,
+      "throughput": 840
+    },
+    {
+      "sampled_at": 1767265200000,
+      "latency_ms": 44.3,
+      "throughput": 854.5
+    },
+    {
+      "sampled_at": 1767268800000,
+      "latency_ms": 56,
+      "throughput": 870
+    },
+    {
+      "sampled_at": 1767272400000,
+      "latency_ms": 53.7,
+      "throughput": 885.5
+    },
+    {
+      "sampled_at": 1767276000000,
+      "latency_ms": 51.5,
+      "throughput": 900
+    },
+    {
+      "sampled_at": 1767279600000,
+      "latency_ms": 49.6,
+      "throughput": 912.4
+    },
+    {
+      "sampled_at": 1767283200000,
+      "latency_ms": 34.2,
+      "throughput": 922
+    },
+    {
+      "sampled_at": 1767286800000,
+      "latency_ms": 33.3,
+      "throughput": 928
+    },
+    {
+      "sampled_at": 1767290400000,
+      "latency_ms": 33,
+      "throughput": 930
+    },
+    {
+      "sampled_at": 1767294000000,
+      "latency_ms": 33.3,
+      "throughput": 928
+    },
+    {
+      "sampled_at": 1767297600000,
+      "latency_ms": 34.2,
+      "throughput": 922
+    },
+    {
+      "sampled_at": 1767301200000,
+      "latency_ms": 35.6,
+      "throughput": 912.4
+    },
+    {
+      "sampled_at": 1767304800000,
+      "latency_ms": 37.5,
+      "throughput": 900
+    },
+    {
+      "sampled_at": 1767308400000,
+      "latency_ms": 39.7,
+      "throughput": 885.5
+    }
+  ],
+  "provenance": {
+    "source_name": "Seoul Design Lab fixture corpus",
+    "retrieved_at_ms": 1767247200000,
+    "effective_at_ms": 1767247200000,
+    "timezone": "Etc/UTC",
+    "freshness": "cached",
+    "completeness": 1,
+    "provider": "fixture",
+    "transformations": [
+      "synthetic_generation"
+    ],
+    "units": "ms"
+  },
+  "state": "complete"
+}

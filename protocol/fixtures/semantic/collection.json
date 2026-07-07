@@ -1,0 +1,99 @@
+{
+  "schema": {
+    "schema_version": 1,
+    "shape": "entity_collection",
+    "fields": [
+      {
+        "id": "station",
+        "label": "Station",
+        "primitive": "string",
+        "role": "identifier",
+        "nullable": false
+      },
+      {
+        "id": "substrate",
+        "label": "Substrate",
+        "primitive": "string",
+        "role": "category"
+      },
+      {
+        "id": "reading",
+        "label": "Reading",
+        "primitive": "number",
+        "role": "measure",
+        "unit": "mg/L",
+        "precision": 1
+      },
+      {
+        "id": "samples",
+        "label": "Samples",
+        "primitive": "integer",
+        "role": "count",
+        "aggregatable": true
+      }
+    ]
+  },
+  "data": [
+    {
+      "station": "st-01",
+      "substrate": "silt",
+      "reading": 12.4,
+      "samples": 9
+    },
+    {
+      "station": "st-02",
+      "substrate": "clay",
+      "reading": 8.1,
+      "samples": 12
+    },
+    {
+      "station": "st-03",
+      "substrate": "gravel",
+      "reading": 15.9,
+      "samples": 7
+    },
+    {
+      "station": "st-04",
+      "substrate": "silt",
+      "reading": 10.2,
+      "samples": 11
+    },
+    {
+      "station": "st-05",
+      "substrate": "sand",
+      "reading": 6.7,
+      "samples": 14
+    },
+    {
+      "station": "st-06",
+      "substrate": "clay",
+      "reading": 9.8,
+      "samples": 8
+    },
+    {
+      "station": "st-07",
+      "substrate": "gravel",
+      "reading": 13.3,
+      "samples": 10
+    },
+    {
+      "station": "st-08",
+      "substrate": "sand",
+      "reading": 7.5,
+      "samples": 13
+    }
+  ],
+  "provenance": {
+    "source_name": "Seoul Design Lab fixture corpus",
+    "retrieved_at_ms": 1767247200000,
+    "effective_at_ms": 1767247200000,
+    "timezone": "Etc/UTC",
+    "freshness": "cached",
+    "completeness": 1,
+    "provider": "fixture",
+    "transformations": [
+      "synthetic_generation"
+    ]
+  },
+  "state": "complete"
+}

@@ -1,0 +1,84 @@
+{
+  "schema": {
+    "schema_version": 1,
+    "shape": "code_structure",
+    "fields": [
+      {
+        "id": "symbol",
+        "label": "Symbol",
+        "primitive": "string",
+        "role": "identifier",
+        "nullable": false
+      },
+      {
+        "id": "display",
+        "label": "Name",
+        "primitive": "string",
+        "role": "name"
+      },
+      {
+        "id": "container",
+        "label": "Container",
+        "primitive": "string",
+        "role": "parent_reference"
+      },
+      {
+        "id": "kind",
+        "label": "Kind",
+        "primitive": "string",
+        "role": "category"
+      }
+    ]
+  },
+  "data": [
+    {
+      "symbol": "sampler",
+      "display": "sampler/",
+      "container": null,
+      "kind": "directory"
+    },
+    {
+      "symbol": "sampler.scheduler",
+      "display": "scheduler.ts",
+      "container": "sampler",
+      "kind": "file"
+    },
+    {
+      "symbol": "sampler.scheduler.plan",
+      "display": "plan()",
+      "container": "sampler.scheduler",
+      "kind": "function"
+    },
+    {
+      "symbol": "sampler.scheduler.drain",
+      "display": "drain()",
+      "container": "sampler.scheduler",
+      "kind": "function"
+    },
+    {
+      "symbol": "sampler.reader",
+      "display": "reader.ts",
+      "container": "sampler",
+      "kind": "file"
+    },
+    {
+      "symbol": "sampler.reader.poll",
+      "display": "poll()",
+      "container": "sampler.reader",
+      "kind": "function"
+    }
+  ],
+  "provenance": {
+    "source_name": "Seoul Design Lab fixture corpus",
+    "retrieved_at_ms": 1767247200000,
+    "effective_at_ms": 1767247200000,
+    "timezone": "Etc/UTC",
+    "freshness": "cached",
+    "completeness": 1,
+    "provider": "fixture",
+    "transformations": [
+      "synthetic_generation"
+    ]
+  },
+  "state": "complete"
+}

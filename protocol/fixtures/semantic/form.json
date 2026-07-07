@@ -1,0 +1,85 @@
+{
+  "schema": {
+    "schema_version": 1,
+    "shape": "form_schema",
+    "fields": [
+      {
+        "id": "field_id",
+        "label": "Field",
+        "primitive": "string",
+        "role": "identifier",
+        "nullable": false
+      },
+      {
+        "id": "label",
+        "label": "Label",
+        "primitive": "string",
+        "role": "name",
+        "nullable": false
+      },
+      {
+        "id": "input_kind",
+        "label": "Kind",
+        "primitive": "string",
+        "role": "category",
+        "nullable": false
+      },
+      {
+        "id": "required",
+        "label": "Required",
+        "primitive": "boolean",
+        "role": "none",
+        "nullable": false
+      },
+      {
+        "id": "hint",
+        "label": "Hint",
+        "primitive": "string",
+        "role": "description"
+      }
+    ]
+  },
+  "data": [
+    {
+      "field_id": "station",
+      "label": "Station id",
+      "input_kind": "text",
+      "required": true,
+      "hint": "Example: st-01"
+    },
+    {
+      "field_id": "window",
+      "label": "Observation window",
+      "input_kind": "date_range",
+      "required": true,
+      "hint": null
+    },
+    {
+      "field_id": "depth_cm",
+      "label": "Probe depth",
+      "input_kind": "number",
+      "required": false,
+      "hint": "Centimeters below surface"
+    },
+    {
+      "field_id": "notify",
+      "label": "Notify on completion",
+      "input_kind": "checkbox",
+      "required": false,
+      "hint": null
+    }
+  ],
+  "provenance": {
+    "source_name": "Seoul Design Lab fixture corpus",
+    "retrieved_at_ms": 1767247200000,
+    "effective_at_ms": 1767247200000,
+    "timezone": "Etc/UTC",
+    "freshness": "cached",
+    "completeness": 1,
+    "provider": "fixture",
+    "transformations": [
+      "synthetic_generation"
+    ]
+  },
+  "state": "complete"
+}

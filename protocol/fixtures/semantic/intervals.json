@@ -1,0 +1,74 @@
+{
+  "schema": {
+    "schema_version": 1,
+    "shape": "interval_series",
+    "fields": [
+      {
+        "id": "window_name",
+        "label": "Window",
+        "primitive": "string",
+        "role": "name",
+        "nullable": false
+      },
+      {
+        "id": "starts_at",
+        "label": "Starts",
+        "primitive": "timestamp",
+        "role": "interval_start",
+        "nullable": false
+      },
+      {
+        "id": "ends_at",
+        "label": "Ends",
+        "primitive": "timestamp",
+        "role": "interval_end",
+        "nullable": false
+      },
+      {
+        "id": "scope",
+        "label": "Scope",
+        "primitive": "string",
+        "role": "category"
+      }
+    ]
+  },
+  "data": [
+    {
+      "window_name": "index rebuild",
+      "starts_at": 1767232800000,
+      "ends_at": 1767243600000,
+      "scope": "storage"
+    },
+    {
+      "window_name": "cache warmup",
+      "starts_at": 1767240000000,
+      "ends_at": 1767247200000,
+      "scope": "edge"
+    },
+    {
+      "window_name": "schema migration",
+      "starts_at": 1767254400000,
+      "ends_at": 1767258000000,
+      "scope": "metadata"
+    },
+    {
+      "window_name": "snapshot export",
+      "starts_at": 1767268800000,
+      "ends_at": 1767283200000,
+      "scope": "storage"
+    }
+  ],
+  "provenance": {
+    "source_name": "Seoul Design Lab fixture corpus",
+    "retrieved_at_ms": 1767247200000,
+    "effective_at_ms": 1767247200000,
+    "timezone": "Etc/UTC",
+    "freshness": "cached",
+    "completeness": 1,
+    "provider": "fixture",
+    "transformations": [
+      "synthetic_generation"
+    ]
+  },
+  "state": "complete"
+}

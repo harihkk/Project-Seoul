@@ -1,0 +1,145 @@
+{
+  "note": "Seoul Canvas Design Lab fixture capability catalog. Every entry is synthetic demo data: running one returns the referenced canned semantic fixture and validates it against the canonical contract. No real browser observation occurs.",
+  "entries": [
+    {
+      "capability": "capability/pipeline-latency.json",
+      "result": "semantic/time-series.json",
+      "example_goal": "show the pipeline latency timeline",
+      "id": "info.pipeline.latency",
+      "name": "pipeline latency timeline"
+    },
+    {
+      "capability": "capability/survey-readings.json",
+      "result": "semantic/collection.json",
+      "example_goal": "collect the substrate survey readings per station",
+      "id": "info.survey.readings",
+      "name": "substrate survey readings"
+    },
+    {
+      "capability": "capability/node-profile.json",
+      "result": "semantic/record.json",
+      "example_goal": "describe the compute node profile with region and status",
+      "id": "info.node.profile",
+      "name": "compute node profile"
+    },
+    {
+      "capability": "capability/workspace-tree.json",
+      "result": "semantic/hierarchy.json",
+      "example_goal": "list the workspace project hierarchy tree",
+      "id": "info.workspace.tree",
+      "name": "workspace hierarchy"
+    },
+    {
+      "capability": "capability/reference-citations.json",
+      "result": "semantic/citations.json",
+      "example_goal": "return the reference citations for the thread",
+      "id": "info.sources.citations",
+      "name": "reference citations"
+    },
+    {
+      "capability": "capability/reliability-metric.json",
+      "result": "semantic/scalar.json",
+      "example_goal": "report the current reliability metric",
+      "id": "info.reliability.metric",
+      "name": "reliability metric"
+    },
+    {
+      "capability": "capability/materials-table.json",
+      "result": "semantic/table.json",
+      "example_goal": "list the materials inventory table",
+      "id": "info.materials.table",
+      "name": "materials inventory table"
+    },
+    {
+      "capability": "capability/maintenance-windows.json",
+      "result": "semantic/intervals.json",
+      "example_goal": "show the scheduled maintenance windows",
+      "id": "info.maintenance.windows",
+      "name": "maintenance windows"
+    },
+    {
+      "capability": "capability/module-graph.json",
+      "result": "semantic/graph.json",
+      "example_goal": "show the module dependency graph",
+      "id": "info.modules.graph",
+      "name": "module dependency graph"
+    },
+    {
+      "capability": "capability/station-coordinates.json",
+      "result": "semantic/geospatial.json",
+      "example_goal": "list the survey station coordinates",
+      "id": "info.stations.coordinates",
+      "name": "station coordinates"
+    },
+    {
+      "capability": "capability/calibration-procedure.json",
+      "result": "semantic/document.json",
+      "example_goal": "open the calibration procedure document",
+      "id": "info.manual.calibration",
+      "name": "calibration procedure"
+    },
+    {
+      "capability": "capability/intake-form.json",
+      "result": "semantic/form.json",
+      "example_goal": "show the observation intake form",
+      "id": "info.intake.form",
+      "name": "observation intake form"
+    },
+    {
+      "capability": "capability/maintenance-actions.json",
+      "result": "semantic/action-set.json",
+      "example_goal": "list the available maintenance actions",
+      "id": "info.maintenance.actions",
+      "name": "maintenance actions"
+    },
+    {
+      "capability": "capability/sampler-diff.json",
+      "result": "semantic/diff.json",
+      "example_goal": "show the sampler configuration diff",
+      "id": "info.config.diff",
+      "name": "sampler configuration diff"
+    },
+    {
+      "capability": "capability/module-structure.json",
+      "result": "semantic/code.json",
+      "example_goal": "show the sampler module code structure",
+      "id": "info.modules.structure",
+      "name": "module code structure"
+    },
+    {
+      "capability": "capability/status-digest.json",
+      "result": "semantic/composite.json",
+      "example_goal": "show the status digest",
+      "id": "info.status.digest",
+      "name": "status digest"
+    },
+    {
+      "capability": "capability/archive-inventory-partial.json",
+      "result": "semantic/partial-result.json",
+      "example_goal": "list the archive export inventory",
+      "id": "info.archive.exports",
+      "name": "archive export inventory"
+    },
+    {
+      "capability": "capability/queue-depth-stream.json",
+      "result": "semantic/streaming-update.json",
+      "example_goal": "stream the live queue depth",
+      "id": "info.queue.depth",
+      "name": "queue depth stream"
+    },
+    {
+      "capability": "capability/reading-disagreement.json",
+      "result": "semantic/source-conflict.json",
+      "example_goal": "show the disagreeing station reading",
+      "id": "info.survey.disagreement",
+      "name": "reading disagreement"
+    },
+    {
+      "capability": "capability/archive-inventory-error.json",
+      "result": "semantic/error-result.json",
+      "example_goal": "read the unreachable archive inventory",
+      "id": "info.archive.inventory",
+      "name": "archive inventory (unreachable)"
+    }
+  ]
+}

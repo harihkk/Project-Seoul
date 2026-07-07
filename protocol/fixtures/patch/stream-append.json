@@ -1,0 +1,24 @@
+{
+  "surface_id": "5a0d7e31-2c4b-4f6a-8d9e-1b3c5d7f9a0b",
+  "ops": [
+    {
+      "op": "append_series_points",
+      "entry": "latency",
+      "points": [
+        {
+          "t_ms": 1767240000000,
+          "y": 48.2
+        },
+        {
+          "t_ms": 1767243600000,
+          "y": 45.6
+        }
+      ]
+    },
+    {
+      "op": "set_state",
+      "target": "latency-chart",
+      "state": "ready"
+    }
+  ]
+}

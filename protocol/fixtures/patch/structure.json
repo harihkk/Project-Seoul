@@ -1,0 +1,48 @@
+{
+  "surface_id": "5a0d7e31-2c4b-4f6a-8d9e-1b3c5d7f9a0b",
+  "ops": [
+    {
+      "op": "append_child",
+      "target": "layout-root",
+      "component": {
+        "id": "flagged-note",
+        "type": "badge",
+        "props": {
+          "text": "One station flagged",
+          "tone": "attention"
+        }
+      }
+    },
+    {
+      "op": "replace_component",
+      "target": "station-table",
+      "component": {
+        "id": "station-table",
+        "type": "sortable_table",
+        "props": {
+          "title": "Station readings (re-read)"
+        },
+        "bindings": {
+          "data": "stations"
+        },
+        "accessible_name": "Station readings table after re-read"
+      }
+    },
+    {
+      "op": "remove_component",
+      "target": "headline-metric"
+    },
+    {
+      "op": "set_actions",
+      "actions": [
+        {
+          "id": "rerun-sweep",
+          "label": "Re-run sweep",
+          "kind": "tool_call",
+          "target": "fixture.survey.readings",
+          "requires_confirmation": false
+        }
+      ]
+    }
+  ]
+}

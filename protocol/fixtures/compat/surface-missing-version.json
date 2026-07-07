@@ -1,0 +1,12 @@
+{
+  "kind": "response",
+  "components": [
+    {
+      "id": "a",
+      "type": "text",
+      "props": {
+        "text": "no version field"
+      }
+    }
+  ]
+}

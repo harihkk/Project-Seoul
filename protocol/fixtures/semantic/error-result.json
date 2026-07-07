@@ -1,0 +1,45 @@
+{
+  "schema": {
+    "schema_version": 1,
+    "shape": "entity_collection",
+    "fields": [
+      {
+        "id": "archive_id",
+        "label": "Archive",
+        "primitive": "string",
+        "role": "identifier",
+        "nullable": false
+      },
+      {
+        "id": "label",
+        "label": "Label",
+        "primitive": "string",
+        "role": "name"
+      }
+    ]
+  },
+  "data": [],
+  "provenance": {
+    "source_name": "Seoul Design Lab fixture corpus",
+    "retrieved_at_ms": 1767247200000,
+    "effective_at_ms": 1767247200000,
+    "timezone": "Etc/UTC",
+    "freshness": "cached",
+    "completeness": 0,
+    "provider": "fixture",
+    "transformations": [
+      "synthetic_generation"
+    ]
+  },
+  "state": "failed",
+  "errors": [
+    {
+      "code": "source_unreachable",
+      "message": "The archive index did not answer within the timeout."
+    },
+    {
+      "code": "retry_exhausted",
+      "message": "Both retry attempts failed with the same timeout."
+    }
+  ]
+}

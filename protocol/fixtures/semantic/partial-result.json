@@ -1,0 +1,68 @@
+{
+  "schema": {
+    "schema_version": 1,
+    "shape": "entity_collection",
+    "fields": [
+      {
+        "id": "archive_id",
+        "label": "Archive",
+        "primitive": "string",
+        "role": "identifier",
+        "nullable": false
+      },
+      {
+        "id": "label",
+        "label": "Label",
+        "primitive": "string",
+        "role": "name"
+      },
+      {
+        "id": "size_mib",
+        "label": "Size",
+        "primitive": "number",
+        "role": "measure",
+        "unit": "MiB"
+      },
+      {
+        "id": "checksum",
+        "label": "Checksum",
+        "primitive": "string",
+        "role": "none"
+      }
+    ]
+  },
+  "data": [
+    {
+      "archive_id": "arc-0001",
+      "label": "January exports",
+      "size_mib": 512.4
+    },
+    {
+      "archive_id": "arc-0002",
+      "label": "February exports",
+      "size_mib": 498.1
+    },
+    {
+      "archive_id": "arc-0003",
+      "label": "March exports",
+      "size_mib": 530.7
+    }
+  ],
+  "provenance": {
+    "source_name": "Seoul Design Lab fixture corpus",
+    "retrieved_at_ms": 1767247200000,
+    "effective_at_ms": 1767247200000,
+    "timezone": "Etc/UTC",
+    "freshness": "cached",
+    "completeness": 0.6,
+    "provider": "fixture",
+    "transformations": [
+      "synthetic_generation"
+    ]
+  },
+  "state": "partial",
+  "continuation_token": "page-2-of-5",
+  "unavailable_field_ids": [
+    "checksum"
+  ]
+}

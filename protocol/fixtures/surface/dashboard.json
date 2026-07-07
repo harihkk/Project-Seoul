@@ -1,0 +1,165 @@
+{
+  "schema_version": 1,
+  "id": "5a0d7e31-2c4b-4f6a-8d9e-1b3c5d7f9a0b",
+  "kind": "dashboard",
+  "title": "Pipeline health",
+  "components": [
+    {
+      "id": "layout-root",
+      "type": "stack",
+      "children": [
+        {
+          "id": "headline-metric",
+          "type": "metric",
+          "props": {
+            "label": "Reliability index",
+            "unit": "%"
+          },
+          "bindings": {
+            "data": "reliability"
+          },
+          "accessible_name": "Reliability index metric",
+          "update_policy": "live"
+        },
+        {
+          "id": "latency-chart",
+          "type": "line_chart",
+          "props": {
+            "title": "Queue latency",
+            "x_label": "Time",
+            "y_label": "Latency",
+            "units": "ms"
+          },
+          "bindings": {
+            "data": "latency"
+          },
+          "accessible_name": "Queue latency line chart",
+          "update_policy": "live"
+        },
+        {
+          "id": "station-table",
+          "type": "sortable_table",
+          "props": {
+            "title": "Station readings"
+          },
+          "bindings": {
+            "data": "stations"
+          },
+          "accessible_name": "Station readings table",
+          "actions": [
+            "rerun-sweep"
+          ]
+        }
+      ]
+    }
+  ],
+  "data": {
+    "reliability": {
+      "kind": "scalar",
+      "value": 99.94,
+      "provenance": {
+        "source_name": "Seoul Design Lab fixture corpus",
+        "retrieved_at_ms": 1767247200000,
+        "effective_at_ms": 1767247200000,
+        "freshness": "cached",
+        "completeness": 1
+      }
+    },
+    "latency": {
+      "kind": "series",
+      "x_unit": "ms since epoch",
+      "y_unit": "ms",
+      "points": [
+        {
+          "t_ms": 1767225600000,
+          "y": 42
+        },
+        {
+          "t_ms": 1767229200000,
+          "y": 44.3
+        },
+        {
+          "t_ms": 1767232800000,
+          "y": 46.8
+        },
+        {
+          "t_ms": 1767236400000,
+          "y": 51.1
+        }
+      ],
+      "provenance": {
+        "source_name": "Seoul Design Lab fixture corpus",
+        "retrieved_at_ms": 1767247200000,
+        "effective_at_ms": 1767247200000,
+        "freshness": "cached",
+        "completeness": 1
+      }
+    },
+    "stations": {
+      "kind": "table",
+      "columns": [
+        {
+          "key": "station",
+          "label": "Station"
+        },
+        {
+          "key": "reading",
+          "label": "Reading"
+        }
+      ],
+      "rows": [
+        [
+          "st-01",
+          12.4
+        ],
+        [
+          "st-02",
+          8.1
+        ],
+        [
+          "st-03",
+          15.9
+        ]
+      ],
+      "provenance": {
+        "source_name": "Seoul Design Lab fixture corpus",
+        "retrieved_at_ms": 1767247200000,
+        "effective_at_ms": 1767247200000,
+        "freshness": "cached",
+        "completeness": 1
+      }
+    }
+  },
+  "actions": [
+    {
+      "id": "rerun-sweep",
+      "label": "Re-run sweep",
+      "kind": "tool_call",
+      "target": "fixture.survey.readings",
+      "payload": {},
+      "requires_confirmation": false
+    },
+    {
+      "id": "open-archive",
+      "label": "Open archive",
+      "kind": "navigate",
+      "target": "https://example.test/archive/sweeps",
+      "requires_confirmation": false
+    },
+    {
+      "id": "approve-export",
+      "label": "Approve export",
+      "kind": "task_approval",
+      "target": "step-export",
+      "requires_confirmation": true
+    }
+  ],
+  "provenance": {
+    "generator": "deterministic",
+    "created_at_ms": 1767250800000,
+    "source_urls": [
+      "https://example.test/archive/sweeps"
+    ]
+  },
+  "pinned": true
+}

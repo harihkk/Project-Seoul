@@ -1,0 +1,11 @@
+{
+  "schema_version": 1,
+  "kind": "response",
+  "components": [
+    {
+      "id": "x",
+      "type": "hologram",
+      "props": {}
+    }
+  ]
+}

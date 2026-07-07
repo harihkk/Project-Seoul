@@ -1,0 +1,39 @@
+{
+  "schema_version": 1,
+  "id": "7d1e4b22-9c3f-4a5d-8b6e-2f0a1c3d5e7f",
+  "goal": "collect the substrate survey readings per station",
+  "state": "completed",
+  "failure": "none",
+  "plan_origin": "deterministic",
+  "receipts": [
+    {
+      "step_id": "step-read",
+      "tool": "fixture.survey.readings",
+      "status": "succeeded",
+      "started_at_ms": 1767250800000,
+      "finished_at_ms": 1767250801200,
+      "observed_summary": "Fixture returned the registered entity_collection payload.",
+      "verification": {
+        "verified": true,
+        "method": "fixture_contract",
+        "detail": "fixture contract validated"
+      },
+      "route": "deterministic",
+      "cost_microdollars": 0,
+      "model_calls": 0,
+      "navigations": 0
+    }
+  ],
+  "usage": {
+    "steps_executed": 1,
+    "model_calls": 0,
+    "navigations": 0,
+    "cloud_cost_microdollars": 0,
+    "replans_used": 0
+  },
+  "pending_approval_step": "",
+  "pending_approval_prompt": "",
+  "has_semantic_result": true,
+  "window": "w-1",
+  "replans_used": 0
+}

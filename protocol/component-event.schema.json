@@ -1,0 +1,24 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "component-event.schema.json",
+  "title": "Seoul component event (canonical wire, protocol version 1)",
+  "description": "A typed event emitted by the Canvas when the user interacts with a rendered component. Mirrors native/seoul/browser/saui/saui_events.h. Events carry stable component/action ids and a typed value; the Canvas never emits raw DOM state or click coordinates. Events carry no protocol version of their own; they reference a versioned surface.",
+  "type": "object",
+  "required": ["surface_id", "component_id", "kind"],
+  "additionalProperties": false,
+  "properties": {
+    "surface_id": { "$ref": "adaptive-surface.schema.json#/$defs/surface_uuid" },
+    "component_id": { "$ref": "adaptive-surface.schema.json#/$defs/saui_identifier" },
+    "kind": {
+      "type": "string",
+      "enum": ["activate", "value_changed", "submit", "select", "dismiss"]
+    },
+    "action_id": {
+      "$ref": "adaptive-surface.schema.json#/$defs/saui_identifier",
+      "description": "The surface action triggered by this event, when the component declared one. Resolution happens in the Canvas session layer against the surface's validated action list."
+    },
+    "value": {
+      "description": "kind=value_changed: the new value. kind=submit: collected field values. kind=select: the selection key. Absent otherwise."
+    }
+  }
+}

@@ -1,0 +1,13 @@
+{
+  "surface_id": "5a0d7e31-2c4b-4f6a-8d9e-1b3c5d7f9a0b",
+  "ops": [
+    {
+      "op": "upsert_data_entry",
+      "entry": "reliability",
+      "value": {
+        "kind": "scalar",
+        "value": 99.97
+      }
+    }
+  ]
+}

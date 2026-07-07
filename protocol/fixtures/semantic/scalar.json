@@ -1,0 +1,32 @@
+{
+  "schema": {
+    "schema_version": 1,
+    "shape": "scalar",
+    "fields": [
+      {
+        "id": "reliability_index",
+        "label": "Reliability index",
+        "primitive": "number",
+        "role": "percentage",
+        "unit": "%",
+        "precision": 2,
+        "nullable": false
+      }
+    ]
+  },
+  "data": 99.94,
+  "provenance": {
+    "source_name": "Seoul Design Lab fixture corpus",
+    "retrieved_at_ms": 1767247200000,
+    "effective_at_ms": 1767247200000,
+    "timezone": "Etc/UTC",
+    "freshness": "cached",
+    "completeness": 1,
+    "provider": "fixture",
+    "transformations": [
+      "synthetic_generation"
+    ],
+    "units": "%"
+  },
+  "state": "complete"
+}

@@ -1,0 +1,335 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "adaptive-surface.schema.json",
+  "title": "Seoul adaptive surface document (canonical wire, protocol version 1)",
+  "description": "The SAUI declarative surface document. Mirrors native/seoul/browser/saui/saui_document.cc ParseSurface/SurfaceToValue exactly. No component carries executable code, raw HTML, or event handlers. Per-key prop bounds beyond structure (url-key scheme checks, code-key length, structured-list item rules) are enforced by the SAUI parser/validator on each side. `revision` is runtime state and never travels on the wire.",
+  "type": "object",
+  "required": ["schema_version", "kind", "components"],
+  "additionalProperties": false,
+  "properties": {
+    "schema_version": { "const": 1 },
+    "id": { "$ref": "#/$defs/surface_uuid" },
+    "kind": { "$ref": "#/$defs/surface_kind" },
+    "title": { "type": "string", "maxLength": 200 },
+    "components": {
+      "type": "array",
+      "minItems": 1,
+      "maxItems": 512,
+      "items": { "$ref": "#/$defs/component_node" }
+    },
+    "data": {
+      "type": "object",
+      "maxProperties": 128,
+      "propertyNames": { "pattern": "^[A-Za-z][A-Za-z0-9_-]{0,63}$" },
+      "additionalProperties": { "$ref": "#/$defs/data_entry" }
+    },
+    "actions": {
+      "type": "array",
+      "maxItems": 64,
+      "items": { "$ref": "#/$defs/surface_action" }
+    },
+    "provenance": { "$ref": "#/$defs/surface_provenance" },
+    "pinned": { "type": "boolean" }
+  },
+  "$defs": {
+    "surface_uuid": {
+      "type": "string",
+      "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$"
+    },
+    "saui_identifier": {
+      "type": "string",
+      "pattern": "^[A-Za-z][A-Za-z0-9_-]{0,63}$"
+    },
+    "surface_kind": {
+      "type": "string",
+      "enum": [
+        "response",
+        "form",
+        "dashboard",
+        "report",
+        "approval",
+        "workflow_canvas",
+        "task_status",
+        "monitor"
+      ]
+    },
+    "component_type": {
+      "type": "string",
+      "enum": [
+        "text",
+        "rich_text",
+        "heading",
+        "divider",
+        "badge",
+        "icon",
+        "image",
+        "link",
+        "citation",
+        "source_list",
+        "progress",
+        "spinner",
+        "error_state",
+        "empty_state",
+        "stack",
+        "row",
+        "grid",
+        "tabs",
+        "collapsible_section",
+        "resizable_panel",
+        "carousel",
+        "detail_drawer",
+        "button",
+        "segmented_control",
+        "checkbox",
+        "radio_group",
+        "select",
+        "text_input",
+        "numeric_input",
+        "date_input",
+        "date_range_input",
+        "time_input",
+        "slider",
+        "search_field",
+        "file_picker",
+        "confirmation",
+        "schema_form",
+        "key_value_card",
+        "metric",
+        "entity_card",
+        "list",
+        "table",
+        "sortable_table",
+        "comparison_matrix",
+        "timeline",
+        "activity_log",
+        "tree",
+        "pagination",
+        "filter_chips",
+        "document",
+        "media",
+        "file",
+        "line_chart",
+        "area_chart",
+        "bar_chart",
+        "stacked_bar_chart",
+        "scatter_chart",
+        "pie_chart",
+        "candlestick_chart",
+        "range_chart",
+        "sparkline",
+        "histogram",
+        "heat_map",
+        "network_graph",
+        "map",
+        "geo_layer",
+        "map_marker_list",
+        "task_graph",
+        "workflow_node",
+        "workflow_edge",
+        "trigger_card",
+        "approval_request",
+        "execution_status",
+        "result_card",
+        "retry_control",
+        "plan_view",
+        "current_step",
+        "action_receipt",
+        "blocker_list",
+        "cost_summary",
+        "provider_indicator",
+        "code_block",
+        "diff_view",
+        "diagnostic_list",
+        "log_viewer",
+        "stack_trace",
+        "file_tree"
+      ]
+    },
+    "component_state": {
+      "type": "string",
+      "enum": ["ready", "loading", "error", "empty"]
+    },
+    "update_policy": {
+      "type": "string",
+      "enum": ["static", "live"]
+    },
+    "prop_value": {
+      "description": "Primitive prop value, or a bounded structured list for the keys options/columns/chips/sources/segments (items are short strings or flat dicts of strings; sources items require an http(s) href; columns items require a key).",
+      "oneOf": [
+        { "type": "string", "maxLength": 65536 },
+        { "type": "number" },
+        { "type": "boolean" },
+        {
+          "type": "array",
+          "maxItems": 64,
+          "items": {
+            "oneOf": [
+              { "type": "string", "maxLength": 200 },
+              {
+                "type": "object",
+                "propertyNames": { "pattern": "^(?!on)(?!html$)(?!script$)(?!srcdoc$)(?!innerhtml$)(?!style$)[a-z][a-z0-9_]{0,39}$" },
+                "additionalProperties": { "type": "string", "maxLength": 4096 }
+              }
+            ]
+          }
+        }
+      ]
+    },
+    "props": {
+      "type": "object",
+      "maxProperties": 48,
+      "propertyNames": { "pattern": "^(?!on)(?!html$)(?!script$)(?!srcdoc$)(?!innerhtml$)(?!style$)[a-z][a-z0-9_]{0,39}$" },
+      "additionalProperties": { "$ref": "#/$defs/prop_value" }
+    },
+    "component_node": {
+      "type": "object",
+      "required": ["id", "type"],
+      "additionalProperties": false,
+      "properties": {
+        "id": { "$ref": "#/$defs/saui_identifier" },
+        "type": { "$ref": "#/$defs/component_type" },
+        "props": { "$ref": "#/$defs/props" },
+        "bindings": {
+          "type": "object",
+          "maxProperties": 8,
+          "propertyNames": { "pattern": "^[a-z][a-z0-9_]{0,39}$" },
+          "additionalProperties": { "$ref": "#/$defs/saui_identifier" },
+          "description": "slot name -> data entry name. The primary slot is \"data\"."
+        },
+        "accessible_name": { "type": "string", "maxLength": 400 },
+        "state": { "$ref": "#/$defs/component_state" },
+        "state_message": { "type": "string", "maxLength": 400 },
+        "update_policy": { "$ref": "#/$defs/update_policy" },
+        "actions": {
+          "type": "array",
+          "maxItems": 16,
+          "items": { "$ref": "#/$defs/saui_identifier" }
+        },
+        "children": {
+          "type": "array",
+          "maxItems": 64,
+          "items": { "$ref": "#/$defs/component_node" },
+          "description": "Depth bounded to 12 by the parsers."
+        }
+      }
+    },
+    "data_provenance": {
+      "type": "object",
+      "required": ["source_name"],
+      "additionalProperties": false,
+      "properties": {
+        "source_name": { "type": "string", "minLength": 1, "maxLength": 200 },
+        "source_url": { "type": "string", "maxLength": 4096 },
+        "retrieved_at_ms": { "type": "number" },
+        "effective_at_ms": { "type": "number" },
+        "timezone": { "type": "string", "maxLength": 64 },
+        "units": { "type": "string", "maxLength": 64 },
+        "freshness": {
+          "type": "string",
+          "enum": ["real_time", "delayed", "cached", "stale"]
+        },
+        "completeness": { "type": "number", "minimum": 0, "maximum": 1 }
+      }
+    },
+    "series_point": {
+      "type": "object",
+      "required": ["y"],
+      "additionalProperties": false,
+      "properties": {
+        "y": { "type": "number" },
+        "t_ms": { "type": "number", "description": "Epoch milliseconds; time-indexed points." },
+        "x": { "type": "number", "description": "Used when t_ms is absent." }
+      }
+    },
+    "data_entry": {
+      "type": "object",
+      "required": ["kind"],
+      "additionalProperties": false,
+      "properties": {
+        "kind": {
+          "type": "string",
+          "enum": ["scalar", "record", "series", "table"]
+        },
+        "value": { "description": "kind=scalar: one primitive (string/number/boolean)." },
+        "fields": {
+          "type": "object",
+          "maxProperties": 128,
+          "description": "kind=record: one flat dictionary of primitives."
+        },
+        "points": {
+          "type": "array",
+          "maxItems": 10000,
+          "items": { "$ref": "#/$defs/series_point" },
+          "description": "kind=series."
+        },
+        "x_unit": { "type": "string", "maxLength": 64 },
+        "y_unit": { "type": "string", "maxLength": 64 },
+        "columns": {
+          "type": "array",
+          "minItems": 1,
+          "maxItems": 64,
+          "items": {
+            "type": "object",
+            "required": ["key", "label"],
+            "additionalProperties": false,
+            "properties": {
+              "key": { "type": "string", "pattern": "^[a-z][a-z0-9_]{0,39}$" },
+              "label": { "type": "string", "maxLength": 200 }
+            }
+          },
+          "description": "kind=table."
+        },
+        "rows": {
+          "type": "array",
+          "maxItems": 2000,
+          "items": { "type": "array", "maxItems": 64 },
+          "description": "kind=table: rows of primitive cells, one per column."
+        },
+        "provenance": { "$ref": "#/$defs/data_provenance" }
+      }
+    },
+    "surface_action_kind": {
+      "type": "string",
+      "enum": [
+        "tool_call",
+        "local_state",
+        "workflow_edit",
+        "browser_action",
+        "task_approval",
+        "navigate"
+      ]
+    },
+    "surface_action": {
+      "type": "object",
+      "required": ["id", "label", "kind", "target"],
+      "additionalProperties": false,
+      "properties": {
+        "id": { "$ref": "#/$defs/saui_identifier" },
+        "label": { "type": "string", "minLength": 1, "maxLength": 200 },
+        "kind": { "$ref": "#/$defs/surface_action_kind" },
+        "target": { "type": "string", "minLength": 1, "maxLength": 4096 },
+        "payload": { "type": "object" },
+        "requires_confirmation": { "type": "boolean" }
+      }
+    },
+    "surface_provenance": {
+      "type": "object",
+      "required": ["generator"],
+      "additionalProperties": false,
+      "properties": {
+        "generator": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 200,
+          "description": "\"deterministic\" or \"model:<provider>/<model>\"."
+        },
+        "created_at_ms": { "type": "number" },
+        "source_urls": {
+          "type": "array",
+          "maxItems": 64,
+          "items": { "type": "string", "maxLength": 4096 }
+        }
+      }
+    }
+  }
+}

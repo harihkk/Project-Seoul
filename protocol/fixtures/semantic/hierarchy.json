@@ -1,0 +1,83 @@
+{
+  "schema": {
+    "schema_version": 1,
+    "shape": "hierarchy",
+    "fields": [
+      {
+        "id": "id",
+        "label": "Id",
+        "primitive": "string",
+        "role": "identifier",
+        "nullable": false
+      },
+      {
+        "id": "title",
+        "label": "Title",
+        "primitive": "string",
+        "role": "name",
+        "nullable": false
+      },
+      {
+        "id": "parent",
+        "label": "Parent",
+        "primitive": "string",
+        "role": "parent_reference"
+      }
+    ]
+  },
+  "data": [
+    {
+      "id": "root",
+      "title": "Workspaces",
+      "parent": null
+    },
+    {
+      "id": "ops",
+      "title": "Operations",
+      "parent": "root"
+    },
+    {
+      "id": "research",
+      "title": "Research",
+      "parent": "root"
+    },
+    {
+      "id": "ops-pipelines",
+      "title": "Pipelines",
+      "parent": "ops"
+    },
+    {
+      "id": "ops-monitoring",
+      "title": "Monitoring",
+      "parent": "ops"
+    },
+    {
+      "id": "research-surveys",
+      "title": "Surveys",
+      "parent": "research"
+    },
+    {
+      "id": "research-archive",
+      "title": "Archive",
+      "parent": "research"
+    },
+    {
+      "id": "ops-pipelines-batch",
+      "title": "Batch lane",
+      "parent": "ops-pipelines"
+    }
+  ],
+  "provenance": {
+    "source_name": "Seoul Design Lab fixture corpus",
+    "retrieved_at_ms": 1767247200000,
+    "effective_at_ms": 1767247200000,
+    "timezone": "Etc/UTC",
+    "freshness": "cached",
+    "completeness": 1,
+    "provider": "fixture",
+    "transformations": [
+      "synthetic_generation"
+    ]
+  },
+  "state": "complete"
+}

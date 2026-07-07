@@ -1,0 +1,76 @@
+{
+  "schema": {
+    "schema_version": 1,
+    "shape": "record",
+    "fields": [
+      {
+        "id": "node_id",
+        "label": "Node",
+        "primitive": "string",
+        "role": "identifier",
+        "nullable": false
+      },
+      {
+        "id": "display_name",
+        "label": "Name",
+        "primitive": "string",
+        "role": "name"
+      },
+      {
+        "id": "region",
+        "label": "Region",
+        "primitive": "string",
+        "role": "category"
+      },
+      {
+        "id": "status",
+        "label": "Status",
+        "primitive": "string",
+        "role": "status"
+      },
+      {
+        "id": "cores",
+        "label": "Cores",
+        "primitive": "integer",
+        "role": "count",
+        "aggregatable": true
+      },
+      {
+        "id": "memory_gib",
+        "label": "Memory",
+        "primitive": "number",
+        "role": "measure",
+        "unit": "GiB"
+      },
+      {
+        "id": "uptime_days",
+        "label": "Uptime",
+        "primitive": "number",
+        "role": "duration",
+        "unit": "days"
+      }
+    ]
+  },
+  "data": {
+    "node_id": "node-7f2a",
+    "display_name": "Batch worker 12",
+    "region": "east-2",
+    "status": "serving",
+    "cores": 16,
+    "memory_gib": 64,
+    "uptime_days": 41.5
+  },
+  "provenance": {
+    "source_name": "Seoul Design Lab fixture corpus",
+    "retrieved_at_ms": 1767247200000,
+    "effective_at_ms": 1767247200000,
+    "timezone": "Etc/UTC",
+    "freshness": "cached",
+    "completeness": 1,
+    "provider": "fixture",
+    "transformations": [
+      "synthetic_generation"
+    ]
+  },
+  "state": "complete"
+}

@@ -1,0 +1,1134 @@
+{
+  "note": "GENERATED from native/seoul/browser/saui/saui_catalog.cc and saui_limits.h by scripts/generate-component-catalog.mjs; do not edit. Drift-gated by scripts/check-protocol.mjs.",
+  "limits": {
+    "max_surface_components": 512,
+    "max_component_depth": 12,
+    "max_children_per_component": 64,
+    "max_surface_actions": 64,
+    "max_actions_per_component": 16,
+    "max_data_entries": 128,
+    "max_series_points": 10000,
+    "max_table_rows": 2000,
+    "max_table_columns": 64,
+    "max_record_fields": 128,
+    "max_props_per_component": 48,
+    "max_bindings_per_component": 8,
+    "max_component_id_length": 64,
+    "max_data_entry_name_length": 64,
+    "max_prop_key_length": 40,
+    "max_prop_string_length": 4096,
+    "max_code_prop_length": 65536,
+    "max_title_length": 200,
+    "max_label_length": 200,
+    "max_accessible_name_length": 400,
+    "max_structured_list_items": 64,
+    "max_url_prop_length": 4096,
+    "max_patch_ops": 128,
+    "max_pie_slices": 12
+  },
+  "components": {
+    "text": {
+      "category": "foundation",
+      "container": false,
+      "input": false,
+      "chart": false,
+      "requires_accessible_name": false,
+      "binding_kinds": [],
+      "binding_required": false,
+      "required_props": [
+        "text"
+      ]
+    },
+    "rich_text": {
+      "category": "foundation",
+      "container": false,
+      "input": false,
+      "chart": false,
+      "requires_accessible_name": false,
+      "binding_kinds": [],
+      "binding_required": false,
+      "required_props": [
+        "text"
+      ]
+    },
+    "heading": {
+      "category": "foundation",
+      "container": false,
+      "input": false,
+      "chart": false,
+      "requires_accessible_name": false,
+      "binding_kinds": [],
+      "binding_required": false,
+      "required_props": [
+        "text"
+      ]
+    },
+    "divider": {
+      "category": "foundation",
+      "container": false,
+      "input": false,
+      "chart": false,
+      "requires_accessible_name": false,
+      "binding_kinds": [],
+      "binding_required": false,
+      "required_props": []
+    },
+    "badge": {
+      "category": "foundation",
+      "container": false,
+      "input": false,
+      "chart": false,
+      "requires_accessible_name": false,
+      "binding_kinds": [],
+      "binding_required": false,
+      "required_props": [
+        "text"
+      ]
+    },
+    "icon": {
+      "category": "foundation",
+      "container": false,
+      "input": false,
+      "chart": false,
+      "requires_accessible_name": false,
+      "binding_kinds": [],
+      "binding_required": false,
+      "required_props": [
+        "icon"
+      ]
+    },
+    "image": {
+      "category": "foundation",
+      "container": false,
+      "input": false,
+      "chart": false,
+      "requires_accessible_name": false,
+      "binding_kinds": [],
+      "binding_required": false,
+      "required_props": [
+        "src",
+        "alt"
+      ]
+    },
+    "link": {
+      "category": "foundation",
+      "container": false,
+      "input": false,
+      "chart": false,
+      "requires_accessible_name": false,
+      "binding_kinds": [],
+      "binding_required": false,
+      "required_props": [
+        "href",
+        "text"
+      ]
+    },
+    "citation": {
+      "category": "foundation",
+      "container": false,
+      "input": false,
+      "chart": false,
+      "requires_accessible_name": false,
+      "binding_kinds": [],
+      "binding_required": false,
+      "required_props": [
+        "href",
+        "title"
+      ]
+    },
+    "source_list": {
+      "category": "foundation",
+      "container": false,
+      "input": false,
+      "chart": false,
+      "requires_accessible_name": false,
+      "binding_kinds": [],
+      "binding_required": false,
+      "required_props": [
+        "sources"
+      ]
+    },
+    "progress": {
+      "category": "foundation",
+      "container": false,
+      "input": false,
+      "chart": false,
+      "requires_accessible_name": false,
+      "binding_kinds": [
+        "scalar"
+      ],
+      "binding_required": false,
+      "required_props": [
+        "label"
+      ]
+    },
+    "spinner": {
+      "category": "foundation",
+      "container": false,
+      "input": false,
+      "chart": false,
+      "requires_accessible_name": false,
+      "binding_kinds": [],
+      "binding_required": false,
+      "required_props": []
+    },
+    "error_state": {
+      "category": "foundation",
+      "container": false,
+      "input": false,
+      "chart": false,
+      "requires_accessible_name": false,
+      "binding_kinds": [],
+      "binding_required": false,
+      "required_props": [
+        "text"
+      ]
+    },
+    "empty_state": {
+      "category": "foundation",
+      "container": false,
+      "input": false,
+      "chart": false,
+      "requires_accessible_name": false,
+      "binding_kinds": [],
+      "binding_required": false,
+      "required_props": [
+        "text"
+      ]
+    },
+    "stack": {
+      "category": "layout",
+      "container": true,
+      "input": false,
+      "chart": false,
+      "requires_accessible_name": false,
+      "binding_kinds": [],
+      "binding_required": false,
+      "required_props": []
+    },
+    "row": {
+      "category": "layout",
+      "container": true,
+      "input": false,
+      "chart": false,
+      "requires_accessible_name": false,
+      "binding_kinds": [],
+      "binding_required": false,
+      "required_props": []
+    },
+    "grid": {
+      "category": "layout",
+      "container": true,
+      "input": false,
+      "chart": false,
+      "requires_accessible_name": false,
+      "binding_kinds": [],
+      "binding_required": false,
+      "required_props": []
+    },
+    "tabs": {
+      "category": "layout",
+      "container": true,
+      "input": false,
+      "chart": false,
+      "requires_accessible_name": true,
+      "binding_kinds": [],
+      "binding_required": false,
+      "required_props": []
+    },
+    "collapsible_section": {
+      "category": "layout",
+      "container": true,
+      "input": false,
+      "chart": false,
+      "requires_accessible_name": false,
+      "binding_kinds": [],
+      "binding_required": false,
+      "required_props": [
+        "title"
+      ]
+    },
+    "resizable_panel": {
+      "category": "layout",
+      "container": true,
+      "input": false,
+      "chart": false,
+      "requires_accessible_name": false,
+      "binding_kinds": [],
+      "binding_required": false,
+      "required_props": []
+    },
+    "carousel": {
+      "category": "layout",
+      "container": true,
+      "input": false,
+      "chart": false,
+      "requires_accessible_name": true,
+      "binding_kinds": [],
+      "binding_required": false,
+      "required_props": []
+    },
+    "detail_drawer": {
+      "category": "layout",
+      "container": true,
+      "input": false,
+      "chart": false,
+      "requires_accessible_name": true,
+      "binding_kinds": [],
+      "binding_required": false,
+      "required_props": [
+        "title"
+      ]
+    },
+    "button": {
+      "category": "input",
+      "container": false,
+      "input": true,
+      "chart": false,
+      "requires_accessible_name": true,
+      "binding_kinds": [],
+      "binding_required": false,
+      "required_props": [
+        "label"
+      ]
+    },
+    "segmented_control": {
+      "category": "input",
+      "container": false,
+      "input": true,
+      "chart": false,
+      "requires_accessible_name": true,
+      "binding_kinds": [],
+      "binding_required": false,
+      "required_props": [
+        "label",
+        "options"
+      ]
+    },
+    "checkbox": {
+      "category": "input",
+      "container": false,
+      "input": true,
+      "chart": false,
+      "requires_accessible_name": true,
+      "binding_kinds": [],
+      "binding_required": false,
+      "required_props": [
+        "label"
+      ]
+    },
+    "radio_group": {
+      "category": "input",
+      "container": false,
+      "input": true,
+      "chart": false,
+      "requires_accessible_name": true,
+      "binding_kinds": [],
+      "binding_required": false,
+      "required_props": [
+        "label",
+        "options"
+      ]
+    },
+    "select": {
+      "category": "input",
+      "container": false,
+      "input": true,
+      "chart": false,
+      "requires_accessible_name": true,
+      "binding_kinds": [],
+      "binding_required": false,
+      "required_props": [
+        "label",
+        "options"
+      ]
+    },
+    "text_input": {
+      "category": "input",
+      "container": false,
+      "input": true,
+      "chart": false,
+      "requires_accessible_name": true,
+      "binding_kinds": [],
+      "binding_required": false,
+      "required_props": [
+        "label"
+      ]
+    },
+    "numeric_input": {
+      "category": "input",
+      "container": false,
+      "input": true,
+      "chart": false,
+      "requires_accessible_name": true,
+      "binding_kinds": [],
+      "binding_required": false,
+      "required_props": [
+        "label"
+      ]
+    },
+    "date_input": {
+      "category": "input",
+      "container": false,
+      "input": true,
+      "chart": false,
+      "requires_accessible_name": true,
+      "binding_kinds": [],
+      "binding_required": false,
+      "required_props": [
+        "label"
+      ]
+    },
+    "date_range_input": {
+      "category": "input",
+      "container": false,
+      "input": true,
+      "chart": false,
+      "requires_accessible_name": true,
+      "binding_kinds": [],
+      "binding_required": false,
+      "required_props": [
+        "label"
+      ]
+    },
+    "time_input": {
+      "category": "input",
+      "container": false,
+      "input": true,
+      "chart": false,
+      "requires_accessible_name": true,
+      "binding_kinds": [],
+      "binding_required": false,
+      "required_props": [
+        "label"
+      ]
+    },
+    "slider": {
+      "category": "input",
+      "container": false,
+      "input": true,
+      "chart": false,
+      "requires_accessible_name": true,
+      "binding_kinds": [],
+      "binding_required": false,
+      "required_props": [
+        "label"
+      ]
+    },
+    "search_field": {
+      "category": "input",
+      "container": false,
+      "input": true,
+      "chart": false,
+      "requires_accessible_name": true,
+      "binding_kinds": [],
+      "binding_required": false,
+      "required_props": [
+        "label"
+      ]
+    },
+    "file_picker": {
+      "category": "input",
+      "container": false,
+      "input": true,
+      "chart": false,
+      "requires_accessible_name": true,
+      "binding_kinds": [],
+      "binding_required": false,
+      "required_props": [
+        "label"
+      ]
+    },
+    "confirmation": {
+      "category": "input",
+      "container": false,
+      "input": true,
+      "chart": false,
+      "requires_accessible_name": true,
+      "binding_kinds": [],
+      "binding_required": false,
+      "required_props": [
+        "label"
+      ]
+    },
+    "schema_form": {
+      "category": "input",
+      "container": false,
+      "input": true,
+      "chart": false,
+      "requires_accessible_name": true,
+      "binding_kinds": [
+        "record",
+        "table"
+      ],
+      "binding_required": true,
+      "required_props": []
+    },
+    "key_value_card": {
+      "category": "data",
+      "container": false,
+      "input": false,
+      "chart": false,
+      "requires_accessible_name": false,
+      "binding_kinds": [
+        "record"
+      ],
+      "binding_required": true,
+      "required_props": []
+    },
+    "metric": {
+      "category": "data",
+      "container": false,
+      "input": false,
+      "chart": false,
+      "requires_accessible_name": false,
+      "binding_kinds": [
+        "scalar"
+      ],
+      "binding_required": true,
+      "required_props": [
+        "label"
+      ]
+    },
+    "entity_card": {
+      "category": "data",
+      "container": false,
+      "input": false,
+      "chart": false,
+      "requires_accessible_name": true,
+      "binding_kinds": [
+        "record"
+      ],
+      "binding_required": true,
+      "required_props": []
+    },
+    "list": {
+      "category": "data",
+      "container": false,
+      "input": false,
+      "chart": false,
+      "requires_accessible_name": false,
+      "binding_kinds": [
+        "table"
+      ],
+      "binding_required": false,
+      "required_props": []
+    },
+    "table": {
+      "category": "data",
+      "container": false,
+      "input": false,
+      "chart": false,
+      "requires_accessible_name": true,
+      "binding_kinds": [
+        "table"
+      ],
+      "binding_required": true,
+      "required_props": []
+    },
+    "sortable_table": {
+      "category": "data",
+      "container": false,
+      "input": true,
+      "chart": false,
+      "requires_accessible_name": true,
+      "binding_kinds": [
+        "table"
+      ],
+      "binding_required": true,
+      "required_props": []
+    },
+    "comparison_matrix": {
+      "category": "data",
+      "container": false,
+      "input": false,
+      "chart": false,
+      "requires_accessible_name": true,
+      "binding_kinds": [
+        "table"
+      ],
+      "binding_required": true,
+      "required_props": []
+    },
+    "timeline": {
+      "category": "data",
+      "container": false,
+      "input": false,
+      "chart": false,
+      "requires_accessible_name": true,
+      "binding_kinds": [
+        "table"
+      ],
+      "binding_required": false,
+      "required_props": []
+    },
+    "activity_log": {
+      "category": "data",
+      "container": false,
+      "input": false,
+      "chart": false,
+      "requires_accessible_name": true,
+      "binding_kinds": [
+        "table"
+      ],
+      "binding_required": false,
+      "required_props": []
+    },
+    "tree": {
+      "category": "data",
+      "container": false,
+      "input": false,
+      "chart": false,
+      "requires_accessible_name": true,
+      "binding_kinds": [
+        "table"
+      ],
+      "binding_required": false,
+      "required_props": []
+    },
+    "pagination": {
+      "category": "data",
+      "container": false,
+      "input": true,
+      "chart": false,
+      "requires_accessible_name": true,
+      "binding_kinds": [],
+      "binding_required": false,
+      "required_props": []
+    },
+    "filter_chips": {
+      "category": "data",
+      "container": false,
+      "input": true,
+      "chart": false,
+      "requires_accessible_name": true,
+      "binding_kinds": [],
+      "binding_required": false,
+      "required_props": [
+        "chips"
+      ]
+    },
+    "document": {
+      "category": "data",
+      "container": false,
+      "input": false,
+      "chart": false,
+      "requires_accessible_name": true,
+      "binding_kinds": [
+        "record"
+      ],
+      "binding_required": true,
+      "required_props": []
+    },
+    "media": {
+      "category": "data",
+      "container": false,
+      "input": false,
+      "chart": false,
+      "requires_accessible_name": true,
+      "binding_kinds": [
+        "table"
+      ],
+      "binding_required": true,
+      "required_props": []
+    },
+    "file": {
+      "category": "data",
+      "container": false,
+      "input": false,
+      "chart": false,
+      "requires_accessible_name": true,
+      "binding_kinds": [
+        "record"
+      ],
+      "binding_required": true,
+      "required_props": []
+    },
+    "line_chart": {
+      "category": "chart",
+      "container": false,
+      "input": false,
+      "chart": true,
+      "requires_accessible_name": true,
+      "binding_kinds": [
+        "series",
+        "table"
+      ],
+      "binding_required": true,
+      "required_props": [
+        "title",
+        "x_label",
+        "y_label",
+        "units"
+      ]
+    },
+    "area_chart": {
+      "category": "chart",
+      "container": false,
+      "input": false,
+      "chart": true,
+      "requires_accessible_name": true,
+      "binding_kinds": [
+        "series",
+        "table"
+      ],
+      "binding_required": true,
+      "required_props": [
+        "title",
+        "x_label",
+        "y_label",
+        "units"
+      ]
+    },
+    "bar_chart": {
+      "category": "chart",
+      "container": false,
+      "input": false,
+      "chart": true,
+      "requires_accessible_name": true,
+      "binding_kinds": [
+        "table"
+      ],
+      "binding_required": true,
+      "required_props": [
+        "title",
+        "x_label",
+        "y_label",
+        "units",
+        "baseline_zero"
+      ]
+    },
+    "stacked_bar_chart": {
+      "category": "chart",
+      "container": false,
+      "input": false,
+      "chart": true,
+      "requires_accessible_name": true,
+      "binding_kinds": [
+        "table"
+      ],
+      "binding_required": true,
+      "required_props": [
+        "title",
+        "x_label",
+        "y_label",
+        "units",
+        "baseline_zero"
+      ]
+    },
+    "scatter_chart": {
+      "category": "chart",
+      "container": false,
+      "input": false,
+      "chart": true,
+      "requires_accessible_name": true,
+      "binding_kinds": [
+        "series",
+        "table"
+      ],
+      "binding_required": true,
+      "required_props": [
+        "title",
+        "x_label",
+        "y_label",
+        "units"
+      ]
+    },
+    "pie_chart": {
+      "category": "chart",
+      "container": false,
+      "input": false,
+      "chart": true,
+      "requires_accessible_name": true,
+      "binding_kinds": [
+        "table"
+      ],
+      "binding_required": true,
+      "required_props": [
+        "title",
+        "x_label",
+        "y_label",
+        "units"
+      ]
+    },
+    "candlestick_chart": {
+      "category": "chart",
+      "container": false,
+      "input": false,
+      "chart": true,
+      "requires_accessible_name": true,
+      "binding_kinds": [
+        "table"
+      ],
+      "binding_required": true,
+      "required_props": [
+        "title",
+        "x_label",
+        "y_label",
+        "units"
+      ]
+    },
+    "range_chart": {
+      "category": "chart",
+      "container": false,
+      "input": false,
+      "chart": true,
+      "requires_accessible_name": true,
+      "binding_kinds": [
+        "series",
+        "table"
+      ],
+      "binding_required": true,
+      "required_props": [
+        "title",
+        "x_label",
+        "y_label",
+        "units"
+      ]
+    },
+    "sparkline": {
+      "category": "chart",
+      "container": false,
+      "input": false,
+      "chart": true,
+      "requires_accessible_name": true,
+      "binding_kinds": [
+        "series"
+      ],
+      "binding_required": true,
+      "required_props": [
+        "title",
+        "x_label",
+        "y_label",
+        "units"
+      ]
+    },
+    "histogram": {
+      "category": "chart",
+      "container": false,
+      "input": false,
+      "chart": true,
+      "requires_accessible_name": true,
+      "binding_kinds": [
+        "series",
+        "table"
+      ],
+      "binding_required": true,
+      "required_props": [
+        "title",
+        "x_label",
+        "y_label",
+        "units"
+      ]
+    },
+    "heat_map": {
+      "category": "chart",
+      "container": false,
+      "input": false,
+      "chart": true,
+      "requires_accessible_name": true,
+      "binding_kinds": [
+        "table"
+      ],
+      "binding_required": true,
+      "required_props": [
+        "title",
+        "x_label",
+        "y_label",
+        "units"
+      ]
+    },
+    "network_graph": {
+      "category": "chart",
+      "container": false,
+      "input": false,
+      "chart": false,
+      "requires_accessible_name": true,
+      "binding_kinds": [
+        "table"
+      ],
+      "binding_required": true,
+      "required_props": [
+        "title"
+      ]
+    },
+    "map": {
+      "category": "map",
+      "container": false,
+      "input": false,
+      "chart": false,
+      "requires_accessible_name": true,
+      "binding_kinds": [
+        "table"
+      ],
+      "binding_required": true,
+      "required_props": [
+        "title"
+      ]
+    },
+    "geo_layer": {
+      "category": "map",
+      "container": false,
+      "input": false,
+      "chart": false,
+      "requires_accessible_name": true,
+      "binding_kinds": [
+        "table"
+      ],
+      "binding_required": true,
+      "required_props": []
+    },
+    "map_marker_list": {
+      "category": "map",
+      "container": false,
+      "input": true,
+      "chart": false,
+      "requires_accessible_name": true,
+      "binding_kinds": [
+        "table"
+      ],
+      "binding_required": true,
+      "required_props": []
+    },
+    "task_graph": {
+      "category": "workflow",
+      "container": false,
+      "input": false,
+      "chart": false,
+      "requires_accessible_name": true,
+      "binding_kinds": [
+        "table"
+      ],
+      "binding_required": true,
+      "required_props": []
+    },
+    "workflow_node": {
+      "category": "workflow",
+      "container": false,
+      "input": false,
+      "chart": false,
+      "requires_accessible_name": true,
+      "binding_kinds": [
+        "record"
+      ],
+      "binding_required": true,
+      "required_props": []
+    },
+    "workflow_edge": {
+      "category": "workflow",
+      "container": false,
+      "input": false,
+      "chart": false,
+      "requires_accessible_name": true,
+      "binding_kinds": [
+        "record"
+      ],
+      "binding_required": true,
+      "required_props": []
+    },
+    "trigger_card": {
+      "category": "workflow",
+      "container": false,
+      "input": false,
+      "chart": false,
+      "requires_accessible_name": true,
+      "binding_kinds": [
+        "record"
+      ],
+      "binding_required": true,
+      "required_props": []
+    },
+    "approval_request": {
+      "category": "workflow",
+      "container": false,
+      "input": true,
+      "chart": false,
+      "requires_accessible_name": true,
+      "binding_kinds": [
+        "record"
+      ],
+      "binding_required": true,
+      "required_props": []
+    },
+    "execution_status": {
+      "category": "workflow",
+      "container": false,
+      "input": false,
+      "chart": false,
+      "requires_accessible_name": true,
+      "binding_kinds": [
+        "record"
+      ],
+      "binding_required": true,
+      "required_props": []
+    },
+    "result_card": {
+      "category": "workflow",
+      "container": false,
+      "input": false,
+      "chart": false,
+      "requires_accessible_name": true,
+      "binding_kinds": [
+        "record"
+      ],
+      "binding_required": true,
+      "required_props": []
+    },
+    "retry_control": {
+      "category": "workflow",
+      "container": false,
+      "input": true,
+      "chart": false,
+      "requires_accessible_name": true,
+      "binding_kinds": [],
+      "binding_required": false,
+      "required_props": [
+        "label"
+      ]
+    },
+    "plan_view": {
+      "category": "task",
+      "container": false,
+      "input": false,
+      "chart": false,
+      "requires_accessible_name": true,
+      "binding_kinds": [
+        "table"
+      ],
+      "binding_required": true,
+      "required_props": []
+    },
+    "current_step": {
+      "category": "task",
+      "container": false,
+      "input": false,
+      "chart": false,
+      "requires_accessible_name": true,
+      "binding_kinds": [
+        "record"
+      ],
+      "binding_required": true,
+      "required_props": []
+    },
+    "action_receipt": {
+      "category": "task",
+      "container": false,
+      "input": false,
+      "chart": false,
+      "requires_accessible_name": true,
+      "binding_kinds": [
+        "record"
+      ],
+      "binding_required": true,
+      "required_props": []
+    },
+    "blocker_list": {
+      "category": "task",
+      "container": false,
+      "input": false,
+      "chart": false,
+      "requires_accessible_name": true,
+      "binding_kinds": [
+        "table"
+      ],
+      "binding_required": true,
+      "required_props": []
+    },
+    "cost_summary": {
+      "category": "task",
+      "container": false,
+      "input": false,
+      "chart": false,
+      "requires_accessible_name": true,
+      "binding_kinds": [
+        "record"
+      ],
+      "binding_required": true,
+      "required_props": []
+    },
+    "provider_indicator": {
+      "category": "task",
+      "container": false,
+      "input": false,
+      "chart": false,
+      "requires_accessible_name": true,
+      "binding_kinds": [
+        "record"
+      ],
+      "binding_required": true,
+      "required_props": []
+    },
+    "code_block": {
+      "category": "code",
+      "container": false,
+      "input": false,
+      "chart": false,
+      "requires_accessible_name": false,
+      "binding_kinds": [],
+      "binding_required": false,
+      "required_props": [
+        "code"
+      ]
+    },
+    "diff_view": {
+      "category": "code",
+      "container": false,
+      "input": false,
+      "chart": false,
+      "requires_accessible_name": false,
+      "binding_kinds": [],
+      "binding_required": false,
+      "required_props": [
+        "diff"
+      ]
+    },
+    "diagnostic_list": {
+      "category": "code",
+      "container": false,
+      "input": false,
+      "chart": false,
+      "requires_accessible_name": true,
+      "binding_kinds": [
+        "table"
+      ],
+      "binding_required": true,
+      "required_props": []
+    },
+    "log_viewer": {
+      "category": "code",
+      "container": false,
+      "input": false,
+      "chart": false,
+      "requires_accessible_name": true,
+      "binding_kinds": [
+        "table"
+      ],
+      "binding_required": false,
+      "required_props": []
+    },
+    "stack_trace": {
+      "category": "code",
+      "container": false,
+      "input": false,
+      "chart": false,
+      "requires_accessible_name": false,
+      "binding_kinds": [
+        "table"
+      ],
+      "binding_required": false,
+      "required_props": []
+    },
+    "file_tree": {
+      "category": "code",
+      "container": false,
+      "input": false,
+      "chart": false,
+      "requires_accessible_name": true,
+      "binding_kinds": [
+        "table"
+      ],
+      "binding_required": true,
+      "required_props": []
+    }
+  }
+}

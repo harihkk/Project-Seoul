@@ -1,0 +1,81 @@
+{
+  "schema": {
+    "schema_version": 1,
+    "shape": "table",
+    "fields": [
+      {
+        "id": "material",
+        "label": "Material",
+        "primitive": "string",
+        "role": "dimension",
+        "nullable": false
+      },
+      {
+        "id": "grade",
+        "label": "Grade",
+        "primitive": "string",
+        "role": "category"
+      },
+      {
+        "id": "on_hand",
+        "label": "On hand",
+        "primitive": "integer",
+        "role": "count",
+        "aggregatable": true
+      },
+      {
+        "id": "unit_mass_kg",
+        "label": "Unit mass",
+        "primitive": "number",
+        "role": "measure",
+        "unit": "kg",
+        "precision": 2
+      }
+    ]
+  },
+  "data": [
+    {
+      "material": "conduit",
+      "grade": "a",
+      "on_hand": 240,
+      "unit_mass_kg": 1.2
+    },
+    {
+      "material": "bracket",
+      "grade": "b",
+      "on_hand": 96,
+      "unit_mass_kg": 0.35
+    },
+    {
+      "material": "panel",
+      "grade": "a",
+      "on_hand": 58,
+      "unit_mass_kg": 4.6
+    },
+    {
+      "material": "fastener",
+      "grade": "c",
+      "on_hand": 1200,
+      "unit_mass_kg": 0.02
+    },
+    {
+      "material": "gasket",
+      "grade": "b",
+      "on_hand": 310,
+      "unit_mass_kg": 0.05
+    }
+  ],
+  "provenance": {
+    "source_name": "Seoul Design Lab fixture corpus",
+    "retrieved_at_ms": 1767247200000,
+    "effective_at_ms": 1767247200000,
+    "timezone": "Etc/UTC",
+    "freshness": "cached",
+    "completeness": 1,
+    "provider": "fixture",
+    "transformations": [
+      "synthetic_generation"
+    ]
+  },
+  "state": "complete"
+}

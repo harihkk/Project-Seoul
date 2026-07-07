@@ -1,0 +1,55 @@
+{
+  "schema": {
+    "schema_version": 1,
+    "shape": "record",
+    "fields": [
+      {
+        "id": "station",
+        "label": "Station",
+        "primitive": "string",
+        "role": "identifier",
+        "nullable": false
+      },
+      {
+        "id": "reading",
+        "label": "Reading",
+        "primitive": "number",
+        "role": "measure",
+        "unit": "mg/L",
+        "precision": 1
+      },
+      {
+        "id": "recorded_by",
+        "label": "Recorded by",
+        "primitive": "string",
+        "role": "category"
+      }
+    ]
+  },
+  "data": {
+    "station": "st-03",
+    "reading": 15.9,
+    "recorded_by": "field-log"
+  },
+  "provenance": {
+    "source_name": "Seoul Design Lab fixture corpus",
+    "retrieved_at_ms": 1767247200000,
+    "effective_at_ms": 1767247200000,
+    "timezone": "Etc/UTC",
+    "freshness": "cached",
+    "completeness": 1,
+    "provider": "fixture",
+    "transformations": [
+      "synthetic_generation"
+    ]
+  },
+  "state": "complete",
+  "conflicts": [
+    {
+      "field_id": "reading",
+      "source_a": "field-log",
+      "source_b": "relay-archive",
+      "note": "field-log reports 15.9; relay-archive reports 14.2 for the same sweep."
+    }
+  ]
+}

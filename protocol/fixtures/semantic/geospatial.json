@@ -1,0 +1,87 @@
+{
+  "schema": {
+    "schema_version": 1,
+    "shape": "geo_features",
+    "fields": [
+      {
+        "id": "station",
+        "label": "Station",
+        "primitive": "string",
+        "role": "identifier",
+        "nullable": false
+      },
+      {
+        "id": "label",
+        "label": "Label",
+        "primitive": "string",
+        "role": "name"
+      },
+      {
+        "id": "lat",
+        "label": "Latitude",
+        "primitive": "number",
+        "role": "latitude",
+        "nullable": false,
+        "precision": 4
+      },
+      {
+        "id": "lon",
+        "label": "Longitude",
+        "primitive": "number",
+        "role": "longitude",
+        "nullable": false,
+        "precision": 4
+      },
+      {
+        "id": "elevation_m",
+        "label": "Elevation",
+        "primitive": "number",
+        "role": "measure",
+        "unit": "m"
+      }
+    ]
+  },
+  "data": [
+    {
+      "station": "st-01",
+      "label": "North ridge",
+      "lat": 47.6062,
+      "lon": -122.3321,
+      "elevation_m": 174
+    },
+    {
+      "station": "st-02",
+      "label": "River bend",
+      "lat": 47.5951,
+      "lon": -122.3316,
+      "elevation_m": 12
+    },
+    {
+      "station": "st-03",
+      "label": "East basin",
+      "lat": 47.6097,
+      "lon": -122.2946,
+      "elevation_m": 38
+    },
+    {
+      "station": "st-04",
+      "label": "South flats",
+      "lat": 47.5707,
+      "lon": -122.3222,
+      "elevation_m": 5
+    }
+  ],
+  "provenance": {
+    "source_name": "Seoul Design Lab fixture corpus",
+    "retrieved_at_ms": 1767247200000,
+    "effective_at_ms": 1767247200000,
+    "timezone": "Etc/UTC",
+    "freshness": "cached",
+    "completeness": 1,
+    "provider": "fixture",
+    "transformations": [
+      "synthetic_generation"
+    ]
+  },
+  "state": "complete"
+}

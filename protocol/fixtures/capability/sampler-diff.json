@@ -1,0 +1,47 @@
+{
+  "schema_version": 1,
+  "id": "info.config.diff",
+  "version": 1,
+  "name": "sampler configuration diff",
+  "description": "returns the pending sampler configuration change as a unified diff",
+  "provider": "fixture",
+  "input_schema": {
+    "type": "object",
+    "properties": {},
+    "required": []
+  },
+  "output_schema": {
+    "type": "object",
+    "properties": {
+      "result": {
+        "type": "object",
+        "description": "A canonical semantic result document."
+      }
+    },
+    "required": [
+      "result"
+    ]
+  },
+  "capability_tags": [
+    "config",
+    "diff",
+    "sampler",
+    "change"
+  ],
+  "requires_network": false,
+  "sensitivity": "none",
+  "risk": "read_only",
+  "approval": "never_required",
+  "timeout_ms": 5000,
+  "cancellable": true,
+  "supports_streaming": false,
+  "idempotency": "idempotent",
+  "freshness": "static",
+  "retry": {
+    "max_attempts": 1,
+    "backoff_ms": 0
+  },
+  "observation_contract": "None. This is a synthetic Design Lab fixture: execution returns a canned payload and no real browser or provider state is observed.",
+  "verifier_id": "",
+  "preferred_component": "diff_view"
+}

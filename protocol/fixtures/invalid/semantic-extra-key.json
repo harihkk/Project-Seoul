@@ -1,0 +1,20 @@
+{
+  "schema": {
+    "schema_version": 1,
+    "shape": "scalar",
+    "fields": [
+      {
+        "id": "v",
+        "label": "V",
+        "primitive": "number",
+        "role": "measure"
+      }
+    ]
+  },
+  "data": 1,
+  "provenance": {
+    "source_name": "fixture",
+    "retrieved_at_ms": 1767225600000
+  },
+  "surprise": true
+}

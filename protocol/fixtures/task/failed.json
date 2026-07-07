@@ -1,0 +1,39 @@
+{
+  "schema_version": 1,
+  "id": "1c5d8e66-3f7b-4a9c-8d1e-5b4a6c8e0d2f",
+  "goal": "read the archive inventory",
+  "state": "failed",
+  "failure": "step_failed",
+  "plan_origin": "deterministic",
+  "receipts": [
+    {
+      "step_id": "step-inventory",
+      "tool": "fixture.archive.inventory",
+      "status": "failed",
+      "started_at_ms": 1767254400000,
+      "finished_at_ms": 1767254430000,
+      "observed_summary": "The fixture reported source_unreachable after exhausting retries.",
+      "verification": {
+        "verified": false,
+        "method": "fixture_contract",
+        "detail": "fixture reported a structured error result"
+      },
+      "route": "deterministic",
+      "cost_microdollars": 0,
+      "model_calls": 0,
+      "navigations": 0
+    }
+  ],
+  "usage": {
+    "steps_executed": 1,
+    "model_calls": 0,
+    "navigations": 0,
+    "cloud_cost_microdollars": 0,
+    "replans_used": 0
+  },
+  "pending_approval_step": "",
+  "pending_approval_prompt": "",
+  "has_semantic_result": true,
+  "window": "w-2",
+  "replans_used": 0
+}

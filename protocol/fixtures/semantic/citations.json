@@ -1,0 +1,57 @@
+{
+  "schema": {
+    "schema_version": 1,
+    "shape": "citations",
+    "fields": [
+      {
+        "id": "href",
+        "label": "Link",
+        "primitive": "string",
+        "role": "url",
+        "nullable": false
+      },
+      {
+        "id": "title",
+        "label": "Title",
+        "primitive": "string",
+        "role": "name"
+      },
+      {
+        "id": "retrieved",
+        "label": "Retrieved",
+        "primitive": "timestamp",
+        "role": "timestamp"
+      }
+    ]
+  },
+  "data": [
+    {
+      "href": "https://example.test/notes/calibration-baseline",
+      "title": "Calibration baseline notes",
+      "retrieved": 1767243600000
+    },
+    {
+      "href": "https://example.test/archive/survey-methods",
+      "title": "Survey methods archive",
+      "retrieved": 1767243600000
+    },
+    {
+      "href": "https://example.test/reference/sensor-drift",
+      "title": "Sensor drift reference",
+      "retrieved": 1767247200000
+    }
+  ],
+  "provenance": {
+    "source_name": "Seoul Design Lab fixture corpus",
+    "retrieved_at_ms": 1767247200000,
+    "effective_at_ms": 1767247200000,
+    "timezone": "Etc/UTC",
+    "freshness": "cached",
+    "completeness": 1,
+    "provider": "fixture",
+    "transformations": [
+      "synthetic_generation"
+    ]
+  },
+  "state": "complete"
+}

@@ -1,0 +1,40 @@
+{
+  "schema": {
+    "schema_version": 1,
+    "shape": "diff",
+    "fields": [
+      {
+        "id": "title",
+        "label": "Title",
+        "primitive": "string",
+        "role": "name",
+        "nullable": false
+      },
+      {
+        "id": "body",
+        "label": "Diff",
+        "primitive": "string",
+        "role": "body",
+        "nullable": false,
+        "value_class": "free_text"
+      }
+    ]
+  },
+  "data": {
+    "title": "Sampler configuration change",
+    "body": "--- a/sampler.conf\n+++ b/sampler.conf\n@@ -3,7 +3,7 @@\n interval_seconds = 60\n-batch_size = 16\n+batch_size = 32\n retry_limit = 3\n@@ -11,4 +11,5 @@\n emit_partial = true\n+drop_incomplete = false\n"
+  },
+  "provenance": {
+    "source_name": "Seoul Design Lab fixture corpus",
+    "retrieved_at_ms": 1767247200000,
+    "effective_at_ms": 1767247200000,
+    "timezone": "Etc/UTC",
+    "freshness": "cached",
+    "completeness": 1,
+    "provider": "fixture",
+    "transformations": [
+      "synthetic_generation"
+    ]
+  },
+  "state": "complete"
+}

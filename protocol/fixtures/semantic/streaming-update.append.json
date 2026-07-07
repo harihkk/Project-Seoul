@@ -1,0 +1,16 @@
+{
+  "rows": [
+    {
+      "sampled_at": 1767236400000,
+      "queue_depth": 14
+    },
+    {
+      "sampled_at": 1767240000000,
+      "queue_depth": 11
+    },
+    {
+      "sampled_at": 1767243600000,
+      "queue_depth": 7
+    }
+  ]
+}

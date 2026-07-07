@@ -1,0 +1,116 @@
+{
+  "schema": {
+    "schema_version": 1,
+    "shape": "graph",
+    "fields": [
+      {
+        "id": "module",
+        "label": "Module",
+        "primitive": "string",
+        "role": "identifier",
+        "nullable": false
+      },
+      {
+        "id": "layer",
+        "label": "Layer",
+        "primitive": "string",
+        "role": "category"
+      }
+    ],
+    "edge_fields": [
+      {
+        "id": "from_module",
+        "label": "From",
+        "primitive": "string",
+        "role": "source_node",
+        "nullable": false
+      },
+      {
+        "id": "to_module",
+        "label": "To",
+        "primitive": "string",
+        "role": "target_node",
+        "nullable": false
+      },
+      {
+        "id": "imports",
+        "label": "Imports",
+        "primitive": "integer",
+        "role": "count"
+      }
+    ]
+  },
+  "data": {
+    "nodes": [
+      {
+        "module": "composer",
+        "layer": "interface"
+      },
+      {
+        "module": "planner",
+        "layer": "runtime"
+      },
+      {
+        "module": "registry",
+        "layer": "runtime"
+      },
+      {
+        "module": "executor",
+        "layer": "runtime"
+      },
+      {
+        "module": "renderer",
+        "layer": "interface"
+      },
+      {
+        "module": "store",
+        "layer": "state"
+      }
+    ],
+    "edges": [
+      {
+        "from_module": "composer",
+        "to_module": "planner",
+        "imports": 3
+      },
+      {
+        "from_module": "planner",
+        "to_module": "registry",
+        "imports": 5
+      },
+      {
+        "from_module": "planner",
+        "to_module": "executor",
+        "imports": 2
+      },
+      {
+        "from_module": "executor",
+        "to_module": "store",
+        "imports": 4
+      },
+      {
+        "from_module": "renderer",
+        "to_module": "store",
+        "imports": 6
+      },
+      {
+        "from_module": "composer",
+        "to_module": "renderer",
+        "imports": 1
+      }
+    ]
+  },
+  "provenance": {
+    "source_name": "Seoul Design Lab fixture corpus",
+    "retrieved_at_ms": 1767247200000,
+    "effective_at_ms": 1767247200000,
+    "timezone": "Etc/UTC",
+    "freshness": "cached",
+    "completeness": 1,
+    "provider": "fixture",
+    "transformations": [
+      "synthetic_generation"
+    ]
+  },
+  "state": "complete"
+}

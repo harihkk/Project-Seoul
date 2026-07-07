@@ -1,0 +1,48 @@
+{
+  "schema": {
+    "schema_version": 1,
+    "shape": "time_series",
+    "fields": [
+      {
+        "id": "sampled_at",
+        "label": "Sampled",
+        "primitive": "timestamp",
+        "role": "timestamp",
+        "nullable": false
+      },
+      {
+        "id": "queue_depth",
+        "label": "Queue depth",
+        "primitive": "integer",
+        "role": "count"
+      }
+    ]
+  },
+  "data": [
+    {
+      "sampled_at": 1767225600000,
+      "queue_depth": 12
+    },
+    {
+      "sampled_at": 1767229200000,
+      "queue_depth": 18
+    },
+    {
+      "sampled_at": 1767232800000,
+      "queue_depth": 9
+    }
+  ],
+  "provenance": {
+    "source_name": "Seoul Design Lab fixture corpus",
+    "retrieved_at_ms": 1767247200000,
+    "effective_at_ms": 1767247200000,
+    "timezone": "Etc/UTC",
+    "freshness": "real_time",
+    "completeness": 1,
+    "provider": "fixture",
+    "transformations": [
+      "synthetic_generation"
+    ]
+  },
+  "state": "streaming"
+}

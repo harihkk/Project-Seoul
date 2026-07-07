@@ -1,0 +1,29 @@
+{
+  "schema_version": 1,
+  "id": "3f2c9a10-5b7e-4c1d-9e2f-8a6b4c0d1e2f",
+  "kind": "response",
+  "title": "Sweep summary",
+  "components": [
+    {
+      "id": "headline",
+      "type": "heading",
+      "props": {
+        "text": "Sweep summary",
+        "level": 2
+      },
+      "accessible_name": "Sweep summary heading"
+    },
+    {
+      "id": "summary-text",
+      "type": "text",
+      "props": {
+        "text": "Three stations reported within range; one station was flagged for follow-up."
+      }
+    }
+  ],
+  "provenance": {
+    "generator": "deterministic",
+    "created_at_ms": 1767250800000,
+    "source_urls": []
+  }
+}

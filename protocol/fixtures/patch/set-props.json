@@ -1,0 +1,16 @@
+{
+  "surface_id": "5a0d7e31-2c4b-4f6a-8d9e-1b3c5d7f9a0b",
+  "ops": [
+    {
+      "op": "set_props",
+      "target": "latency-chart",
+      "props": {
+        "title": "Queue latency (updated)"
+      }
+    },
+    {
+      "op": "set_title",
+      "title": "Pipeline health (updated)"
+    }
+  ]
+}

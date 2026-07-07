@@ -1,0 +1,47 @@
+{
+  "schema": {
+    "schema_version": 1,
+    "shape": "document",
+    "fields": [
+      {
+        "id": "title",
+        "label": "Title",
+        "primitive": "string",
+        "role": "name",
+        "nullable": false
+      },
+      {
+        "id": "body",
+        "label": "Body",
+        "primitive": "string",
+        "role": "body",
+        "nullable": false,
+        "value_class": "free_text"
+      },
+      {
+        "id": "revised_at",
+        "label": "Revised",
+        "primitive": "timestamp",
+        "role": "timestamp"
+      }
+    ]
+  },
+  "data": {
+    "title": "Calibration procedure, revision 4",
+    "body": "Warm the sensor array for ten minutes before the first reading. Record the ambient baseline, then apply the three reference loads in ascending order. If any reading drifts by more than two percent between passes, flag the station for a follow-up sweep and continue with the remaining stations.",
+    "revised_at": 1764633600000
+  },
+  "provenance": {
+    "source_name": "Seoul Design Lab fixture corpus",
+    "retrieved_at_ms": 1767247200000,
+    "effective_at_ms": 1767247200000,
+    "timezone": "Etc/UTC",
+    "freshness": "cached",
+    "completeness": 1,
+    "provider": "fixture",
+    "transformations": [
+      "synthetic_generation"
+    ]
+  },
+  "state": "complete"
+}

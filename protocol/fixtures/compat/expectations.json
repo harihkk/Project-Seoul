@@ -1,0 +1,28 @@
+{
+  "cases": [
+    {
+      "file": "compat/semantic-future-version.json",
+      "schema": "semantic-result",
+      "valid": false,
+      "reason": "schema.schema_version must be 1"
+    },
+    {
+      "file": "compat/surface-missing-version.json",
+      "schema": "adaptive-surface",
+      "valid": false,
+      "reason": "schema_version is required"
+    },
+    {
+      "file": "compat/snapshot-future-version.json",
+      "schema": "task-snapshot",
+      "valid": false,
+      "reason": "schema_version must be 1"
+    },
+    {
+      "file": "compat/descriptor-future-version.json",
+      "schema": "capability-descriptor",
+      "valid": false,
+      "reason": "schema_version must be 1"
+    }
+  ]
+}

@@ -1,0 +1,151 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "surface-patch.schema.json",
+  "title": "Seoul surface patch (canonical wire, protocol version 1)",
+  "description": "Typed incremental surface updates addressed by stable component and data-entry ids. Mirrors native/seoul/browser/saui/saui_patch.cc ParseSurfacePatch exactly, including the set_bindings operation. A patch applies atomically: if any operation or the resulting surface is invalid, the surface is left untouched. Patches carry no protocol version of their own; they apply to a surface whose document is versioned.",
+  "type": "object",
+  "required": ["surface_id", "ops"],
+  "additionalProperties": false,
+  "properties": {
+    "surface_id": { "$ref": "adaptive-surface.schema.json#/$defs/surface_uuid" },
+    "ops": {
+      "type": "array",
+      "minItems": 1,
+      "maxItems": 128,
+      "items": { "$ref": "#/$defs/patch_op" }
+    }
+  },
+  "$defs": {
+    "patch_op": {
+      "oneOf": [
+        { "$ref": "#/$defs/set_props" },
+        { "$ref": "#/$defs/set_state" },
+        { "$ref": "#/$defs/set_title" },
+        { "$ref": "#/$defs/set_bindings" },
+        { "$ref": "#/$defs/upsert_data_entry" },
+        { "$ref": "#/$defs/append_series_points" },
+        { "$ref": "#/$defs/append_child" },
+        { "$ref": "#/$defs/remove_component" },
+        { "$ref": "#/$defs/replace_component" },
+        { "$ref": "#/$defs/set_actions" }
+      ]
+    },
+    "set_props": {
+      "type": "object",
+      "required": ["op", "target", "props"],
+      "additionalProperties": false,
+      "properties": {
+        "op": { "const": "set_props" },
+        "target": { "$ref": "adaptive-surface.schema.json#/$defs/saui_identifier" },
+        "props": { "$ref": "adaptive-surface.schema.json#/$defs/props" }
+      }
+    },
+    "set_state": {
+      "type": "object",
+      "required": ["op", "target", "state"],
+      "additionalProperties": false,
+      "properties": {
+        "op": { "const": "set_state" },
+        "target": { "$ref": "adaptive-surface.schema.json#/$defs/saui_identifier" },
+        "state": { "$ref": "adaptive-surface.schema.json#/$defs/component_state" },
+        "message": { "type": "string", "maxLength": 400 }
+      }
+    },
+    "set_title": {
+      "type": "object",
+      "required": ["op", "title"],
+      "additionalProperties": false,
+      "properties": {
+        "op": { "const": "set_title" },
+        "title": { "type": "string", "maxLength": 200 }
+      }
+    },
+    "set_bindings": {
+      "type": "object",
+      "required": ["op", "target", "bindings"],
+      "additionalProperties": false,
+      "properties": {
+        "op": { "const": "set_bindings" },
+        "target": { "$ref": "adaptive-surface.schema.json#/$defs/saui_identifier" },
+        "bindings": {
+          "type": "object",
+          "minProperties": 1,
+          "maxProperties": 8,
+          "propertyNames": { "pattern": "^[a-z][a-z0-9_]{0,39}$" },
+          "additionalProperties": { "$ref": "adaptive-surface.schema.json#/$defs/saui_identifier" },
+          "description": "Replaces the component's binding map. Every referenced entry must exist and satisfy the component's accepted binding kinds."
+        }
+      }
+    },
+    "upsert_data_entry": {
+      "type": "object",
+      "required": ["op", "entry", "value"],
+      "additionalProperties": false,
+      "properties": {
+        "op": { "const": "upsert_data_entry" },
+        "entry": { "$ref": "adaptive-surface.schema.json#/$defs/saui_identifier" },
+        "value": { "$ref": "adaptive-surface.schema.json#/$defs/data_entry" }
+      }
+    },
+    "append_series_points": {
+      "type": "object",
+      "required": ["op", "entry", "points"],
+      "additionalProperties": false,
+      "properties": {
+        "op": { "const": "append_series_points" },
+        "entry": { "$ref": "adaptive-surface.schema.json#/$defs/saui_identifier" },
+        "points": {
+          "type": "array",
+          "minItems": 1,
+          "maxItems": 10000,
+          "items": { "$ref": "adaptive-surface.schema.json#/$defs/series_point" }
+        }
+      }
+    },
+    "append_child": {
+      "type": "object",
+      "required": ["op", "target", "component"],
+      "additionalProperties": false,
+      "properties": {
+        "op": { "const": "append_child" },
+        "target": {
+          "$ref": "adaptive-surface.schema.json#/$defs/saui_identifier",
+          "description": "A container component id."
+        },
+        "component": { "$ref": "adaptive-surface.schema.json#/$defs/component_node" }
+      }
+    },
+    "remove_component": {
+      "type": "object",
+      "required": ["op", "target"],
+      "additionalProperties": false,
+      "properties": {
+        "op": { "const": "remove_component" },
+        "target": { "$ref": "adaptive-surface.schema.json#/$defs/saui_identifier" }
+      }
+    },
+    "replace_component": {
+      "type": "object",
+      "required": ["op", "target", "component"],
+      "additionalProperties": false,
+      "properties": {
+        "op": { "const": "replace_component" },
+        "target": { "$ref": "adaptive-surface.schema.json#/$defs/saui_identifier" },
+        "component": { "$ref": "adaptive-surface.schema.json#/$defs/component_node" }
+      }
+    },
+    "set_actions": {
+      "type": "object",
+      "required": ["op", "actions"],
+      "additionalProperties": false,
+      "properties": {
+        "op": { "const": "set_actions" },
+        "actions": {
+          "type": "array",
+          "maxItems": 64,
+          "items": { "$ref": "adaptive-surface.schema.json#/$defs/surface_action" }
+        }
+      }
+    }
+  }
+}
