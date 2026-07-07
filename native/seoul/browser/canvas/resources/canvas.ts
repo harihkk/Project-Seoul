@@ -286,6 +286,62 @@ callbackRouter.applySurfacePatch.addListener((_surfaceId: string, _patchJson: st
   // The browser applies and validates patches; when a full re-push is simpler
   // it uses pushSurface. A future revision renders in-place patches by id.
 });
+interface TaskSnapshotDoc {
+  id: string;
+  goal: string;
+  state: string;
+  pending_approval_step?: string;
+  pending_approval_prompt?: string;
+  receipts?: { step_id: string; status: string; verification?: { verified: boolean } }[];
+}
+
+// Live tasks for this window, keyed by id; rendered as a compact ribbon with
+// real controls (pause/resume/cancel/approve) wired to the typed handler.
+const tasks: Map<string, TaskSnapshotDoc> = new Map();
+const tasksEl = document.getElementById('tasks') as HTMLElement | null;
+
+function renderTasks(): void {
+  if (!tasksEl) return;
+  tasksEl.replaceChildren();
+  for (const task of tasks.values()) {
+    if (task.state === 'completed' || task.state === 'cancelled') continue;
+    const row = el('div', 'task-row');
+    row.appendChild(el('span', `task-state task-${task.state}`, task.state.replace(/_/g, ' ')));
+    row.appendChild(el('span', 'task-goal', task.goal));
+    const controls = el('span', 'task-controls');
+    const control = (label: string, onClick: () => void) => {
+      const b = el('button', 'task-btn', label) as HTMLButtonElement;
+      b.addEventListener('click', onClick);
+      controls.appendChild(b);
+    };
+    if (task.state === 'executing') control('Pause', () => pageHandler?.pauseTask(task.id));
+    if (task.state === 'paused') control('Resume', () => pageHandler?.resumeTask(task.id));
+    if (task.state === 'awaiting_approval' && task.pending_approval_step) {
+      const step = task.pending_approval_step;
+      control('Approve', () => pageHandler?.approveStep(task.id, step, true));
+      control('Reject', () => pageHandler?.approveStep(task.id, step, false));
+    }
+    if (task.state !== 'failed') control('Cancel', () => pageHandler?.cancelActiveTask(task.id));
+    row.appendChild(controls);
+    if (task.pending_approval_prompt) {
+      row.appendChild(el('div', 'task-prompt', task.pending_approval_prompt));
+    }
+    tasksEl.appendChild(row);
+  }
+}
+
+callbackRouter.pushTaskSnapshot.addListener((snapshotJson: string) => {
+  try {
+    const snapshot = JSON.parse(snapshotJson) as TaskSnapshotDoc;
+    if (snapshot && typeof snapshot.id === 'string') {
+      tasks.set(snapshot.id, snapshot);
+      renderTasks();
+    }
+  } catch {
+    /* a malformed snapshot renders nothing rather than something wrong */
+  }
+});
+
 callbackRouter.setStatus.addListener((statusJson: string) => {
   try {
     const status = JSON.parse(statusJson) as { route?: string };

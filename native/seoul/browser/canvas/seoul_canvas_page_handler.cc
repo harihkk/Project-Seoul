@@ -9,6 +9,9 @@
 #include "chrome/browser/ui/browser_window/public/browser_window_interface.h"
 #include "seoul/browser/product/browser/seoul_runtime_service.h"
 #include "seoul/browser/product/browser/seoul_runtime_service_factory.h"
+#include "seoul/browser/product/task_snapshot_wire.h"
+#include "seoul/browser/product/task_surface_bridge.h"
+#include "seoul/browser/product/workflow_service.h"
 
 namespace seoul {
 
@@ -102,7 +105,7 @@ void SeoulCanvasPageHandler::NotifyComponentEvent(
     typed.action_id = event->action_id.value();
   }
   std::optional<base::Value> parsed_value =
-      base::JSONReader::Read(event->value_json);
+      base::JSONReader::Read(event->value_json, base::JSON_PARSE_RFC);
   if (parsed_value.has_value()) {
     typed.value = std::move(parsed_value.value());
   }
@@ -147,7 +150,7 @@ void SeoulCanvasPageHandler::NotifyComponentEvent(
       // tab open - it never bypasses the command layer.
       const std::optional<LiveWindowKey> window = ResolveBoundWindow();
       if (window.has_value()) {
-        base::Value::Dict args;
+        base::DictValue args;
         args.Set("url", outcome.target);
         runtime_->StartCapability("browser.tabs.open", std::move(args),
                                   window.value());
@@ -156,14 +159,33 @@ void SeoulCanvasPageHandler::NotifyComponentEvent(
       }
       break;
     }
-    case SurfaceEventOutcome::Kind::kBrowserCommand:
-    case SurfaceEventOutcome::Kind::kWorkflowEdit:
-      // These action kinds are only emitted by surfaces the runtime does not
-      // render yet (the launcher and the workflow editor). Rather than fail
-      // silently, tell the renderer so it can show an explicit "not available
-      // yet" state; the interface compiler never emits them today.
-      PushStatus("action_unsupported");
+    case SurfaceEventOutcome::Kind::kBrowserCommand: {
+      // A launcher-catalog command is a registered browser.* capability; the
+      // registry fail-closes unknown ids and the normal approval, budget, and
+      // receipt machinery applies. Nothing here bypasses the command layer.
+      const std::optional<LiveWindowKey> window = ResolveBoundWindow();
+      if (!window.has_value()) {
+        PushStatus("window_unbound");
+        break;
+      }
+      if (ToolId::FromString(outcome.target).is_valid()) {
+        runtime_->StartCapability(outcome.target, std::move(outcome.payload),
+                                  window.value());
+      } else {
+        PushStatus("browser_command_rejected");
+      }
       break;
+    }
+    case SurfaceEventOutcome::Kind::kWorkflowEdit: {
+      // Typed workflow edits: the payload names the workflow and operation;
+      // the target is the node id the action was declared on. Every edit
+      // revalidates atomically in the workflow service; a rejected edit is
+      // reported, never swallowed.
+      if (!ApplyWorkflowEdit(outcome.target, outcome.payload)) {
+        PushStatus("workflow_edit_rejected");
+      }
+      break;
+    }
     case SurfaceEventOutcome::Kind::kNone:
       // Genuinely renderer-local (local-state toggles) or an unresolved event;
       // nothing for the browser to do.
@@ -187,10 +209,75 @@ void SeoulCanvasPageHandler::StopVoice() {
   PushStatus("voice_stopped");
 }
 
+void SeoulCanvasPageHandler::ListTasks(ListTasksCallback callback) {
+  std::vector<std::string> snapshots_json;
+  const std::optional<LiveWindowKey> window = ResolveBoundWindow();
+  if (runtime_ && window.has_value()) {
+    for (const TaskSnapshot& snapshot : runtime_->tasks()->Snapshots()) {
+      if (!(snapshot.window == window.value())) {
+        continue;  // other windows' tasks never leak into this Canvas
+      }
+      std::string json;
+      base::JSONWriter::Write(TaskSnapshotToValue(snapshot), &json);
+      snapshots_json.push_back(std::move(json));
+    }
+  }
+  std::move(callback).Run(std::move(snapshots_json));
+}
+
+void SeoulCanvasPageHandler::PauseTask(const std::string& task_id) {
+  if (BoundTask(task_id).has_value()) {
+    runtime_->tasks()->Pause(TaskId::FromString(task_id));
+  }
+}
+
+void SeoulCanvasPageHandler::ResumeTask(const std::string& task_id) {
+  if (BoundTask(task_id).has_value()) {
+    runtime_->tasks()->Resume(TaskId::FromString(task_id));
+  }
+}
+
 void SeoulCanvasPageHandler::CancelActiveTask(const std::string& task_id) {
-  if (runtime_) {
+  if (BoundTask(task_id).has_value()) {
     runtime_->tasks()->Cancel(TaskId::FromString(task_id));
   }
+}
+
+void SeoulCanvasPageHandler::ApproveStep(const std::string& task_id,
+                                         const std::string& step_id,
+                                         bool approved) {
+  if (BoundTask(task_id).has_value()) {
+    runtime_->tasks()->Approve(TaskId::FromString(task_id), step_id, approved);
+  }
+}
+
+void SeoulCanvasPageHandler::ListTaskSurfaces(
+    const std::string& task_id,
+    ListTaskSurfacesCallback callback) {
+  std::vector<std::string> surface_ids;
+  if (BoundTask(task_id).has_value() && runtime_->task_surface_bridge()) {
+    if (const SurfaceId* id = runtime_->task_surface_bridge()->SurfaceForTask(
+            TaskId::FromString(task_id))) {
+      surface_ids.push_back(id->value());
+    }
+  }
+  std::move(callback).Run(std::move(surface_ids));
+}
+
+void SeoulCanvasPageHandler::SaveTaskAsWorkflow(
+    const std::string& task_id,
+    const std::string& name,
+    SaveTaskAsWorkflowCallback callback) {
+  std::string workflow_id;
+  if (BoundTask(task_id).has_value() && runtime_->workflows() &&
+      !name.empty()) {
+    if (std::optional<WorkflowId> id =
+            runtime_->workflows()->SaveTaskAsWorkflow(
+                TaskId::FromString(task_id), name)) {
+      workflow_id = id->value();
+    }
+  }
+  std::move(callback).Run(std::move(workflow_id));
 }
 
 void SeoulCanvasPageHandler::OnSurfaceUpdated(const SurfaceId& id,
@@ -205,24 +292,93 @@ void SeoulCanvasPageHandler::OnSurfaceRemoved(const SurfaceId& id) {
 }
 
 void SeoulCanvasPageHandler::OnTaskUpdated(const TaskId& task_id) {
-  PushStatus("task_updated");
+  PushTaskSnapshot(task_id);
 }
 
 void SeoulCanvasPageHandler::OnTaskNeedsApproval(const TaskId& task_id,
                                                  const std::string& step_id,
                                                  const std::string& prompt) {
-  PushStatus("task_needs_approval");
+  PushTaskSnapshot(task_id);
 }
 
 void SeoulCanvasPageHandler::OnTaskFinished(const TaskId& task_id) {
-  PushStatus("task_finished");
+  PushTaskSnapshot(task_id);
+}
+
+void SeoulCanvasPageHandler::PushTaskSnapshot(const TaskId& task_id) {
+  if (!page_) {
+    return;
+  }
+  const std::optional<TaskSnapshot> snapshot = BoundTask(task_id.value());
+  if (!snapshot.has_value()) {
+    return;  // unbound or another window's task
+  }
+  std::string json;
+  base::JSONWriter::Write(TaskSnapshotToValue(snapshot.value()), &json);
+  page_->PushTaskSnapshot(json);
+}
+
+std::optional<TaskSnapshot> SeoulCanvasPageHandler::BoundTask(
+    const std::string& task_id) const {
+  if (!runtime_) {
+    return std::nullopt;
+  }
+  const std::optional<LiveWindowKey> window = ResolveBoundWindow();
+  if (!window.has_value()) {
+    return std::nullopt;
+  }
+  std::optional<TaskSnapshot> snapshot =
+      runtime_->tasks()->Snapshot(TaskId::FromString(task_id));
+  if (!snapshot.has_value() || !(snapshot->window == window.value())) {
+    return std::nullopt;
+  }
+  return snapshot;
+}
+
+bool SeoulCanvasPageHandler::ApplyWorkflowEdit(
+    const std::string& node_id,
+    const base::DictValue& payload) {
+  if (!runtime_ || !runtime_->workflows()) {
+    return false;
+  }
+  const std::string* workflow_value = payload.FindString("workflow_id");
+  const std::string* op = payload.FindString("op");
+  if (!workflow_value || !op) {
+    return false;
+  }
+  const WorkflowId workflow = WorkflowId::FromString(*workflow_value);
+  if (!workflow.is_valid()) {
+    return false;
+  }
+  WorkflowService* workflows = runtime_->workflows();
+  if (*op == "remove_node") {
+    return workflows->RemoveNode(workflow, node_id).has_value();
+  }
+  if (*op == "remove_edge") {
+    const std::string* from = payload.FindString("from");
+    const std::string* to = payload.FindString("to");
+    return from && to &&
+           workflows->RemoveEdge(workflow, *from, *to).has_value();
+  }
+  if (*op == "add_edge") {
+    const std::string* from = payload.FindString("from");
+    const std::string* to = payload.FindString("to");
+    if (!from || !to) {
+      return false;
+    }
+    WorkflowEdge edge;
+    edge.from = *from;
+    edge.to = *to;
+    return workflows->AddEdge(workflow, edge).has_value();
+  }
+  return false;  // unknown ops fail closed and are reported by the caller
 }
 
 void SeoulCanvasPageHandler::PushStatus(const std::string& detail) {
   if (!page_) {
     return;
   }
-  base::Value::Dict status;
+  base::DictValue status;
   status.Set("detail", detail);
   if (runtime_) {
     const ProviderStateSnapshot providers = runtime_->providers()->Snapshot();

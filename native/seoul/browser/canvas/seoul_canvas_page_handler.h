@@ -61,7 +61,18 @@ class SeoulCanvasPageHandler : public canvas::mojom::PageHandler,
   void SubmitTurn(canvas::mojom::TurnInputPtr input) override;
   void StartVoice() override;
   void StopVoice() override;
+  void ListTasks(ListTasksCallback callback) override;
+  void PauseTask(const std::string& task_id) override;
+  void ResumeTask(const std::string& task_id) override;
   void CancelActiveTask(const std::string& task_id) override;
+  void ApproveStep(const std::string& task_id,
+                   const std::string& step_id,
+                   bool approved) override;
+  void ListTaskSurfaces(const std::string& task_id,
+                        ListTaskSurfacesCallback callback) override;
+  void SaveTaskAsWorkflow(const std::string& task_id,
+                          const std::string& name,
+                          SaveTaskAsWorkflowCallback callback) override;
 
   // SurfaceServiceObserver:
   void OnSurfaceUpdated(const SurfaceId& id,
@@ -76,6 +87,16 @@ class SeoulCanvasPageHandler : public canvas::mojom::PageHandler,
   void OnTaskFinished(const TaskId& task_id) override;
 
  private:
+  // Pushes the canonical task-snapshot JSON for `task_id` when it belongs to
+  // the bound window; other windows' tasks never reach this Canvas.
+  void PushTaskSnapshot(const TaskId& task_id);
+  // The task's snapshot iff it exists and is bound to this Canvas's window.
+  std::optional<TaskSnapshot> BoundTask(const std::string& task_id) const;
+  // Applies one typed workflow edit from a surface action payload; false is
+  // reported to the renderer as workflow_edit_rejected.
+  bool ApplyWorkflowEdit(const std::string& node_id,
+                         const base::DictValue& payload);
+
   // Pushes a compact status document (provider/voice/task state) to the
   // renderer so it never shows a blank page when the runtime is initializing.
   void PushStatus(const std::string& detail);

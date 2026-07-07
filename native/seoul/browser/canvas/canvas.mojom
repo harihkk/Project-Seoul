@@ -51,7 +51,17 @@ interface PageHandler {
   // Voice control from Canvas UI affordances.
   StartVoice();
   StopVoice();
+
+  // Task control. Every mutation is authorized against the bound window's
+  // tasks; snapshots are canonical task-snapshot JSON documents
+  // (protocol/task-snapshot.schema.json).
+  ListTasks() => (array<string> task_snapshots_json);
+  PauseTask(string task_id);
+  ResumeTask(string task_id);
   CancelActiveTask(string task_id);
+  ApproveStep(string task_id, string step_id, bool approved);
+  ListTaskSurfaces(string task_id) => (array<string> surface_ids);
+  SaveTaskAsWorkflow(string task_id, string name) => (string workflow_id);
 };
 
 // Implemented in the renderer. The browser calls these to drive the Canvas.
@@ -64,6 +74,11 @@ interface Page {
 
   // Live voice/session/status indicators (route: "local" or "cloud").
   SetStatus(string status_json);
+
+  // A task changed: the full canonical task-snapshot JSON document. Replaces
+  // status-string task notifications; the Canvas renders plan, current step,
+  // receipts, and approval state from this alone.
+  PushTaskSnapshot(string snapshot_json);
 };
 
 // Bootstraps the pair. The WebUIController implements this factory.

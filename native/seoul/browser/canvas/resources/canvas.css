@@ -150,3 +150,15 @@ body {
 [hidden] {
   display: none !important;
 }
+
+/* Live task ribbon: state, goal, and real controls per task. */
+#tasks { display: flex; flex-direction: column; gap: 6px; }
+#tasks:empty { display: none; }
+.task-row { display: flex; align-items: baseline; gap: 10px; flex-wrap: wrap; font-size: 12px; padding: 6px 8px; border: 1px solid var(--seoul-rule, rgba(127,127,127,0.35)); border-radius: 4px; }
+.task-state { font-family: monospace; text-transform: uppercase; letter-spacing: 0.04em; }
+.task-awaiting_approval { color: #b58900; }
+.task-failed { color: #c0392b; }
+.task-goal { flex: 1; min-width: 12ch; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.task-controls { display: inline-flex; gap: 6px; }
+.task-btn { font: inherit; padding: 1px 8px; cursor: pointer; }
+.task-prompt { flex-basis: 100%; font-size: 12px; opacity: 0.85; }
