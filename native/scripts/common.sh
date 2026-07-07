@@ -60,6 +60,9 @@ EVIDENCE_DIR="$SEOUL_NATIVE_DIR/evidence"
 
 # Repository-owned Seoul native source and the Chromium integration patch series.
 SEOUL_SRC_DIR="$SEOUL_NATIVE_DIR/seoul"
+# The canonical cross-language wire contract (schemas + shared fixtures),
+# mirrored into the overlay at src/seoul/protocol by materialize.sh.
+SEOUL_PROTOCOL_DIR="$SEOUL_REPO_ROOT/protocol"
 PATCHES_DIR="$SEOUL_NATIVE_DIR/patches/chromium"
 PATCH_MANIFEST="$SEOUL_NATIVE_DIR/patches/manifest.json"
 # Where Seoul-owned source is materialized inside the external checkout.
