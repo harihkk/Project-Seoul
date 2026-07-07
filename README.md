@@ -26,13 +26,27 @@ The repository contains:
 3. An **unmodified, pinned native Chromium baseline** (`native/chromium.lock.json`,
    `native/gn/`) plus reproduction/verification scripts. The Chromium source and
    build output live in an external, untracked checkout, never in this repo.
-4. A **frozen Manifest V3 browser-control harness** (`apps/browser-harness/`), a
+4. The **canonical cross-language protocol** (`protocol/`): versioned JSON
+   Schemas for the semantic result, adaptive surface, surface patch, component
+   event, task snapshot, and capability descriptor wire formats, with generated
+   TypeScript types and a shared conformance fixture corpus consumed by both
+   the native C++ tests and the TypeScript tests. `npm run check:protocol`
+   fails CI if the schemas drift from the native wire names.
+5. The **Seoul Canvas Design Lab** (`apps/canvas-prototype/`): a runnable
+   TypeScript design environment for the Canvas over twenty synthetic fixture
+   capabilities. It consumes the canonical protocol and implements real
+   atomic, incremental surface patches, but it is not the shipping runtime -
+   see its README for its honest boundaries (fixture execution, lexical
+   routing, fixture-contract validation instead of real observation).
+6. A **frozen Manifest V3 browser-control harness** (`apps/browser-harness/`), a
    protocol and safety reference only (described in the rest of this README). The
    native product re-implements these capabilities properly.
 
 Source-of-truth model: Seoul-owned code is tracked here (`native/seoul/`) and is
 materialized into the external checkout; unavoidable upstream edits are minimal,
 reversible patches (`native/patches/chromium/`) over a pinned Chromium revision.
+The canonical `protocol/` directory is mirrored into the checkout at
+`src/seoul/protocol/` by the same materialization step.
 The modified checkout is disposable and is never the source of truth.
 
 **Not yet done / not verified on any machine:** GN generation, C++ compilation,

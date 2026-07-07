@@ -82,7 +82,7 @@ engine only leaves room for them.
 | Pref registration | components/keyed_service/content/browser_context_keyed_service_factory.h | virtual `RegisterProfilePrefs(PrefRegistrySyncable*)` | per-factory bounded prefs | confirmed |
 | Factory registration | chrome/browser/profiles/chrome_browser_main_extra_parts_profiles.cc | `EnsureBrowserContextKeyedServiceFactoriesBuilt()` | the patch adds one GetInstance() here | confirmed |
 | Stable id | base/uuid.h | `base::Uuid` (GenerateRandomV4 / ParseLowercase / AsLowercaseString) | Seoul id backing | confirmed |
-| Persistence value | base/values.h, base/json/values_util.h | `base::Value::Dict`, `base::TimeToValue`/`ValueToTime` | Seoul store types | confirmed |
+| Persistence value | base/values.h, base/json/values_util.h | `base::DictValue`, `base::TimeToValue`/`ValueToTime` | Seoul store types | confirmed |
 | Result type | base/types/expected.h | `base::expected`, `base::ok`, `base::unexpected` | mutation results | confirmed |
 | Split tabs | chrome/browser/ui/views/frame/multi_contents_view.{h,cc} | `MultiContentsView` (max 2 panes) | BrowserView owns it | confirmed |
 | Split model | components/tabs/public/split_tab_data.h | `split_tabs::SplitTabId`, `SplitTabData` | upstream split identity | confirmed |

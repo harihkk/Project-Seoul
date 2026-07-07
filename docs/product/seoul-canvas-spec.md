@@ -74,3 +74,11 @@ typed SAUI-document-in, `ComponentEvent`-out contract described above. That WebU
 surface is architecture intent and is not built; what exists today is the typed
 document, catalog, validator, patch, selection, and event model that such a
 surface would render.
+
+The wire contract those models implement is canonical and cross-language:
+`protocol/` holds the versioned JSON Schemas (semantic result, adaptive
+surface, surface patch, component event, task snapshot, capability descriptor)
+plus the shared conformance fixture corpus consumed by both the native C++
+tests and the TypeScript Canvas Design Lab (`apps/canvas-prototype/`, a design
+environment over synthetic fixtures - see its README for its honest
+boundaries; it is not this WebUI and cannot stand in for it).

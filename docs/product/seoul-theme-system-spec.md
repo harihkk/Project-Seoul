@@ -67,7 +67,7 @@ its visual tokens.
 ## JSON import and export
 
 `ThemeToValue` serializes the full theme (scheme, all color roles, typography,
-motion, corner radius, and custom colors) to a `base::Value::Dict`.
+motion, corner radius, and custom colors) to a `base::DictValue`.
 `ThemeFromValue` parses it back, rejects an unsupported schema version, requires
 all eight color roles to parse, and then runs `ValidateTheme` before returning,
 so contrast and bounds are enforced on import. An imported theme that fails any

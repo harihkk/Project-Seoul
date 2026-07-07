@@ -10,26 +10,177 @@ it says so.
 
 SEOUL PRODUCT BUILD INCOMPLETE
 
-The build was attempted on this host and cannot run. The authoritative
-build-host gate (`native/scripts/build-host-check.sh`) hard-fails on physical
-resource limits, not policy:
+The build gate was run again on this host (2026-07-02) and hard-fails on
+physical resource limits, not policy. Exact output of
+`native/scripts/build-host-check.sh` (exit 1):
 
-- RAM 8 GiB (the Chromium link needs >= 16 GiB; it would thrash or OOM).
-- Free storage 64 GiB (a full build needs >= 150 GiB).
-- depot_tools is not bootstrapped on this host (`python3_bin_reldir.txt`
-  missing), so even `gn gen` cannot run its build scripts without a network
-  CIPD re-initialization, and compile/link/`browser_tests`/Chrome are out of
-  reach regardless.
+```
+==> Seoul build-host readiness gate
+[seoul-native] minimums: RAM >= 16 GiB, free fast storage >= 150 GiB
+PASS  host is macOS arm64
+FAIL  RAM 8 GiB is below the 16 GiB minimum; the chrome link will thrash or OOM
+FAIL  free storage 60 GiB is below the 150 GiB minimum for a build
+PASS  full Xcode active: Xcode 26.6
+PASS  macOS SDK reachable (26.5)
+PASS  checkout verification passed
 
-Xcode 26.6 with a usable macOS SDK is present, and the pinned checkout verifies
-clean, so the blocker is exclusively RAM and disk. Per this project's rule, the
-only permitted deferral is heavy Chromium compilation and execution the host
-cannot support; that is exactly what is deferred here. No compilation, linking,
-native-test run, browser-test run, Chrome build, or profile launch was faked.
-The verdict is `SEOUL PRODUCT BUILD INCOMPLETE` and cannot honestly be raised to
-`FUNCTIONAL ALPHA` without a capable build host.
+==> build-host result
+[error] this host is NOT cleared to build Chromium; do not run gen.sh/build.sh here
+```
 
-Progress this pass (source-level, fully verifiable without a build): the
+Everything the gate permits on this host was executed and is green: checkout
+verification (`verify-checkout.sh`, exit 0, HEAD at the locked revision,
+`gclient validate` clean), materialization (`materialize.sh apply` + `verify`,
+now also mirroring the canonical `protocol/` contract to
+`src/seoul/protocol/`), and patch application (`patches.sh verify`: the series
+applies and reverses cleanly). The gate was NOT bypassed and no ceiling was
+weakened. Per this project's rule, the only permitted deferral is heavy
+Chromium compilation and execution the host cannot support; that is exactly
+what is deferred here: `gn gen`, `gn check`, compilation, linking, unit-test
+and browser-test execution, the Chrome build, and a profile launch. None of it
+was faked. The verdict is `SEOUL PRODUCT BUILD INCOMPLETE` and cannot honestly
+be raised; `SEOUL PRODUCT FUNCTIONAL ALPHA` additionally requires the full
+native product spine (typed task snapshots over Mojo, every declared surface
+action handled, the Lit Canvas WebUI, the visual engine, measured local voice,
+the shell differentiators, origin-scoped agent permissions) verified by the
+production browser-test scenario - see sections 13 and 14. A standalone
+prototype cannot earn that verdict, and this report does not claim it.
+
+Progress this pass (2026-07-02, convergence and product closure; all
+verifiable on this host):
+
+- ONE CANONICAL CROSS-LANGUAGE PROTOCOL. `protocol/` now holds the versioned
+  wire contract: `semantic-result`, `adaptive-surface`, `surface-patch`,
+  `component-event`, `task-snapshot`, and `capability-descriptor` schemas
+  covering every native semantic shape (24) and role (30), field metadata,
+  provenance, citations, conflicts, streaming/partial state, continuation,
+  unavailable fields, structured errors, task receipts and status, surface
+  actions, and all ten patch ops. TypeScript types are GENERATED from the
+  schemas (`protocol/ts/types.ts`, drift-gated); the shared fixture corpus
+  (`protocol/fixtures/`: the twenty semantic cases from scalar through
+  error-result, plus surface/patch/event/task/capability, version-compat, and
+  invalid corpora) is consumed by BOTH the TypeScript tests
+  (`npm run test:protocol`, running green) and new native conformance test
+  sources (`semantic_wire_unittest.cc`, `saui_protocol_fixtures_unittest.cc`,
+  `task_snapshot_wire_unittest.cc`, `tool_descriptor_wire_unittest.cc` -
+  source-complete, compile blocked by the host gate). New native codecs close
+  the wire gaps: `semantic/semantic_wire.*` (canonical SemanticResult JSON),
+  `product/task_snapshot_wire.*`, `tools/tool_descriptor_wire.*`, and a
+  `set_bindings` patch op in `saui/saui_patch.*`. `npm run check:protocol`
+  (in `npm run ci`) extracts the enum wire names from the native sources and
+  fails if the schemas ever drift from them - 23 enum families are parity-
+  checked today.
+- THE CANVAS PROTOTYPE IS NOW THE HONESTLY-BOUNDED DESIGN LAB. Renamed and
+  documented as such (`apps/canvas-prototype/README.md` states what is
+  synthetic: twenty fixed fixture capabilities, a lexical token-overlap
+  router, fixture-contract validation instead of real observation, a separate
+  simplified compiler policy, explained fallbacks). Its independently
+  authored TypeScript semantic model is DELETED; the Lab consumes the
+  generated canonical types and validates every document against the actual
+  schema files. The six hardcoded example rows are gone - the catalog UI is
+  generated from the registered fixture capability descriptors. The
+  "verified" wording is gone - receipts say `fixture contract validated`
+  (method `fixture_contract`), and every artifact is labeled synthetic demo
+  data.
+- REAL STABLE-ID SURFACE PATCHES IN THE LAB. The monolithic `canvas.ts` is
+  split into cohesive modules (state, fixture runtime, surface store,
+  renderers, charts, representation controls, provenance UI, receipts,
+  catalog). Every change - representation switch, synthetic stream batch -
+  is a canonical patch document validated against the schema and applied
+  atomically (invalid paths and dangling bindings roll back; revision bumps
+  once). The reconciler updates only the components the change summary names;
+  a browser smoke test proves the artifact element, its margin, focus, text
+  selection, and scroll position all survive a patch and that a
+  representation switch does NOT replace the artifact element. Full-DOM
+  replacement is gone. `npm run test:canvas` (type-check + 22 tests including
+  the headless-browser suite) is now part of `npm run ci`.
+
+Hardening pass (2026-07-03, host-side parse verification against the REAL
+pinned checkout headers): a new gate, `native/scripts/syntax-check.sh`
+(`npm run check:syntax`, in `npm run ci`), parses every Seoul .cc with clang
+-fsyntax-only against the actual M149 headers in the external checkout,
+stubbing only gn-generated buildflag headers. Result: 126 files parse clean;
+27 files that need gn-generated code are SKIPPED, each with the exact missing
+generated header named in the output (mojom-forward headers, optimization-
+guide protos, perfetto tracing protos). Skip classification is
+EVIDENCE-BASED - a file is skipped only when the parse itself demonstrates a
+generated-header dependency; there is no path allowlist - and a header that
+exists in the checkout but fails to resolve fails the gate itself. This gate
+immediately invalidated the tree's previous "source-complete, structured to
+build" confidence and found real defects, all now fixed:
+
+- The pinned Chromium has REMOVED `base::Value::Dict`/`base::Value::List`;
+  the entire Seoul tree used them (82 files, ~500 occurrences). Migrated to
+  `base::DictValue`/`base::ListValue`. Without this, nothing under
+  `native/seoul` would have compiled.
+- `base::JSONReader::Read/ReadDict/ReadList` now require the `options`
+  argument; 12 Seoul call sites migrated to strict `base::JSON_PARSE_RFC`.
+- `GURL::host()` now returns `std::string_view`
+  (intelligence/provider_protocol.cc fixed).
+- Four observer interfaces used with `base::ObserverList` did not derive
+  from `base::CheckedObserver` and could not compile (and would not have
+  caught use-after-destroy): CommandCompletionObserver, ShellObserver,
+  ProjectionObserver, LiveWindowStateObserver. All are checked observers now.
+- Missing includes that only ever worked transitively (or never):
+  data_validation.cc/_unittest (data_errors.h), model_provider.h
+  (base/types/expected.h), organization_model.h (base/functional/callback.h),
+  expected_observation_registry.h (command_errors.h), projection_types.h
+  (organization_ids.h, organization_types.h), shell_controller.h
+  (shell_errors.h), shell_controller.cc (lifecycle_coordinator.h),
+  organization_recovery_unittest.cc (organization_model.h).
+- `WorkflowService` called the workflow editor with stale pre-clock
+  signatures and could not compile; it now injects a clock (matching
+  TaskService) and threads it through every editor call; `AddNode` takes the
+  editor's `after_node_id`. Runtime and test call sites updated.
+- Two test fakes were abstract (missing `OpenNewTab` override):
+  command_executor_unittest.cc, workspace_switcher_unittest.cc.
+- Two tests misused `EnsureDefaultWorkspace()` (it returns a status; the id
+  accessor is `default_workspace()`), and surface_service_unittest.cc used a
+  `FieldPrimitive::kText` enum value that does not exist (now kString).
+- `SchemaField` lacked the equality WorkflowParam's defaulted `==` requires.
+- In the organization service (reached once skip classification became
+  evidence-based instead of path-based): a missing lifecycle_coordinator.h
+  include, an invalid `override` on the non-virtual SessionRestoreObserver
+  destructor, a missing shell_types.h include in shell_service.h, and a
+  `base::WeakPtr` receiver bound to the bool-returning prefs writer - which
+  Chromium's bind machinery statically forbids - now bound through a
+  WeakPtr-argument adapter that reports a failed write after destruction.
+- An independent adversarial review of the full diff (own-context agent,
+  every finding verified by execution or against the pinned headers) found
+  nine real defects; all are fixed: a wrong child-count assert in the new
+  saui fixtures test; a Lab compiler path that bound a series entry
+  conversion never emitted (freezing the surface for all future patches); a
+  synthetic stream that fed the chart different values than the rows table;
+  the TS patch engine accepting patches native rejects (container rule,
+  duplicate ids, binding kinds, depth/count caps) - closed by GENERATING the
+  component catalog + limits from the native sources into
+  protocol/component-catalog.json (drift-gated) and enforcing it in the Lab
+  engine, which immediately also caught the Lab's missing bar-chart
+  `baseline_zero` prop; set_state message-clearing divergence (mirrored to
+  native semantics); int64 cost fields silently truncated through a 32-bit
+  wire read (now double-carried with integral/range rejection and schema
+  maxima); replace-under-new-id leaving a stale DOM element (both engines
+  now report the old id); the descriptor schema advertising a `url` field
+  type the native importer rejects (removed); and a shared depth-cap gap on
+  structural patch ops (native ApplyOp now bounds depth like parse does,
+  with tests). One finding remains OPEN as a named blocker: the semantic
+  field-id budget (64) exceeds the SAUI key budgets it projects into
+  (40/64-with-prefix) on BOTH compilers; the Lab degrades to an explained
+  error artifact, an invariant test pins the corpus, and bounded key
+  derivation belongs with the native compiler work on the build host.
+- Design Lab chart policy brought to parity with the native compiler's
+  honesty guards: single-point data and data without complete provenance
+  (source, retrieved-at, effective-at) never chart and never appear in the
+  representation switch; they fall back to an explained table (new
+  generalization tests pin this).
+
+The prior "browser tests wired and structured to build" and "source-complete"
+statements in this report were written before any real header contact and
+overstated confidence; parse verification is now the minimum bar for any
+native source claim in this repository. Compilation, linking, and execution
+remain deferred to the capable host and nothing here claims otherwise.
+
+Prior pass (source-level, fully verifiable without a build): the
 task-to-surface production path is now closed. `SurfaceService::CreateFromSemantic`
 was previously called only by tests, so a completed task produced no artifact.
 A runtime-owned `TaskSurfaceBridge` now observes the task service and compiles
@@ -330,39 +481,105 @@ is made.
 
 ## 13. Remaining blockers
 
-1. A capable Apple-silicon build host with full Xcode and the pinned toolchain
-   (mandatory to compile, run tests, and proceed).
-2. `SeoulRuntimeService` (profile-keyed) instantiating `SeoulRuntime`, with
-   `SceneResolvers` wired to the organization/theme/site-layer stores, and its
-   registration added to the integration patch.
-3. Canvas host wiring: add `//seoul/browser/canvas` to `//chrome/browser` deps,
-   register `SeoulCanvasUIConfig`, wire the build_webui resource pak, add a
-   per-window side-panel entry, and route the page handler into the runtime.
-4. Concrete provider transports (loopback and cloud HTTP over the injected
-   transport) and real audio capture, plus their benchmarks.
-5. Native Views shell work (Essential resolver, workspace dialogs, split
-   chooser, searchable launcher dispatch, action/accelerator registration,
-   tab-role decoration, collapsed mode).
+Blocker 1 gates everything after it; per the convergence directive, major
+native feature development does not continue until Chrome builds and launches.
+
+1. A capable Apple-silicon build host (>= 16 GiB RAM, >= 150 GiB free fast
+   storage, full Xcode) - mandatory to compile, run every Seoul unit-test and
+   browser-test executable, build Chrome, and launch a disposable profile.
+   The earlier runtime-service and Canvas-host wiring blockers are CLOSED in
+   source: `SeoulRuntimeServiceFactory` registration, `SeoulCanvasUIConfig`,
+   and the per-window `kSeoulCanvas` side-panel entry are all in the
+   integration patch, and `TaskSurfaceBridge` projects task results to
+   surfaces in production. None of it has compiled or run.
+2. Typed task snapshots over Mojo - SOURCE COMPLETE, awaiting build-host
+   compile. `canvas.mojom` now carries `PushTaskSnapshot` plus
+   ListTasks/GetTask/Pause/Resume/Cancel/ApproveStep/ListTaskSurfaces/
+   SaveTaskAsWorkflow; the handler pushes `task_snapshot_wire` JSON on every
+   task observer event (window-filtered), and the WebUI renders a task ribbon
+   with pause/resume/approve/reject controls. `ProvideInput` remains open
+   (TaskService has no input-step seam yet). Mojom/handler cannot be
+   parse-verified on this host (mojo codegen); they compile first on the
+   build host.
+3. `SurfaceActionKind` completeness - SOURCE COMPLETE at the dispatch layer:
+   `kBrowserCommand` routes through the fail-closed capability registry and
+   `kWorkflowEdit` through `WorkflowService` ops; nothing silently drops.
+   `SurfaceActionCompletenessTest.EveryDeclaredActionKindHasAnOutcome` proves
+   every declared kind resolves to a non-silent outcome. Runtime behavior
+   still needs the build host.
+4. The shipping Canvas WebUI in Chromium Lit (`CrLitElement`, checked-in
+   `.html.ts`, `build_webui`) consuming the canonical protocol - the Design
+   Lab's imperative `canvas.ts` must NOT be copied in. Then the full visual
+   engine (every accepted chart type rendered or removed from the accepted
+   set).
+5. Seoul Voice from measured local components. `apps/voice-lab` exists and
+   the first measurement rounds have RUN on the dev M2 (8 GiB) - weaker than
+   any target host, so these numbers are upper bounds. Runtime and all model
+   artifacts are sha256-pinned with licenses in `apps/voice-lab/manifest.json`
+   (sherpa-onnx v1.13.3 runtime; process-spawn overhead included in all wall
+   times):
+   - TTS `piper en_US-amy-medium` (63 MB): first-audio upper bound 940 ms
+     COLD including full model load per call; RTF 0.128. Resident in its own
+     process this bounds first audio well under 200 ms.
+   - TTS `kokoro-en-v0_19` (82M params, 311 MB): cold 3.4 s, warm short
+     sentence ~2.0 s, RTF 0.83 - the richness tier; needs target-host
+     re-measurement before it can gate the interactive path.
+   - ASR `zipformer-streaming-en int8` (streaming/partials): cold 1.67 s,
+     RTF 0.134, peak RSS 230 MB, self-play WER 18.4% (clean synthetic
+     speech, upper bound; streaming trades accuracy for latency).
+   - ASR `whisper-small.en int8` (final pass): cold 3.35 s, RTF 0.237, peak
+     RSS 1.17 GB, self-play WER 4.3% (homophone spellings included).
+   Self-play WER = recognizing this lab's own TTS output of known scripts -
+   NOT user-voice WER; the recorded evaluation set (Indian + American
+   English, noise, names, URLs, code terms, corrections, interruptions) is
+   still required and is the number that picks the Voice Pack. Streaming
+   partial latency needs the c-api paced-feed harness (build host). Then
+   `SeoulVoiceService` (inference in a sandboxed utility process; Apple
+   providers as fallback, never the identity). The Design Lab already ships
+   the voice summarizer (`voice-summary.ts`, spoken twin of the interface
+   compiler: insights from shapes and roles only, honesty riders for
+   failure/partial/conflict/gaps) behind an explicit default-off toggle.
+6. The shell differentiators, in the ordered list from the product definition
+   (Essential associations, split chooser, dynamic launcher, Task Deck,
+   Preview, Scenes, Themes, Site Layers, workflow editor, Context Threads,
+   routing, archive, Studio, collapsed shell).
+7. Origin-scoped agent permissions (profile/window/tab/frame scopes,
+   source/destination origins, cross-origin read/write policy, expiration)
+   with prompt-injection and exfiltration tests.
+8. The production browser-test scenario: open Canvas -> submit goal -> plan ->
+   execute a real browser operation -> observe actual state -> verify
+   postcondition -> receipt -> automatic surface -> render -> patch the same
+   surface -> save as workflow; plus the isolation/reconnect/approval/
+   cancellation/regression matrix. No test may depend on the public internet.
 
 ## 14. Continuation checkpoint (exact next action)
 
-State at checkpoint: all source and both test tiers are authored (browser tests
-wired to `//chrome/test:browser_tests`); every available static gate is green;
-the checkout is clean at the locked HEAD; the patch and materialize round-trips
-are clean.
+State at checkpoint (2026-07-06, post-crash integrity sweep re-verified:
+native parse sweep 126 files clean, header audit 153 includes resolved,
+full `npm run ci` exit 0): every gate this host can run is green -
+`npm run ci` end to end (static gates, harness suite, protocol drift gate,
+protocol conformance tests, Design Lab type-check + 22 tests including the
+headless-browser patch/focus/scroll suite), checkout verification,
+materialization (now mirroring `protocol/`), and the patch round-trip. The
+canonical protocol is in place on both sides; the native conformance suites
+are authored and wired into GN but have never compiled.
 
 On a capable host, in order:
 
 1. `native/scripts/verify-checkout.sh` (read-only lock verification).
-2. `native/scripts/materialize.sh apply` then `native/scripts/patches.sh apply`.
-3. `native/scripts/gen.sh`, then `gn check out/SeoulBaseline //seoul/...` to
-   validate the dependency graph (this is the final graph check that could not
-   run here).
-4. `autoninja -C out/SeoulBaseline seoul/browser:seoul_unittests`; fix the first
-   real compile error and iterate to a green unit-test run of all suites.
-5. `autoninja -C out/SeoulBaseline browser_tests` and run the Seoul
-   `IN_PROC_BROWSER_TEST_F` cases; iterate to green.
-6. Author blockers 2 and 3 (runtime service and Canvas host wiring) against the
-   running build, then blockers 4 and 5.
+2. `native/scripts/materialize.sh apply` then `native/scripts/patches.sh apply`
+   (this also mirrors `protocol/` into `src/seoul/protocol/` for the
+   conformance tests' data dependency).
+3. `native/scripts/gen.sh`, then `gn check out/SeoulBaseline //seoul/...`.
+4. Build every Seoul unit-test executable
+   (`autoninja -C out/SeoulBaseline seoul/browser:seoul_unittests`) and RUN
+   each one; the four protocol conformance suites must pass against the same
+   fixtures the TypeScript tests consume. Repair narrowly, rerun the smallest
+   target, then rerun the full gate.
+5. `autoninja -C out/SeoulBaseline browser_tests` and run every Seoul browser
+   test; iterate to green.
+6. `native/scripts/build.sh` (Chrome), then launch a disposable profile via
+   `native/scripts/run.sh` and `native/scripts/smoke.mjs`.
+7. Only after Chrome launches: work blockers 2-8 in order.
 
 Full procedure: `docs/native/seoul-product-build-runbook.md`.

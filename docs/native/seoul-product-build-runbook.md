@@ -69,6 +69,18 @@ Each step maps to a repository script. Absolute paths assume the repo at
    into `out/SeoulBaseline`. Use `gen.sh --verify` on an incapable host to print
    effective args without running GN.
 
+5b. Host-side parse gate (also runs in `npm run ci` wherever the pinned
+   checkout exists)
+   `native/scripts/syntax-check.sh`
+   Parses every Seoul .cc with clang -fsyntax-only against the REAL pinned
+   checkout headers, stubbing only gn-generated buildflag headers (all-zero,
+   64-bit pointers true). Files that transitively need generated mojom/grit/
+   perfetto code are SKIPPED with a stated reason and parse only after
+   `gn gen`. This is not compilation, but it catches include, name, type,
+   and API-drift errors host-side; it found the M149 base::DictValue/
+   base::ListValue migration and a dozen real defects that would otherwise
+   have surfaced as build breaks on this host.
+
 6. GN check
    `gn check out/SeoulBaseline //seoul/...`
    Validates the Seoul target graph and include dependencies. The Seoul BUILD
@@ -84,7 +96,16 @@ Each step maps to a repository script. Absolute paths assume the repo at
 
 8. Unit-test build
    `autoninja -C out/SeoulBaseline seoul/browser:seoul_unittests`
-   Builds every Seoul pure-model unit-test target in one group.
+   Builds every Seoul pure-model unit-test target in one group. The semantic,
+   SAUI, tools, and product targets include the CROSS-LANGUAGE PROTOCOL
+   CONFORMANCE suites (`semantic_wire_unittest.cc`,
+   `saui_protocol_fixtures_unittest.cc`, `tool_descriptor_wire_unittest.cc`,
+   `task_snapshot_wire_unittest.cc`); they read the shared corpus from
+   `src/seoul/protocol/fixtures/`, which `materialize.sh apply` mirrors from
+   the repository's `protocol/` directory (the GN targets declare it as test
+   `data`). The TypeScript side of the same corpus runs on any host via
+   `npm run test:protocol`, and `npm run check:protocol` fails CI when schema
+   enums and native wire names drift.
 
 9. Browser-test build
    `autoninja -C out/SeoulBaseline browser_tests`

@@ -88,7 +88,7 @@ node ids at the Canvas layer and land here as these same typed operations.
 ## Import and export round trip
 
 `ExportWorkflow` serializes the definition (schema version, id, params, nodes,
-edges, trigger, scopes, version, timestamps) to a `base::Value::Dict`.
+edges, trigger, scopes, version, timestamps) to a `base::DictValue`.
 `ImportWorkflow` parses it back, rejects an unsupported schema version, generates
 a fresh id when none is valid, and runs `ValidateWorkflowStructure` before
 returning, so an imported workflow is always structurally sound.
