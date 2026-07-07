@@ -45,7 +45,7 @@ using JsonSchemaImportResult =
 // "required":[...]}) into a ToolSchema. The result always satisfies
 // IsWellFormedSchema.
 JsonSchemaImportResult ToolSchemaFromJsonSchema(
-    const base::Value::Dict& json_schema);
+    const base::DictValue& json_schema);
 
 }  // namespace seoul
 

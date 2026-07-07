@@ -45,6 +45,10 @@ struct SchemaField {
   // kObject: the object's fields. kList: exactly one element describing the
   // item shape (name it "item"; violation paths use the index instead).
   std::vector<SchemaField> children;
+
+  // Structural equality (recursive through children); WorkflowParam and tests
+  // compare schemas by value.
+  friend bool operator==(const SchemaField&, const SchemaField&) = default;
 };
 
 struct ToolSchema {
@@ -83,7 +87,7 @@ bool IsWellFormedSchema(const ToolSchema& schema);
 // Validates `args` against `schema`. Every arg key must be declared; every
 // required field must be present and well-typed.
 SchemaValidationResult ValidateArgs(const ToolSchema& schema,
-                                    const base::Value::Dict& args);
+                                    const base::DictValue& args);
 
 }  // namespace seoul
 

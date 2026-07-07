@@ -35,19 +35,19 @@ bool ValidPropertyName(const std::string& name) {
 using FieldResult = base::expected<SchemaField, JsonSchemaImportFailure>;
 
 FieldResult FieldFromSchema(const std::string& name,
-                            const base::Value::Dict& schema,
+                            const base::DictValue& schema,
                             const std::string& path,
                             size_t depth);
 
 base::expected<std::vector<SchemaField>, JsonSchemaImportFailure>
-FieldsFromObjectSchema(const base::Value::Dict& schema,
+FieldsFromObjectSchema(const base::DictValue& schema,
                        const std::string& path,
                        size_t depth) {
   if (depth > kMaxSchemaDepth) {
     return Failure(JsonSchemaImportError::kDepthExceeded, path);
   }
   std::vector<SchemaField> fields;
-  const base::Value::Dict* properties = schema.FindDict("properties");
+  const base::DictValue* properties = schema.FindDict("properties");
   if (properties) {
     if (properties->size() > kMaxSchemaFields) {
       return Failure(JsonSchemaImportError::kTooManyProperties, path);
@@ -57,7 +57,7 @@ FieldsFromObjectSchema(const base::Value::Dict& schema,
         return Failure(JsonSchemaImportError::kInvalidPropertyName,
                        path + ".properties." + name);
       }
-      const base::Value::Dict* property_dict = property.GetIfDict();
+      const base::DictValue* property_dict = property.GetIfDict();
       if (!property_dict) {
         return Failure(JsonSchemaImportError::kMalformedSchema,
                        path + ".properties." + name);
@@ -70,7 +70,7 @@ FieldsFromObjectSchema(const base::Value::Dict& schema,
       fields.push_back(std::move(field.value()));
     }
   }
-  if (const base::Value::List* required = schema.FindList("required")) {
+  if (const base::ListValue* required = schema.FindList("required")) {
     for (const base::Value& entry : *required) {
       if (!entry.is_string()) {
         return Failure(JsonSchemaImportError::kMalformedSchema,
@@ -87,7 +87,7 @@ FieldsFromObjectSchema(const base::Value::Dict& schema,
 }
 
 FieldResult FieldFromSchema(const std::string& name,
-                            const base::Value::Dict& schema,
+                            const base::DictValue& schema,
                             const std::string& path,
                             size_t depth) {
   SchemaField field;
@@ -100,7 +100,7 @@ FieldResult FieldFromSchema(const std::string& name,
     return Failure(JsonSchemaImportError::kUnsupportedType, path);
   }
   if (*type == "string") {
-    if (const base::Value::List* enum_values = schema.FindList("enum")) {
+    if (const base::ListValue* enum_values = schema.FindList("enum")) {
       field.kind = SchemaFieldKind::kEnum;
       if (enum_values->empty() ||
           enum_values->size() > kMaxSchemaEnumValues) {
@@ -147,7 +147,7 @@ FieldResult FieldFromSchema(const std::string& name,
     return field;
   }
   if (*type == "array") {
-    const base::Value::Dict* items = schema.FindDict("items");
+    const base::DictValue* items = schema.FindDict("items");
     if (!items) {
       return Failure(JsonSchemaImportError::kMalformedSchema,
                      path + ".items");
@@ -179,7 +179,7 @@ FieldResult FieldFromSchema(const std::string& name,
 }  // namespace
 
 JsonSchemaImportResult ToolSchemaFromJsonSchema(
-    const base::Value::Dict& json_schema) {
+    const base::DictValue& json_schema) {
   const std::string* type = json_schema.FindString("type");
   if (!type || *type != "object") {
     return Failure(JsonSchemaImportError::kNotAnObjectSchema, "");

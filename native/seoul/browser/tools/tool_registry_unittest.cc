@@ -88,15 +88,15 @@ TEST(ToolIdTest, ValidatesShape) {
 
 TEST(ToolSchemaTest, ValidatesArgsAgainstDeclaredFields) {
   const ToolSchema schema = SearchSchema();
-  base::Value::Dict args;
+  base::DictValue args;
   args.Set("query", "cheap monitors");
   args.Set("max_results", 10);
   args.Set("source", "web");
   args.Set("site", "https://example.test");
-  base::Value::Dict filters;
+  base::DictValue filters;
   filters.Set("max_price", 500.0);
   args.Set("filters", std::move(filters));
-  base::Value::List tags;
+  base::ListValue tags;
   tags.Append("displays");
   args.Set("tags", std::move(tags));
   EXPECT_TRUE(ValidateArgs(schema, args).has_value());
@@ -104,7 +104,7 @@ TEST(ToolSchemaTest, ValidatesArgsAgainstDeclaredFields) {
 
 TEST(ToolSchemaTest, RejectsUnknownAndMissingAndWrongKind) {
   const ToolSchema schema = SearchSchema();
-  base::Value::Dict args;
+  base::DictValue args;
   args.Set("query", "x");
   args.Set("invented_field", 1);
   auto result = ValidateArgs(schema, args);
@@ -112,13 +112,13 @@ TEST(ToolSchemaTest, RejectsUnknownAndMissingAndWrongKind) {
   EXPECT_EQ(result.error().kind, SchemaViolationKind::kUnknownField);
   EXPECT_EQ(result.error().field_path, "invented_field");
 
-  base::Value::Dict missing;
+  base::DictValue missing;
   result = ValidateArgs(schema, missing);
   ASSERT_FALSE(result.has_value());
   EXPECT_EQ(result.error().kind, SchemaViolationKind::kMissingRequiredField);
   EXPECT_EQ(result.error().field_path, "query");
 
-  base::Value::Dict wrong;
+  base::DictValue wrong;
   wrong.Set("query", 42);
   result = ValidateArgs(schema, wrong);
   ASSERT_FALSE(result.has_value());
@@ -127,30 +127,30 @@ TEST(ToolSchemaTest, RejectsUnknownAndMissingAndWrongKind) {
 
 TEST(ToolSchemaTest, RejectsRangeEnumUrlAndNestedViolations) {
   const ToolSchema schema = SearchSchema();
-  base::Value::Dict args;
+  base::DictValue args;
   args.Set("query", "x");
   args.Set("max_results", 500);
   auto result = ValidateArgs(schema, args);
   ASSERT_FALSE(result.has_value());
   EXPECT_EQ(result.error().kind, SchemaViolationKind::kOutOfRange);
 
-  args = base::Value::Dict();
+  args = base::DictValue();
   args.Set("query", "x");
   args.Set("source", "carrier_pigeon");
   result = ValidateArgs(schema, args);
   ASSERT_FALSE(result.has_value());
   EXPECT_EQ(result.error().kind, SchemaViolationKind::kNotInEnum);
 
-  args = base::Value::Dict();
+  args = base::DictValue();
   args.Set("query", "x");
   args.Set("site", "javascript:alert(1)");
   result = ValidateArgs(schema, args);
   ASSERT_FALSE(result.has_value());
   EXPECT_EQ(result.error().kind, SchemaViolationKind::kInvalidUrl);
 
-  args = base::Value::Dict();
+  args = base::DictValue();
   args.Set("query", "x");
-  base::Value::Dict filters;
+  base::DictValue filters;
   filters.Set("max_price", -5.0);
   args.Set("filters", std::move(filters));
   result = ValidateArgs(schema, args);

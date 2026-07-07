@@ -8,6 +8,8 @@ import("//testing/test.gni")
 
 source_set("tools_core") {
   sources = [
+    "tool_descriptor_wire.cc",
+    "tool_descriptor_wire.h",
     "tool_registry.cc",
     "tool_registry.h",
     "tool_schema.cc",
@@ -25,7 +27,10 @@ source_set("tools_core") {
 
 test("seoul_tools_unittests") {
   testonly = true
-  sources = [ "tool_registry_unittest.cc" ]
+  sources = [
+    "tool_descriptor_wire_unittest.cc",
+    "tool_registry_unittest.cc",
+  ]
   deps = [
     ":tools_core",
     "//base",
@@ -33,4 +38,8 @@ test("seoul_tools_unittests") {
     "//testing/gtest",
     "//url",
   ]
+
+  # The cross-language conformance corpus, mirrored from the repository's
+  # protocol/ directory by materialize.sh.
+  data = [ "//seoul/protocol/" ]
 }

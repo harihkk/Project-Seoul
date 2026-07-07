@@ -91,7 +91,7 @@ SchemaValidationResult ValidateValue(const SchemaField& field,
                                      size_t depth);
 
 SchemaValidationResult ValidateDict(const std::vector<SchemaField>& fields,
-                                    const base::Value::Dict& dict,
+                                    const base::DictValue& dict,
                                     const std::string& path,
                                     size_t depth) {
   if (depth > kMaxSchemaDepth) {
@@ -197,7 +197,7 @@ SchemaValidationResult ValidateValue(const SchemaField& field,
       if (!value.is_list()) {
         return Violation(SchemaViolationKind::kWrongKind, path);
       }
-      const base::Value::List& list = value.GetList();
+      const base::ListValue& list = value.GetList();
       if (list.size() > kMaxArgListItems) {
         return Violation(SchemaViolationKind::kTooManyItems, path);
       }
@@ -254,7 +254,7 @@ bool IsWellFormedSchema(const ToolSchema& schema) {
 }
 
 SchemaValidationResult ValidateArgs(const ToolSchema& schema,
-                                    const base::Value::Dict& args) {
+                                    const base::DictValue& args) {
   if (!IsWellFormedSchema(schema)) {
     return Violation(SchemaViolationKind::kMalformedSchema, "");
   }
