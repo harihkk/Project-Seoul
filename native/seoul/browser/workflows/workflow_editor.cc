@@ -298,12 +298,12 @@ WorkflowStatusResult RemoveWorkflowNode(WorkflowDefinition& definition,
 
 WorkflowStatusResult SetWorkflowNodeArgs(WorkflowDefinition& definition,
                                          const std::string& node_id,
-                                         base::Value::Dict args,
+                                         base::DictValue args,
                                          const WorkflowClock& clock) {
   return CommitIfValid(
       definition, clock,
       base::BindOnce(
-          [](const std::string& node_id, base::Value::Dict args,
+          [](const std::string& node_id, base::DictValue args,
              WorkflowDefinition& working) -> WorkflowStatusResult {
             WorkflowNode* node = FindMutableNode(working, node_id);
             if (!node) {
@@ -458,20 +458,20 @@ WorkflowDefinition DuplicateWorkflow(const WorkflowDefinition& definition,
   return copy;
 }
 
-base::Value::Dict ExportWorkflow(const WorkflowDefinition& definition) {
-  base::Value::Dict dict;
+base::DictValue ExportWorkflow(const WorkflowDefinition& definition) {
+  base::DictValue dict;
   dict.Set("schema_version", kWorkflowSchemaVersion);
   dict.Set("id", definition.id.value());
   dict.Set("name", definition.name);
   dict.Set("description", definition.description);
-  base::Value::List params;
+  base::ListValue params;
   for (const WorkflowParam& param : definition.params) {
-    base::Value::Dict param_dict;
+    base::DictValue param_dict;
     param_dict.Set("name", param.field.name);
     param_dict.Set("kind", SchemaFieldKindName(param.field.kind));
     param_dict.Set("required", param.field.required);
     if (!param.field.enum_values.empty()) {
-      base::Value::List enum_values;
+      base::ListValue enum_values;
       for (const std::string& value : param.field.enum_values) {
         enum_values.Append(value);
       }
@@ -483,9 +483,9 @@ base::Value::Dict ExportWorkflow(const WorkflowDefinition& definition) {
     params.Append(std::move(param_dict));
   }
   dict.Set("params", std::move(params));
-  base::Value::List nodes;
+  base::ListValue nodes;
   for (const WorkflowNode& node : definition.nodes) {
-    base::Value::Dict node_dict;
+    base::DictValue node_dict;
     node_dict.Set("id", node.id);
     node_dict.Set("kind", NodeKindName(node.kind));
     node_dict.Set("label", node.label);
@@ -507,16 +507,16 @@ base::Value::Dict ExportWorkflow(const WorkflowDefinition& definition) {
     nodes.Append(std::move(node_dict));
   }
   dict.Set("nodes", std::move(nodes));
-  base::Value::List edges;
+  base::ListValue edges;
   for (const WorkflowEdge& edge : definition.edges) {
-    base::Value::Dict edge_dict;
+    base::DictValue edge_dict;
     edge_dict.Set("from", edge.from);
     edge_dict.Set("to", edge.to);
     edge_dict.Set("kind", EdgeKindName(edge.kind));
     edges.Append(std::move(edge_dict));
   }
   dict.Set("edges", std::move(edges));
-  base::Value::Dict trigger;
+  base::DictValue trigger;
   trigger.Set("kind", TriggerKindName(definition.trigger.kind));
   if (definition.trigger.interval_minutes > 0) {
     trigger.Set("interval_minutes", definition.trigger.interval_minutes);
@@ -544,7 +544,7 @@ base::Value::Dict ExportWorkflow(const WorkflowDefinition& definition) {
 }
 
 WorkflowResult<WorkflowDefinition> ImportWorkflow(const base::Value& value) {
-  const base::Value::Dict* dict = value.GetIfDict();
+  const base::DictValue* dict = value.GetIfDict();
   if (!dict) {
     return base::unexpected(WorkflowError::kUnsupportedSchema);
   }
@@ -566,9 +566,9 @@ WorkflowResult<WorkflowDefinition> ImportWorkflow(const base::Value& value) {
   if (const std::string* description = dict->FindString("description")) {
     definition.description = *description;
   }
-  if (const base::Value::List* params = dict->FindList("params")) {
+  if (const base::ListValue* params = dict->FindList("params")) {
     for (const base::Value& param_value : *params) {
-      const base::Value::Dict* param_dict = param_value.GetIfDict();
+      const base::DictValue* param_dict = param_value.GetIfDict();
       if (!param_dict) {
         return base::unexpected(WorkflowError::kInvalidParam);
       }
@@ -581,7 +581,7 @@ WorkflowResult<WorkflowDefinition> ImportWorkflow(const base::Value& value) {
       }
       param.field.name = *param_name;
       param.field.required = param_dict->FindBool("required").value_or(false);
-      if (const base::Value::List* enum_values =
+      if (const base::ListValue* enum_values =
               param_dict->FindList("enum_values")) {
         for (const base::Value& enum_value : *enum_values) {
           if (!enum_value.is_string()) {
@@ -596,12 +596,12 @@ WorkflowResult<WorkflowDefinition> ImportWorkflow(const base::Value& value) {
       definition.params.push_back(std::move(param));
     }
   }
-  const base::Value::List* nodes = dict->FindList("nodes");
+  const base::ListValue* nodes = dict->FindList("nodes");
   if (!nodes) {
     return base::unexpected(WorkflowError::kEmptyWorkflow);
   }
   for (const base::Value& node_value : *nodes) {
-    const base::Value::Dict* node_dict = node_value.GetIfDict();
+    const base::DictValue* node_dict = node_value.GetIfDict();
     if (!node_dict) {
       return base::unexpected(WorkflowError::kInvalidNodeId);
     }
@@ -618,7 +618,7 @@ WorkflowResult<WorkflowDefinition> ImportWorkflow(const base::Value& value) {
     if (const std::string* tool = node_dict->FindString("tool")) {
       node.tool = ToolId::FromString(*tool);
     }
-    if (const base::Value::Dict* args = node_dict->FindDict("args")) {
+    if (const base::DictValue* args = node_dict->FindDict("args")) {
       node.args = args->Clone();
     }
     if (const std::string* prompt = node_dict->FindString("prompt")) {
@@ -629,9 +629,9 @@ WorkflowResult<WorkflowDefinition> ImportWorkflow(const base::Value& value) {
     node.max_iterations = node_dict->FindInt("max_iterations").value_or(0);
     definition.nodes.push_back(std::move(node));
   }
-  if (const base::Value::List* edges = dict->FindList("edges")) {
+  if (const base::ListValue* edges = dict->FindList("edges")) {
     for (const base::Value& edge_value : *edges) {
-      const base::Value::Dict* edge_dict = edge_value.GetIfDict();
+      const base::DictValue* edge_dict = edge_value.GetIfDict();
       if (!edge_dict) {
         return base::unexpected(WorkflowError::kEdgeUnknownNode);
       }
@@ -647,7 +647,7 @@ WorkflowResult<WorkflowDefinition> ImportWorkflow(const base::Value& value) {
       definition.edges.push_back(edge);
     }
   }
-  if (const base::Value::Dict* trigger = dict->FindDict("trigger")) {
+  if (const base::DictValue* trigger = dict->FindDict("trigger")) {
     const std::string* kind = trigger->FindString("kind");
     if (!kind || !TriggerKindFromName(*kind, &definition.trigger.kind)) {
       return base::unexpected(WorkflowError::kInvalidTrigger);

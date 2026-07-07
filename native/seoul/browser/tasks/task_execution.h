@@ -101,7 +101,7 @@ class TaskExecution {
   NextAction RecordApproval(const std::string& step_id, bool approved);
   // Typed user input for a kUserInput step.
   NextAction RecordUserInput(const std::string& step_id,
-                             base::Value::Dict input);
+                             base::DictValue input);
   // Observation + verification for a running step; returns the decision.
   ExecutionDecision RecordStepOutcome(const std::string& step_id,
                                       const StepOutcome& outcome);
@@ -112,13 +112,13 @@ class TaskExecution {
 
   // Serialized execution state (step statuses, retries, loop iterations,
   // usage). Restore continues a task after restart with the same plan.
-  base::Value::Dict Checkpoint() const;
+  base::DictValue Checkpoint() const;
   static std::unique_ptr<TaskExecution> RestoreFromCheckpoint(
       TaskId task_id,
       Plan plan,
       ToolResolver resolve_tool,
       base::RepeatingCallback<base::Time()> clock,
-      const base::Value::Dict& checkpoint);
+      const base::DictValue& checkpoint);
 
  private:
   struct StepState {

@@ -13,6 +13,7 @@
 #include "seoul/browser/commands/command_confirmation_seam.h"
 #include "seoul/browser/commands/command_executor.h"
 #include "seoul/browser/commands/live_target_resolver.h"
+#include "seoul/browser/lifecycle/lifecycle_coordinator.h"
 #include "seoul/browser/lifecycle/lifecycle_events.h"
 #include "seoul/browser/lifecycle/live_window_state.h"
 #include "seoul/browser/lifecycle/persistence_scheduler.h"
@@ -31,9 +32,15 @@ SeoulOrganizationService::SeoulOrganizationService(Profile* profile,
   observation_.Observe(&model_);
   LoadFromPrefs();
 
+  // The writer returns bool (the scheduler re-marks dirty on failure), and a
+  // WeakPtr receiver cannot bind to a returning method; passing the WeakPtr
+  // as an argument keeps both: a destroyed service reports a failed write.
   scheduler_ = std::make_unique<PersistenceScheduler>(
-      base::BindRepeating(&SeoulOrganizationService::WriteToPrefs,
-                          weak_factory_.GetWeakPtr()),
+      base::BindRepeating(
+          [](base::WeakPtr<SeoulOrganizationService> service) {
+            return service ? service->WriteToPrefs() : false;
+          },
+          weak_factory_.GetWeakPtr()),
       base::SequencedTaskRunner::GetCurrentDefault());
 
   coordinator_ = std::make_unique<LifecycleCoordinator>(&model_);
@@ -143,11 +150,11 @@ void SeoulOrganizationService::OnOrganizationChanged(
 }
 
 void SeoulOrganizationService::CopyActivePrefToRecovery() {
-  const base::Value::Dict& active = prefs_->GetDict(kOrganizationPref);
+  const base::DictValue& active = prefs_->GetDict(kOrganizationPref);
   if (active.empty()) {
     return;
   }
-  const base::Value::Dict& existing_recovery =
+  const base::DictValue& existing_recovery =
       prefs_->GetDict(kOrganizationRecoveryPref);
   if (!existing_recovery.empty()) {
     return;  // preserve the first recovery copy
@@ -161,7 +168,7 @@ void SeoulOrganizationService::LoadFromPrefs() {
   recovery_required_ = false;
   last_load_result_ = OrganizationLoadResult::kEmpty;
 
-  const base::Value::Dict& stored = prefs_->GetDict(kOrganizationPref);
+  const base::DictValue& stored = prefs_->GetDict(kOrganizationPref);
   if (stored.empty()) {
     model_.EnsureDefaultWorkspace();
     loading_ = false;
@@ -204,7 +211,7 @@ bool SeoulOrganizationService::WriteToPrefs() {
   if (suppress_persist_) {
     return false;
   }
-  base::Value::Dict dict = SerializeSnapshot(model_.ToSnapshot());
+  base::DictValue dict = SerializeSnapshot(model_.ToSnapshot());
   if (!SerializedSizeWithinLimit(dict)) {
     return false;
   }

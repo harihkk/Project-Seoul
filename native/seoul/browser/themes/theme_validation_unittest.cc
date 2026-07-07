@@ -113,7 +113,7 @@ TEST(ThemeValidationTest, DarkThemePassesAndRoundTrips) {
   dark.custom_colors["chart_series_one"] = Rgb(120, 200, 160);
   ASSERT_TRUE(ValidateTheme(dark).has_value());
 
-  base::Value::Dict serialized = ThemeToValue(dark);
+  base::DictValue serialized = ThemeToValue(dark);
   auto parsed = ThemeFromValue(base::Value(serialized.Clone()));
   ASSERT_TRUE(parsed.has_value());
   EXPECT_EQ(parsed.value(), dark);
@@ -122,7 +122,7 @@ TEST(ThemeValidationTest, DarkThemePassesAndRoundTrips) {
 TEST(ThemeValidationTest, ImportRejectsUnreadableTheme) {
   Theme theme = ReadableLightTheme();
   theme.colors.text = Rgb(250, 250, 250);
-  base::Value::Dict serialized = ThemeToValue(theme);
+  base::DictValue serialized = ThemeToValue(theme);
   EXPECT_EQ(ThemeFromValue(base::Value(std::move(serialized))).error(),
             ThemeError::kContrastTooLow);
 }

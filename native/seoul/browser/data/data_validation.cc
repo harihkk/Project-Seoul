@@ -4,6 +4,8 @@
 
 #include <cmath>
 
+#include "seoul/browser/data/data_errors.h"
+
 namespace seoul {
 
 const char* FreshnessStateToString(FreshnessState state) {

@@ -14,6 +14,7 @@
 #include <vector>
 
 #include "base/functional/callback.h"
+#include "base/types/expected.h"
 #include "base/values.h"
 
 namespace seoul {
@@ -54,7 +55,7 @@ struct GenerationRequest {
   std::string user_prompt;
   // When non-empty, the provider must return JSON conforming to this schema
   // (a ToolSchema serialized to JSON); used for plans and structured surfaces.
-  base::Value::Dict response_schema;
+  base::DictValue response_schema;
   int max_output_tokens = 1024;
   double temperature = 0.2;
 };

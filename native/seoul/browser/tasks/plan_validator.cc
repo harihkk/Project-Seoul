@@ -9,7 +9,7 @@
 
 namespace seoul {
 
-// Clone-based copy semantics for PlanStep (its base::Value::Dict args member is
+// Clone-based copy semantics for PlanStep (its base::DictValue args member is
 // move-only). Move and destruction are member-wise.
 PlanStep::PlanStep() = default;
 PlanStep::PlanStep(PlanStep&&) = default;

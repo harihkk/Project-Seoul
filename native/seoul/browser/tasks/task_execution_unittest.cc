@@ -350,7 +350,7 @@ TEST_F(TaskExecutionTest, CheckpointRestoresAndProtectsMidRunSteps) {
   ASSERT_EQ(execution.Advance().kind, NextAction::Kind::kRunStep);
   ASSERT_TRUE(execution.BeginStep("open"));  // browser dies mid-mutation
 
-  base::Value::Dict checkpoint = execution.Checkpoint();
+  base::DictValue checkpoint = execution.Checkpoint();
   auto restored = TaskExecution::RestoreFromCheckpoint(
       task_id, plan, Resolver(), Clock(), checkpoint);
   ASSERT_NE(restored, nullptr);

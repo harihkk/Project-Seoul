@@ -11,6 +11,7 @@
 #include "seoul/browser/lifecycle/live_window_state.h"
 #include "seoul/browser/organization/organization_observer.h"
 #include "seoul/browser/projection/projection_observer.h"
+#include "seoul/browser/shell/shell_errors.h"
 #include "seoul/browser/shell/shell_observer.h"
 #include "seoul/browser/shell/shell_types.h"
 

@@ -95,7 +95,7 @@ bool ExtractParamReference(const std::string& text, std::string* name) {
 
 WorkflowStatusResult ValidateParamReferences(
     const WorkflowDefinition& definition,
-    const base::Value::Dict& args) {
+    const base::DictValue& args) {
   for (const auto [key, value] : args) {
     if (value.is_string()) {
       std::string param_name;
@@ -154,11 +154,11 @@ WorkflowStatusResult ValidateTrigger(const WorkflowTrigger& trigger) {
 }
 
 // Substitutes param placeholders in one args dictionary with typed values.
-WorkflowResult<base::Value::Dict> SubstituteParams(
+WorkflowResult<base::DictValue> SubstituteParams(
     const WorkflowDefinition& definition,
-    const base::Value::Dict& args,
-    const base::Value::Dict& param_values) {
-  base::Value::Dict resolved;
+    const base::DictValue& args,
+    const base::DictValue& param_values) {
+  base::DictValue resolved;
   for (const auto [key, value] : args) {
     if (value.is_string()) {
       std::string param_name;
@@ -342,7 +342,7 @@ WorkflowResult<std::vector<std::string>> TopologicalOrder(
 }
 
 WorkflowResult<Plan> CompileWorkflow(const WorkflowDefinition& definition,
-                                     const base::Value::Dict& param_values,
+                                     const base::DictValue& param_values,
                                      const TaskBudgets& budgets) {
   if (auto valid = ValidateWorkflowStructure(definition); !valid.has_value()) {
     return base::unexpected(valid.error());

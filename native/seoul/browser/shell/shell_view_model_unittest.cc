@@ -10,7 +10,8 @@ namespace {
 
 TEST(ShellViewModelTest, EmptyWorkspaceShowsEmptyState) {
   OrganizationModel model;
-  const WorkspaceId ws = model.EnsureDefaultWorkspace();
+  ASSERT_TRUE(model.EnsureDefaultWorkspace().has_value());
+  const WorkspaceId ws = model.default_workspace();
   ShellBuildContext context;
   context.window = LiveWindowKey::FromSessionId(1);
   model.SetActiveWorkspaceForWindow(context.window.value(), ws);

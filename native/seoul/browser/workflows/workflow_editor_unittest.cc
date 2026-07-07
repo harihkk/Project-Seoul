@@ -147,7 +147,7 @@ TEST_F(WorkflowEditorTest, ApprovalTriggerAndLoopEdits) {
 }
 
 TEST_F(WorkflowEditorTest, SetArgsValidatesParamReferences) {
-  base::Value::Dict args;
+  base::DictValue args;
   args.Set("query", "{{param:topic}}");
   EXPECT_EQ(SetWorkflowNodeArgs(workflow_, "search", std::move(args), Clock())
                 .error(),
@@ -157,7 +157,7 @@ TEST_F(WorkflowEditorTest, SetArgsValidatesParamReferences) {
   topic.field.name = "topic";
   topic.field.kind = SchemaFieldKind::kString;
   workflow_.params.push_back(topic);
-  base::Value::Dict valid_args;
+  base::DictValue valid_args;
   valid_args.Set("query", "{{param:topic}}");
   EXPECT_TRUE(
       SetWorkflowNodeArgs(workflow_, "search", std::move(valid_args), Clock())
@@ -191,23 +191,23 @@ TEST_F(WorkflowEditorTest, ExportImportRoundTrips) {
   workflow_.trigger.interval_minutes = 120;
   workflow_.nodes[2].requires_approval = true;
 
-  base::Value::Dict exported = ExportWorkflow(workflow_);
+  base::DictValue exported = ExportWorkflow(workflow_);
   auto imported = ImportWorkflow(base::Value(exported.Clone()));
   ASSERT_TRUE(imported.has_value());
   EXPECT_EQ(imported.value(), workflow_);
 }
 
 TEST_F(WorkflowEditorTest, ImportRejectsUnknownSchemaAndBadGraphs) {
-  base::Value::Dict exported = ExportWorkflow(workflow_);
+  base::DictValue exported = ExportWorkflow(workflow_);
   exported.Set("schema_version", 99);
   EXPECT_EQ(ImportWorkflow(base::Value(exported.Clone())).error(),
             WorkflowError::kUnsupportedSchema);
 
-  base::Value::Dict bad_graph = ExportWorkflow(workflow_);
+  base::DictValue bad_graph = ExportWorkflow(workflow_);
   bad_graph.Set("schema_version", kWorkflowSchemaVersion);
-  base::Value::List* edges = bad_graph.FindList("edges");
+  base::ListValue* edges = bad_graph.FindList("edges");
   ASSERT_NE(edges, nullptr);
-  base::Value::Dict cycle;
+  base::DictValue cycle;
   cycle.Set("from", "email");
   cycle.Set("to", "search");
   cycle.Set("kind", "sequence");

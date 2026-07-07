@@ -26,7 +26,7 @@ OrganizationSnapshot BuildPopulatedSnapshot() {
 
 TEST(OrganizationStoreTest, RoundTrip) {
   OrganizationSnapshot snap = BuildPopulatedSnapshot();
-  base::Value::Dict dict = SerializeSnapshot(snap);
+  base::DictValue dict = SerializeSnapshot(snap);
 
   MutationResult<OrganizationSnapshot> parsed = DeserializeSnapshot(dict);
   ASSERT_TRUE(parsed.has_value());
@@ -45,7 +45,7 @@ TEST(OrganizationStoreTest, DeterministicOutput) {
 }
 
 TEST(OrganizationStoreTest, UnsupportedFutureSchemaRejected) {
-  base::Value::Dict dict = SerializeSnapshot(BuildPopulatedSnapshot());
+  base::DictValue dict = SerializeSnapshot(BuildPopulatedSnapshot());
   dict.Set("schema_version", kOrganizationSchemaVersion + 1);
   MutationResult<OrganizationSnapshot> parsed = DeserializeSnapshot(dict);
   ASSERT_FALSE(parsed.has_value());
@@ -53,7 +53,7 @@ TEST(OrganizationStoreTest, UnsupportedFutureSchemaRejected) {
 }
 
 TEST(OrganizationStoreTest, MissingSchemaVersionRejected) {
-  base::Value::Dict dict = SerializeSnapshot(BuildPopulatedSnapshot());
+  base::DictValue dict = SerializeSnapshot(BuildPopulatedSnapshot());
   dict.Remove("schema_version");
   EXPECT_EQ(DeserializeSnapshot(dict).error(),
             OrganizationError::kCorruptState);
@@ -61,10 +61,10 @@ TEST(OrganizationStoreTest, MissingSchemaVersionRejected) {
 
 TEST(OrganizationStoreTest, MalformedAndMissingFields) {
   // A workspace entry missing the required "id" field is corrupt.
-  base::Value::Dict dict;
+  base::DictValue dict;
   dict.Set("schema_version", kOrganizationSchemaVersion);
-  base::Value::List workspaces;
-  base::Value::Dict bad;
+  base::ListValue workspaces;
+  base::DictValue bad;
   bad.Set("name", "NoId");
   workspaces.Append(std::move(bad));
   dict.Set("workspaces", std::move(workspaces));
@@ -72,9 +72,9 @@ TEST(OrganizationStoreTest, MalformedAndMissingFields) {
             OrganizationError::kCorruptState);
 
   // A non-dict list entry is corrupt.
-  base::Value::Dict dict2;
+  base::DictValue dict2;
   dict2.Set("schema_version", kOrganizationSchemaVersion);
-  base::Value::List bad_list;
+  base::ListValue bad_list;
   bad_list.Append("not-a-dict");
   dict2.Set("workspaces", std::move(bad_list));
   EXPECT_EQ(DeserializeSnapshot(dict2).error(),
@@ -82,7 +82,7 @@ TEST(OrganizationStoreTest, MalformedAndMissingFields) {
 }
 
 TEST(OrganizationStoreTest, UnknownFieldsIgnored) {
-  base::Value::Dict dict = SerializeSnapshot(BuildPopulatedSnapshot());
+  base::DictValue dict = SerializeSnapshot(BuildPopulatedSnapshot());
   dict.Set("seoul_future_unknown_key", "ignored");
   MutationResult<OrganizationSnapshot> parsed = DeserializeSnapshot(dict);
   EXPECT_TRUE(
@@ -90,7 +90,7 @@ TEST(OrganizationStoreTest, UnknownFieldsIgnored) {
 }
 
 TEST(OrganizationStoreTest, EmptyDictYieldsEmptyValidSnapshot) {
-  base::Value::Dict dict;
+  base::DictValue dict;
   dict.Set("schema_version", kOrganizationSchemaVersion);
   MutationResult<OrganizationSnapshot> parsed = DeserializeSnapshot(dict);
   ASSERT_TRUE(parsed.has_value());
@@ -100,10 +100,10 @@ TEST(OrganizationStoreTest, EmptyDictYieldsEmptyValidSnapshot) {
 TEST(OrganizationStoreTest, InvalidReferenceCaughtByLoad) {
   // Structurally valid, semantically invalid: a membership referencing a
   // missing workspace. The store parses it; LoadSnapshot rejects it.
-  base::Value::Dict dict;
+  base::DictValue dict;
   dict.Set("schema_version", kOrganizationSchemaVersion);
-  base::Value::List members;
-  base::Value::Dict m;
+  base::ListValue members;
+  base::DictValue m;
   m.Set("id", WorkspaceId::GenerateNew().value());            // any valid uuid
   m.Set("workspace_id", WorkspaceId::GenerateNew().value());  // dangling
   m.Set("tab_key", "tab-a");

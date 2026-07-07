@@ -10,6 +10,7 @@
 #include "base/memory/raw_ptr.h"
 #include "seoul/browser/organization/organization_observer.h"
 #include "seoul/browser/organization/organization_types.h"
+#include "seoul/browser/shell/shell_types.h"
 
 class Profile;
 class VerticalTabStripRegionView;

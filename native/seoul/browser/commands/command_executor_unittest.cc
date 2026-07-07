@@ -37,6 +37,12 @@ class FakeResolver : public TargetResolver {
 
 class FakeAdapter : public ChromiumMutationAdapter {
  public:
+  CommandStatusResult OpenNewTab(Profile* profile,
+                                 const ResolvedWindowTarget& window,
+                                 CommandForegroundDisposition disposition,
+                                 LiveTabKey* out_tab) override {
+    return CommandOk();
+  }
   CommandStatusResult OpenTab(Profile* profile,
                               const ResolvedWindowTarget& window,
                               const GURL& url,

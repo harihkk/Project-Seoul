@@ -132,7 +132,7 @@ TEST(SiteLayerCompilerTest, RoundTripsThroughJson) {
   recolor.color_value = "#222222";
   layer.adjustments.push_back(recolor);
 
-  base::Value::Dict serialized = SiteLayerToValue(layer);
+  base::DictValue serialized = SiteLayerToValue(layer);
   auto parsed = SiteLayerFromValue(base::Value(serialized.Clone()));
   ASSERT_TRUE(parsed.has_value());
   EXPECT_EQ(parsed.value(), layer);
@@ -140,11 +140,11 @@ TEST(SiteLayerCompilerTest, RoundTripsThroughJson) {
 
 TEST(SiteLayerCompilerTest, ImportRejectsMaliciousLayer) {
   SiteLayer layer = ReadableLayer();
-  base::Value::Dict serialized = SiteLayerToValue(layer);
+  base::DictValue serialized = SiteLayerToValue(layer);
   // Tamper with the serialized selector to inject a rule.
-  base::Value::List* adjustments = serialized.FindList("adjustments");
+  base::ListValue* adjustments = serialized.FindList("adjustments");
   ASSERT_NE(adjustments, nullptr);
-  base::Value::List* selectors =
+  base::ListValue* selectors =
       (*adjustments)[0].GetDict().FindList("selectors");
   ASSERT_NE(selectors, nullptr);
   selectors->clear();

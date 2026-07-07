@@ -64,7 +64,7 @@ enum class WorkflowNodeKind {
   kUserInput,  // collect parameter values mid-run
 };
 
-// base::Value and base::Value::Dict are move-only; WorkflowNode and
+// base::Value and base::DictValue are move-only; WorkflowNode and
 // WorkflowParam hold them by value and declare clone-based copy semantics so
 // WorkflowDefinition (composed of them) is copyable for edit-then-validate.
 struct WorkflowNode {
@@ -79,7 +79,7 @@ struct WorkflowNode {
   WorkflowNodeKind kind = WorkflowNodeKind::kToolStep;
   std::string label;       // user-visible node name on the canvas
   ToolId tool;             // kToolStep
-  base::Value::Dict args;  // kToolStep; may reference params (see below)
+  base::DictValue args;  // kToolStep; may reference params (see below)
   std::string prompt;      // kApproval / kUserInput
   bool requires_approval = false;  // extra gate on a tool step
   // Bounded loop header: > 0 marks this node as a loop target with this many

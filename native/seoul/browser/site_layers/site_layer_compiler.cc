@@ -417,8 +417,8 @@ SiteLayerResult<std::string> CompileSiteLayer(const SiteLayer& layer) {
   return css;
 }
 
-base::Value::Dict SiteLayerToValue(const SiteLayer& layer) {
-  base::Value::Dict dict;
+base::DictValue SiteLayerToValue(const SiteLayer& layer) {
+  base::DictValue dict;
   dict.Set("schema_version", layer.schema_version);
   dict.Set("id", layer.id);
   dict.Set("name", layer.name);
@@ -427,12 +427,12 @@ base::Value::Dict SiteLayerToValue(const SiteLayer& layer) {
     dict.Set("scene_scope", layer.scene_scope);
   }
   dict.Set("enabled", layer.enabled);
-  base::Value::List adjustments;
+  base::ListValue adjustments;
   for (const SiteAdjustment& adjustment : layer.adjustments) {
-    base::Value::Dict adjustment_dict;
+    base::DictValue adjustment_dict;
     adjustment_dict.Set("kind", AdjustmentKindName(adjustment.kind));
     if (!adjustment.selectors.empty()) {
-      base::Value::List selectors;
+      base::ListValue selectors;
       for (const std::string& selector : adjustment.selectors) {
         selectors.Append(selector);
       }
@@ -457,7 +457,7 @@ base::Value::Dict SiteLayerToValue(const SiteLayer& layer) {
 }
 
 SiteLayerResult<SiteLayer> SiteLayerFromValue(const base::Value& value) {
-  const base::Value::Dict* dict = value.GetIfDict();
+  const base::DictValue* dict = value.GetIfDict();
   if (!dict) {
     return base::unexpected(SiteLayerError::kUnsupportedSchema);
   }
@@ -479,12 +479,12 @@ SiteLayerResult<SiteLayer> SiteLayerFromValue(const base::Value& value) {
     layer.scene_scope = *scene;
   }
   layer.enabled = dict->FindBool("enabled").value_or(true);
-  const base::Value::List* adjustments = dict->FindList("adjustments");
+  const base::ListValue* adjustments = dict->FindList("adjustments");
   if (!adjustments) {
     return base::unexpected(SiteLayerError::kEmptyLayer);
   }
   for (const base::Value& adjustment_value : *adjustments) {
-    const base::Value::Dict* adjustment_dict = adjustment_value.GetIfDict();
+    const base::DictValue* adjustment_dict = adjustment_value.GetIfDict();
     if (!adjustment_dict) {
       return base::unexpected(SiteLayerError::kInvalidSelector);
     }
@@ -493,7 +493,7 @@ SiteLayerResult<SiteLayer> SiteLayerFromValue(const base::Value& value) {
     if (!kind || !AdjustmentKindFromName(*kind, &adjustment.kind)) {
       return base::unexpected(SiteLayerError::kInvalidSelector);
     }
-    if (const base::Value::List* selectors =
+    if (const base::ListValue* selectors =
             adjustment_dict->FindList("selectors")) {
       for (const base::Value& selector : *selectors) {
         if (!selector.is_string()) {

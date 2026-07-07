@@ -23,7 +23,7 @@ class SessionRestoreWatcher : public SessionRestoreObserver {
                         LifecycleCoordinator* coordinator);
   SessionRestoreWatcher(const SessionRestoreWatcher&) = delete;
   SessionRestoreWatcher& operator=(const SessionRestoreWatcher&) = delete;
-  ~SessionRestoreWatcher() override;
+  ~SessionRestoreWatcher();
 
   void StartObserving();
   void StopObserving();

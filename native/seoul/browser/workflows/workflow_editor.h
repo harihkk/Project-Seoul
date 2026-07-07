@@ -32,7 +32,7 @@ WorkflowStatusResult RemoveWorkflowNode(WorkflowDefinition& definition,
 
 WorkflowStatusResult SetWorkflowNodeArgs(WorkflowDefinition& definition,
                                          const std::string& node_id,
-                                         base::Value::Dict args,
+                                         base::DictValue args,
                                          const WorkflowClock& clock);
 
 WorkflowStatusResult SetWorkflowNodeApproval(WorkflowDefinition& definition,
@@ -73,7 +73,7 @@ WorkflowStatusResult RemoveWorkflowLoop(WorkflowDefinition& definition,
 WorkflowDefinition DuplicateWorkflow(const WorkflowDefinition& definition,
                                      const WorkflowClock& clock);
 
-base::Value::Dict ExportWorkflow(const WorkflowDefinition& definition);
+base::DictValue ExportWorkflow(const WorkflowDefinition& definition);
 WorkflowResult<WorkflowDefinition> ImportWorkflow(const base::Value& value);
 
 }  // namespace seoul

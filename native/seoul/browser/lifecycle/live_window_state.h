@@ -9,15 +9,16 @@
 
 #include "base/functional/callback.h"
 #include "base/observer_list.h"
+#include "base/observer_list_types.h"
 #include "seoul/browser/lifecycle/live_window_snapshot_types.h"
 
 class TabStripModel;
 
 namespace seoul {
 
-class LiveWindowStateObserver {
+class LiveWindowStateObserver : public base::CheckedObserver {
  public:
-  virtual ~LiveWindowStateObserver() = default;
+  ~LiveWindowStateObserver() override = default;
   virtual void OnLiveWindowSnapshotChanged(const LiveWindowSnapshot& snapshot) {
   }
   virtual void OnLiveWindowRemoved(LiveWindowKey window) {}

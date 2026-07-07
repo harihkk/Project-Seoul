@@ -1,6 +1,6 @@
 // Project Seoul native organization engine.
 // Bounded, versioned serialization of the organization snapshot to and from a
-// base::Value::Dict. This is the on-disk shape that the KeyedService persists
+// base::DictValue. This is the on-disk shape that the KeyedService persists
 // into a single profile preference. It stores ONLY organization metadata: no
 // page content, history, cookies, passwords, form values, downloads, model
 // prompts, or tokens. Deserialization is strict: unsupported future schema
@@ -19,17 +19,17 @@
 namespace seoul {
 
 // Deterministic serialization: the same snapshot always produces the same dict.
-base::Value::Dict SerializeSnapshot(const OrganizationSnapshot& snapshot);
+base::DictValue SerializeSnapshot(const OrganizationSnapshot& snapshot);
 
 // Strict structural deserialization. Returns kUnsupportedSchema for an unknown
 // version and kCorruptState for malformed required structure. The returned
 // snapshot must still pass OrganizationModel::LoadSnapshot for semantic
 // validity.
 MutationResult<OrganizationSnapshot> DeserializeSnapshot(
-    const base::Value::Dict& dict);
+    const base::DictValue& dict);
 
 // True if the serialized JSON of `dict` is within kMaxSerializedBytes.
-bool SerializedSizeWithinLimit(const base::Value::Dict& dict);
+bool SerializedSizeWithinLimit(const base::DictValue& dict);
 
 }  // namespace seoul
 

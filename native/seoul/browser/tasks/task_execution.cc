@@ -350,7 +350,7 @@ NextAction TaskExecution::RecordApproval(const std::string& step_id,
 }
 
 NextAction TaskExecution::RecordUserInput(const std::string& step_id,
-                                          base::Value::Dict input) {
+                                          base::DictValue input) {
   const PlanStep* step = FindStep(step_id);
   StepState* step_state = FindState(step_id);
   if (!step || !step_state ||
@@ -495,25 +495,25 @@ NextAction TaskExecution::Cancel() {
   return Stopped(TaskFailureReason::kUserStopped);
 }
 
-base::Value::Dict TaskExecution::Checkpoint() const {
-  base::Value::Dict checkpoint;
+base::DictValue TaskExecution::Checkpoint() const {
+  base::DictValue checkpoint;
   checkpoint.Set("task_id", task_id_.value());
   checkpoint.Set("state", TaskStateToString(state_));
-  base::Value::Dict steps;
+  base::DictValue steps;
   for (const auto& [id, step_state] : step_states_) {
-    base::Value::Dict entry;
+    base::DictValue entry;
     entry.Set("status", StepStatusToString(step_state.status));
     entry.Set("retries", step_state.retries);
     entry.Set("approved", step_state.approved);
     steps.Set(id, std::move(entry));
   }
   checkpoint.Set("steps", std::move(steps));
-  base::Value::Dict loops;
+  base::DictValue loops;
   for (const auto& [group, iterations] : loop_iterations_) {
     loops.Set(std::to_string(group), iterations);
   }
   checkpoint.Set("loops", std::move(loops));
-  base::Value::Dict usage;
+  base::DictValue usage;
   usage.Set("steps_executed", usage_.steps_executed);
   usage.Set("model_calls", usage_.model_calls);
   usage.Set("navigations", usage_.navigations);
@@ -530,14 +530,14 @@ std::unique_ptr<TaskExecution> TaskExecution::RestoreFromCheckpoint(
     Plan plan,
     ToolResolver resolve_tool,
     base::RepeatingCallback<base::Time()> clock,
-    const base::Value::Dict& checkpoint) {
+    const base::DictValue& checkpoint) {
   const std::string* stored_id = checkpoint.FindString("task_id");
   if (!stored_id || *stored_id != task_id.value()) {
     return nullptr;
   }
   auto execution = std::make_unique<TaskExecution>(
       task_id, std::move(plan), std::move(resolve_tool), std::move(clock));
-  const base::Value::Dict* steps = checkpoint.FindDict("steps");
+  const base::DictValue* steps = checkpoint.FindDict("steps");
   if (!steps) {
     return nullptr;
   }
@@ -562,7 +562,7 @@ std::unique_ptr<TaskExecution> TaskExecution::RestoreFromCheckpoint(
     return false;
   };
   for (auto& [id, step_state] : execution->step_states_) {
-    const base::Value::Dict* entry = steps->FindDict(id);
+    const base::DictValue* entry = steps->FindDict(id);
     if (!entry) {
       return nullptr;  // checkpoint does not match this plan
     }
@@ -578,7 +578,7 @@ std::unique_ptr<TaskExecution> TaskExecution::RestoreFromCheckpoint(
     step_state.retries = entry->FindInt("retries").value_or(0);
     step_state.approved = entry->FindBool("approved").value_or(false);
   }
-  if (const base::Value::Dict* loops = checkpoint.FindDict("loops")) {
+  if (const base::DictValue* loops = checkpoint.FindDict("loops")) {
     for (const auto [group, iterations] : *loops) {
       int group_number = 0;
       if (base::StringToInt(group, &group_number) && iterations.is_int()) {
@@ -586,7 +586,7 @@ std::unique_ptr<TaskExecution> TaskExecution::RestoreFromCheckpoint(
       }
     }
   }
-  if (const base::Value::Dict* usage = checkpoint.FindDict("usage")) {
+  if (const base::DictValue* usage = checkpoint.FindDict("usage")) {
     execution->usage_.steps_executed =
         usage->FindInt("steps_executed").value_or(0);
     execution->usage_.model_calls = usage->FindInt("model_calls").value_or(0);

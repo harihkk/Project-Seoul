@@ -49,7 +49,7 @@ using McpImportResult =
 // connector `provider`. Tools with an explicit readOnlyHint annotation import
 // as read-only; everything else defaults to an approval-gated external side
 // effect (never silently safe).
-McpImportResult ImportMcpCapabilities(const base::Value::Dict& tools_list,
+McpImportResult ImportMcpCapabilities(const base::DictValue& tools_list,
                                       const std::string& provider);
 
 // JSON-RPC transport seam for a reviewed MCP connection. Implementations
@@ -62,7 +62,7 @@ class McpTransport {
   using ResponseCallback = base::OnceCallback<void(
       base::expected<base::Value, std::string> result)>;
   virtual void SendRequest(const std::string& method,
-                           base::Value::Dict params,
+                           base::DictValue params,
                            ResponseCallback callback) = 0;
   virtual void Cancel() = 0;
 };

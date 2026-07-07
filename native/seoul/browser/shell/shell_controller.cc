@@ -2,6 +2,8 @@
 
 #include "seoul/browser/shell/shell_controller.h"
 
+#include "seoul/browser/lifecycle/lifecycle_coordinator.h"
+
 #include "seoul/browser/commands/browser_command.h"
 #include "seoul/browser/commands/command_id.h"
 #include "seoul/browser/commands/model_command_facade.h"

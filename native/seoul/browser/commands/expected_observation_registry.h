@@ -7,6 +7,7 @@
 #include <optional>
 
 #include "base/time/time.h"
+#include "seoul/browser/commands/command_errors.h"
 #include "seoul/browser/commands/expected_observation.h"
 
 namespace seoul {

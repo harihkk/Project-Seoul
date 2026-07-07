@@ -5,6 +5,7 @@
 #include "seoul/browser/data/data_validation.h"
 
 #include "base/time/time.h"
+#include "seoul/browser/data/data_errors.h"
 #include "testing/gtest/include/gtest/gtest.h"
 
 namespace seoul {

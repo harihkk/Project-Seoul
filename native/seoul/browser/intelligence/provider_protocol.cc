@@ -17,7 +17,7 @@ bool IsLocalOnlyEndpoint(const std::string& url) {
   if (!parsed.is_valid() || !parsed.SchemeIsHTTPOrHTTPS()) {
     return false;
   }
-  const std::string host = parsed.host();
+  const std::string_view host = parsed.host();
   if (host == "localhost" || host == "127.0.0.1" || host == "[::1]" ||
       host == "::1") {
     return true;
@@ -33,9 +33,9 @@ namespace {
 
 // Builds the messages array shared by both request shapes: a system turn (when
 // present) is handled by the caller; here we emit a single user turn.
-base::Value::List UserMessages(const std::string& user_prompt) {
-  base::Value::List messages;
-  base::Value::Dict user;
+base::ListValue UserMessages(const std::string& user_prompt) {
+  base::ListValue messages;
+  base::DictValue user;
   user.Set("role", "user");
   user.Set("content", user_prompt);
   messages.Append(std::move(user));
@@ -49,28 +49,28 @@ namespace chat_completions {
 std::string BuildRequestBody(const std::string& model,
                              const GenerationRequest& request,
                              bool stream) {
-  base::Value::Dict body;
+  base::DictValue body;
   body.Set("model", model);
   body.Set("stream", stream);
   body.Set("temperature", request.temperature);
   body.Set("max_tokens", request.max_output_tokens);
-  base::Value::List messages;
+  base::ListValue messages;
   if (!request.system_prompt.empty()) {
-    base::Value::Dict system;
+    base::DictValue system;
     system.Set("role", "system");
     system.Set("content", request.system_prompt);
     messages.Append(std::move(system));
   }
-  base::Value::List user = UserMessages(request.user_prompt);
+  base::ListValue user = UserMessages(request.user_prompt);
   for (base::Value& turn : user) {
     messages.Append(std::move(turn));
   }
   body.Set("messages", std::move(messages));
   // Structured output: a JSON-schema response format when a schema was given.
   if (!request.response_schema.empty()) {
-    base::Value::Dict format;
+    base::DictValue format;
     format.Set("type", "json_schema");
-    base::Value::Dict schema;
+    base::DictValue schema;
     schema.Set("name", "seoul_structured");
     schema.Set("schema", request.response_schema.Clone());
     format.Set("json_schema", std::move(schema));
@@ -83,17 +83,17 @@ std::string BuildRequestBody(const std::string& model,
 
 base::expected<ProviderDelta, std::string> ParseStreamPayload(
     const std::string& payload) {
-  std::optional<base::Value> parsed = base::JSONReader::Read(payload);
+  std::optional<base::Value> parsed = base::JSONReader::Read(payload, base::JSON_PARSE_RFC);
   if (!parsed || !parsed->is_dict()) {
     return base::unexpected("malformed chat.completion chunk");
   }
-  const base::Value::Dict& dict = parsed->GetDict();
+  const base::DictValue& dict = parsed->GetDict();
   ProviderDelta delta;
-  const base::Value::List* choices = dict.FindList("choices");
+  const base::ListValue* choices = dict.FindList("choices");
   if (choices && !choices->empty()) {
-    const base::Value::Dict* choice = choices->front().GetIfDict();
+    const base::DictValue* choice = choices->front().GetIfDict();
     if (choice) {
-      if (const base::Value::Dict* d = choice->FindDict("delta")) {
+      if (const base::DictValue* d = choice->FindDict("delta")) {
         if (const std::string* content = d->FindString("content")) {
           delta.text = *content;
         }
@@ -103,7 +103,7 @@ base::expected<ProviderDelta, std::string> ParseStreamPayload(
       }
     }
   }
-  if (const base::Value::Dict* usage = dict.FindDict("usage")) {
+  if (const base::DictValue* usage = dict.FindDict("usage")) {
     delta.input_tokens = usage->FindInt("prompt_tokens").value_or(0);
     delta.output_tokens = usage->FindInt("completion_tokens").value_or(0);
   }
@@ -117,7 +117,7 @@ namespace messages {
 std::string BuildRequestBody(const std::string& model,
                              const GenerationRequest& request,
                              bool stream) {
-  base::Value::Dict body;
+  base::DictValue body;
   body.Set("model", model);
   body.Set("stream", stream);
   body.Set("max_tokens", request.max_output_tokens);
@@ -134,29 +134,29 @@ std::string BuildRequestBody(const std::string& model,
 
 base::expected<ProviderDelta, std::string> ParseStreamPayload(
     const std::string& payload) {
-  std::optional<base::Value> parsed = base::JSONReader::Read(payload);
+  std::optional<base::Value> parsed = base::JSONReader::Read(payload, base::JSON_PARSE_RFC);
   if (!parsed || !parsed->is_dict()) {
     return base::unexpected("malformed messages event");
   }
-  const base::Value::Dict& dict = parsed->GetDict();
+  const base::DictValue& dict = parsed->GetDict();
   ProviderDelta delta;
   const std::string* type = dict.FindString("type");
   if (!type) {
     return base::unexpected("messages event missing type");
   }
   if (*type == "content_block_delta") {
-    if (const base::Value::Dict* d = dict.FindDict("delta")) {
+    if (const base::DictValue* d = dict.FindDict("delta")) {
       if (const std::string* text = d->FindString("text")) {
         delta.text = *text;
       }
     }
   } else if (*type == "message_delta") {
-    if (const base::Value::Dict* usage = dict.FindDict("usage")) {
+    if (const base::DictValue* usage = dict.FindDict("usage")) {
       delta.output_tokens = usage->FindInt("output_tokens").value_or(0);
     }
   } else if (*type == "message_start") {
-    if (const base::Value::Dict* message = dict.FindDict("message")) {
-      if (const base::Value::Dict* usage = message->FindDict("usage")) {
+    if (const base::DictValue* message = dict.FindDict("message")) {
+      if (const base::DictValue* usage = message->FindDict("usage")) {
         delta.input_tokens = usage->FindInt("input_tokens").value_or(0);
       }
     }
@@ -169,9 +169,9 @@ base::expected<ProviderDelta, std::string> ParseStreamPayload(
 std::string MapErrorResponse(int http_status, const std::string& body) {
   // Surface the provider's error type/message when present, never the raw
   // headers or any credential. Bounded to a short summary.
-  std::optional<base::Value> parsed = base::JSONReader::Read(body);
+  std::optional<base::Value> parsed = base::JSONReader::Read(body, base::JSON_PARSE_RFC);
   if (parsed && parsed->is_dict()) {
-    if (const base::Value::Dict* error = parsed->GetDict().FindDict("error")) {
+    if (const base::DictValue* error = parsed->GetDict().FindDict("error")) {
       const std::string* type = error->FindString("type");
       const std::string* message = error->FindString("message");
       std::string summary;

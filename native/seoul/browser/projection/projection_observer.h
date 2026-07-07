@@ -3,13 +3,14 @@
 #ifndef SEOUL_BROWSER_PROJECTION_PROJECTION_OBSERVER_H_
 #define SEOUL_BROWSER_PROJECTION_PROJECTION_OBSERVER_H_
 
+#include "base/observer_list_types.h"
 #include "seoul/browser/projection/projection_types.h"
 
 namespace seoul {
 
-class ProjectionObserver {
+class ProjectionObserver : public base::CheckedObserver {
  public:
-  virtual ~ProjectionObserver() = default;
+  ~ProjectionObserver() override = default;
   virtual void OnProjectionChanged(const ProjectionChange& change,
                                    const WindowProjection& projection) = 0;
 };

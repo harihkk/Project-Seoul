@@ -180,13 +180,13 @@ ThemeStatusResult ValidateTheme(const Theme& theme) {
   return base::ok();
 }
 
-base::Value::Dict ThemeToValue(const Theme& theme) {
-  base::Value::Dict dict;
+base::DictValue ThemeToValue(const Theme& theme) {
+  base::DictValue dict;
   dict.Set("schema_version", theme.schema_version);
   dict.Set("id", theme.id);
   dict.Set("name", theme.name);
   dict.Set("scheme", SchemeToString(theme.scheme));
-  base::Value::Dict colors;
+  base::DictValue colors;
   colors.Set("background", ColorToHex(theme.colors.background));
   colors.Set("surface", ColorToHex(theme.colors.surface));
   colors.Set("text", ColorToHex(theme.colors.text));
@@ -196,21 +196,21 @@ base::Value::Dict ThemeToValue(const Theme& theme) {
   colors.Set("border", ColorToHex(theme.colors.border));
   colors.Set("error", ColorToHex(theme.colors.error));
   dict.Set("colors", std::move(colors));
-  base::Value::Dict typography;
+  base::DictValue typography;
   typography.Set("font_family", theme.typography.font_family);
   typography.Set("base_size_px", theme.typography.base_size_px);
   typography.Set("scale_ratio", theme.typography.scale_ratio);
   typography.Set("base_line_height_permille",
                  theme.typography.base_line_height_permille);
   dict.Set("typography", std::move(typography));
-  base::Value::Dict motion;
+  base::DictValue motion;
   motion.Set("reduced_motion", theme.motion.reduced_motion);
   motion.Set("reduced_transparency", theme.motion.reduced_transparency);
   motion.Set("base_duration_ms", theme.motion.base_duration_ms);
   dict.Set("motion", std::move(motion));
   dict.Set("corner_radius_px", theme.corner_radius_px);
   if (!theme.custom_colors.empty()) {
-    base::Value::Dict custom;
+    base::DictValue custom;
     for (const auto& [name, color] : theme.custom_colors) {
       custom.Set(name, ColorToHex(color));
     }
@@ -220,7 +220,7 @@ base::Value::Dict ThemeToValue(const Theme& theme) {
 }
 
 ThemeResult<Theme> ThemeFromValue(const base::Value& value) {
-  const base::Value::Dict* dict = value.GetIfDict();
+  const base::DictValue* dict = value.GetIfDict();
   if (!dict) {
     return base::unexpected(ThemeError::kUnsupportedSchema);
   }
@@ -240,7 +240,7 @@ ThemeResult<Theme> ThemeFromValue(const base::Value& value) {
       return base::unexpected(ThemeError::kInvalidToken);
     }
   }
-  const base::Value::Dict* colors = dict->FindDict("colors");
+  const base::DictValue* colors = dict->FindDict("colors");
   if (!colors) {
     return base::unexpected(ThemeError::kInvalidColor);
   }
@@ -258,7 +258,7 @@ ThemeResult<Theme> ThemeFromValue(const base::Value& value) {
       !read_color("error", &theme.colors.error)) {
     return base::unexpected(ThemeError::kInvalidColor);
   }
-  if (const base::Value::Dict* typography = dict->FindDict("typography")) {
+  if (const base::DictValue* typography = dict->FindDict("typography")) {
     if (const std::string* font = typography->FindString("font_family")) {
       theme.typography.font_family = *font;
     }
@@ -269,7 +269,7 @@ ThemeResult<Theme> ThemeFromValue(const base::Value& value) {
     theme.typography.base_line_height_permille =
         typography->FindInt("base_line_height_permille").value_or(1500);
   }
-  if (const base::Value::Dict* motion = dict->FindDict("motion")) {
+  if (const base::DictValue* motion = dict->FindDict("motion")) {
     theme.motion.reduced_motion =
         motion->FindBool("reduced_motion").value_or(false);
     theme.motion.reduced_transparency =
@@ -278,7 +278,7 @@ ThemeResult<Theme> ThemeFromValue(const base::Value& value) {
         motion->FindInt("base_duration_ms").value_or(150);
   }
   theme.corner_radius_px = dict->FindInt("corner_radius_px").value_or(8);
-  if (const base::Value::Dict* custom = dict->FindDict("custom_colors")) {
+  if (const base::DictValue* custom = dict->FindDict("custom_colors")) {
     for (const auto [key, color_value] : *custom) {
       ThemeColor color;
       if (!color_value.is_string() ||

@@ -41,9 +41,9 @@ bool SanitizeToolName(const std::string& name, std::string* sanitized) {
 
 }  // namespace
 
-McpImportResult ImportMcpCapabilities(const base::Value::Dict& tools_list,
+McpImportResult ImportMcpCapabilities(const base::DictValue& tools_list,
                                       const std::string& provider) {
-  const base::Value::List* tools = tools_list.FindList("tools");
+  const base::ListValue* tools = tools_list.FindList("tools");
   if (!tools) {
     return Failure(McpImportError::kNotAToolList, "");
   }
@@ -57,7 +57,7 @@ McpImportResult ImportMcpCapabilities(const base::Value::Dict& tools_list,
   std::vector<ToolDescriptor> descriptors;
   std::set<std::string> seen;
   for (const base::Value& tool_value : *tools) {
-    const base::Value::Dict* tool = tool_value.GetIfDict();
+    const base::DictValue* tool = tool_value.GetIfDict();
     if (!tool) {
       return Failure(McpImportError::kNotAToolList, "");
     }
@@ -103,7 +103,7 @@ McpImportResult ImportMcpCapabilities(const base::Value::Dict& tools_list,
       descriptor.approval = ApprovalPolicy::kAlwaysRequired;
     }
 
-    if (const base::Value::Dict* input_schema =
+    if (const base::DictValue* input_schema =
             tool->FindDict("inputSchema")) {
       auto imported = ToolSchemaFromJsonSchema(*input_schema);
       if (!imported.has_value()) {

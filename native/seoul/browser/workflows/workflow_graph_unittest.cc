@@ -157,7 +157,7 @@ TEST(WorkflowGraphTest, CompilesToPlanWithGuardsAndLoops) {
   workflow.edges.push_back(
       Edge("extract2", "extract", WorkflowEdgeKind::kLoopBack));
 
-  auto plan = CompileWorkflow(workflow, base::Value::Dict(), TaskBudgets());
+  auto plan = CompileWorkflow(workflow, base::DictValue(), TaskBudgets());
   ASSERT_TRUE(plan.has_value());
   ASSERT_EQ(plan->steps.size(), workflow.nodes.size());
 
@@ -197,7 +197,7 @@ TEST(WorkflowGraphTest, CompileSubstitutesTypedParams) {
   workflow.nodes[2].args.Set("max_price", "{{param:target_price}}");
 
   // Run value wins over the default and keeps its type.
-  base::Value::Dict run_values;
+  base::DictValue run_values;
   run_values.Set("target_price", 350.0);
   auto plan = CompileWorkflow(workflow, run_values, TaskBudgets());
   ASSERT_TRUE(plan.has_value());
@@ -205,7 +205,7 @@ TEST(WorkflowGraphTest, CompileSubstitutesTypedParams) {
   EXPECT_EQ(compare.args.FindDouble("max_price").value_or(0.0), 350.0);
 
   // Default applies when no run value is given.
-  plan = CompileWorkflow(workflow, base::Value::Dict(), TaskBudgets());
+  plan = CompileWorkflow(workflow, base::DictValue(), TaskBudgets());
   ASSERT_TRUE(plan.has_value());
   EXPECT_EQ(plan->steps.back().args.FindDouble("max_price").value_or(0.0),
             500.0);

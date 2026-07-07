@@ -25,7 +25,7 @@ inline constexpr double kMinLargeTextContrast = 3.0;
 // accent_text/accent, error/background).
 ThemeStatusResult ValidateTheme(const Theme& theme);
 
-base::Value::Dict ThemeToValue(const Theme& theme);
+base::DictValue ThemeToValue(const Theme& theme);
 ThemeResult<Theme> ThemeFromValue(const base::Value& value);
 
 }  // namespace seoul

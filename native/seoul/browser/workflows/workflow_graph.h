@@ -34,7 +34,7 @@ WorkflowResult<std::vector<std::string>> TopologicalOrder(
 // defaults). The resulting plan still goes through ValidatePlan before it
 // runs.
 WorkflowResult<Plan> CompileWorkflow(const WorkflowDefinition& definition,
-                                     const base::Value::Dict& param_values,
+                                     const base::DictValue& param_values,
                                      const TaskBudgets& budgets);
 
 }  // namespace seoul

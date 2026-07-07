@@ -138,10 +138,10 @@ TEST_F(OrganizationInvariantsTest, EmptySplitTokenRejected) {
 }
 
 TEST_F(OrganizationInvariantsTest, InvalidEssentialEnumRejected) {
-  base::Value::Dict dict;
+  base::DictValue dict;
   dict.Set("schema_version", kOrganizationSchemaVersion);
-  base::Value::List essentials;
-  base::Value::Dict entry;
+  base::ListValue essentials;
+  base::DictValue entry;
   entry.Set("id", EssentialId::GenerateNew().value());
   entry.Set("name", "Mail");
   entry.Set("root_url", "https://mail.test/");
@@ -153,11 +153,11 @@ TEST_F(OrganizationInvariantsTest, InvalidEssentialEnumRejected) {
 }
 
 TEST_F(OrganizationInvariantsTest, OversizedMembershipListRejected) {
-  base::Value::Dict dict;
+  base::DictValue dict;
   dict.Set("schema_version", kOrganizationSchemaVersion);
-  base::Value::List memberships;
+  base::ListValue memberships;
   for (size_t i = 0; i <= kMaxTotalMemberships; ++i) {
-    base::Value::Dict m;
+    base::DictValue m;
     m.Set("id", TabMembershipId::GenerateNew().value());
     m.Set("workspace_id", WorkspaceId::GenerateNew().value());
     m.Set("tab_key", "tab-" + std::to_string(i));
@@ -208,7 +208,7 @@ TEST_F(OrganizationInvariantsTest, RoundTripDeterministic) {
   model_.AddTabMembership(work, "tab-b", TabRole::kRetained);
   model_.CreateSplitGroup(work, {"tab-a", "tab-b"}, 0.5, "split-1");
   const OrganizationSnapshot first = model_.ToSnapshot();
-  base::Value::Dict dict = SerializeSnapshot(first);
+  base::DictValue dict = SerializeSnapshot(first);
   MutationResult<OrganizationSnapshot> parsed = DeserializeSnapshot(dict);
   ASSERT_TRUE(parsed.has_value());
   OrganizationModel second;

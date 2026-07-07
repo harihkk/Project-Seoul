@@ -15,6 +15,12 @@ namespace {
 
 class FakeAdapter : public ChromiumMutationAdapter {
  public:
+  CommandStatusResult OpenNewTab(Profile*,
+                                 const ResolvedWindowTarget&,
+                                 CommandForegroundDisposition,
+                                 LiveTabKey*) override {
+    return CommandOk();
+  }
   CommandStatusResult OpenTab(Profile*,
                               const ResolvedWindowTarget&,
                               const GURL&,
@@ -114,7 +120,8 @@ TEST(WorkspaceSwitcherTest, RejectsArchivedWorkspace) {
 
 TEST(WorkspaceSwitcherTest, CommitsWhenTargetTabAlreadyActive) {
   OrganizationModel model;
-  const WorkspaceId ws_a = model.EnsureDefaultWorkspace();
+  ASSERT_TRUE(model.EnsureDefaultWorkspace().has_value());
+  const WorkspaceId ws_a = model.default_workspace();
   const WorkspaceId ws_b = model.CreateWorkspace("b").value();
   const LiveWindowKey window = LiveWindowKey::FromSessionId(1);
   const LiveTabKey tab = LiveTabKey::FromSessionId(10);
@@ -140,7 +147,8 @@ TEST(WorkspaceSwitcherTest, CommitsWhenTargetTabAlreadyActive) {
 
 TEST(WorkspaceSwitcherTest, ExternalActivationDoesNotDispatchCommand) {
   OrganizationModel model;
-  const WorkspaceId ws_a = model.EnsureDefaultWorkspace();
+  ASSERT_TRUE(model.EnsureDefaultWorkspace().has_value());
+  const WorkspaceId ws_a = model.default_workspace();
   const WorkspaceId ws_b = model.CreateWorkspace("b").value();
   const LiveWindowKey window = LiveWindowKey::FromSessionId(1);
   const LiveTabKey tab = LiveTabKey::FromSessionId(11);

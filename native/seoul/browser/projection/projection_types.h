@@ -10,6 +10,8 @@
 
 #include "seoul/browser/lifecycle/lifecycle_identity.h"
 #include "seoul/browser/lifecycle/live_window_snapshot_types.h"
+#include "seoul/browser/organization/organization_ids.h"
+#include "seoul/browser/organization/organization_types.h"
 
 namespace seoul {
 

@@ -31,7 +31,7 @@ struct StepGuard {
   friend bool operator==(const StepGuard&, const StepGuard&) = default;
 };
 
-// base::Value::Dict is move-only; PlanStep holds one by value and declares
+// base::DictValue is move-only; PlanStep holds one by value and declares
 // clone-based copy semantics so a Plan can be copied (the task constructor and
 // checkpoint restore take a Plan and the workflow compiler builds one).
 struct PlanStep {
@@ -45,7 +45,7 @@ struct PlanStep {
   std::string id;  // [a-z][a-z0-9_-]{0,63}, unique within the plan
   PlanStepKind kind = PlanStepKind::kToolCall;
   ToolId tool;             // kToolCall
-  base::Value::Dict args;  // kToolCall; validated against the tool schema
+  base::DictValue args;  // kToolCall; validated against the tool schema
   std::string prompt;      // kApprovalGate/kUserInput: what to ask
   bool requires_approval = false;  // per-step gate in addition to policy
   std::optional<StepGuard> guard;

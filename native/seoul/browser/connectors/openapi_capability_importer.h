@@ -58,7 +58,7 @@ using OpenApiImportResult =
 // import fails precisely on the first unsupported construct rather than
 // silently skipping it.
 OpenApiImportResult ImportOpenApiCapabilities(
-    const base::Value::Dict& document,
+    const base::DictValue& document,
     const std::string& provider);
 
 }  // namespace seoul

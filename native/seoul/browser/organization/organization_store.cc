@@ -16,7 +16,7 @@ namespace {
 // Enum <-> int with range validation, so an out-of-range stored value is
 // rejected rather than reinterpreted.
 template <typename Enum>
-bool ReadEnum(const base::Value::Dict& d,
+bool ReadEnum(const base::DictValue& d,
               const char* key,
               int max_inclusive,
               Enum* out) {
@@ -28,8 +28,8 @@ bool ReadEnum(const base::Value::Dict& d,
   return true;
 }
 
-base::Value::Dict WorkspaceToDict(const WorkspaceRecord& w) {
-  base::Value::Dict d;
+base::DictValue WorkspaceToDict(const WorkspaceRecord& w) {
+  base::DictValue d;
   d.Set("id", w.id.value());
   d.Set("name", w.name);
   d.Set("icon", w.icon);
@@ -41,8 +41,8 @@ base::Value::Dict WorkspaceToDict(const WorkspaceRecord& w) {
   return d;
 }
 
-base::Value::Dict EssentialToDict(const EssentialRecord& e) {
-  base::Value::Dict d;
+base::DictValue EssentialToDict(const EssentialRecord& e) {
+  base::DictValue d;
   d.Set("id", e.id.value());
   d.Set("kind", static_cast<int>(e.kind));
   d.Set("name", e.name);
@@ -53,8 +53,8 @@ base::Value::Dict EssentialToDict(const EssentialRecord& e) {
   return d;
 }
 
-base::Value::Dict MembershipToDict(const TabMembershipRecord& m) {
-  base::Value::Dict d;
+base::DictValue MembershipToDict(const TabMembershipRecord& m) {
+  base::DictValue d;
   d.Set("id", m.id.value());
   d.Set("workspace_id", m.workspace_id.value());
   d.Set("tab_key", m.tab_key);
@@ -66,11 +66,11 @@ base::Value::Dict MembershipToDict(const TabMembershipRecord& m) {
   return d;
 }
 
-base::Value::Dict SplitToDict(const SplitGroupRecord& s) {
-  base::Value::Dict d;
+base::DictValue SplitToDict(const SplitGroupRecord& s) {
+  base::DictValue d;
   d.Set("id", s.id.value());
   d.Set("workspace_id", s.workspace_id.value());
-  base::Value::List panes;
+  base::ListValue panes;
   for (const std::string& key : s.pane_tab_keys) {
     panes.Append(key);
   }
@@ -82,8 +82,8 @@ base::Value::Dict SplitToDict(const SplitGroupRecord& s) {
   return d;
 }
 
-base::Value::Dict RoutingToDict(const RoutingRule& r) {
-  base::Value::Dict d;
+base::DictValue RoutingToDict(const RoutingRule& r) {
+  base::DictValue d;
   d.Set("id", r.id.value());
   d.Set("priority", r.priority);
   d.Set("enabled", r.enabled);
@@ -96,8 +96,8 @@ base::Value::Dict RoutingToDict(const RoutingRule& r) {
   return d;
 }
 
-base::Value::Dict ArchivedToDict(const ArchivedTabRecord& a) {
-  base::Value::Dict d;
+base::DictValue ArchivedToDict(const ArchivedTabRecord& a) {
+  base::DictValue d;
   d.Set("original_id", a.original_id.value());
   d.Set("workspace_id", a.workspace_id.value());
   d.Set("original_role", static_cast<int>(a.original_role));
@@ -108,7 +108,7 @@ base::Value::Dict ArchivedToDict(const ArchivedTabRecord& a) {
 }
 
 // Required-string reader; returns false if missing or not a string.
-bool ReadString(const base::Value::Dict& d, const char* key, std::string* out) {
+bool ReadString(const base::DictValue& d, const char* key, std::string* out) {
   const std::string* s = d.FindString(key);
   if (!s) {
     return false;
@@ -117,7 +117,7 @@ bool ReadString(const base::Value::Dict& d, const char* key, std::string* out) {
   return true;
 }
 
-base::Time ReadTime(const base::Value::Dict& d, const char* key) {
+base::Time ReadTime(const base::DictValue& d, const char* key) {
   const base::Value* v = d.Find(key);
   std::optional<base::Time> t = v ? base::ValueToTime(*v) : std::nullopt;
   return t.value_or(base::Time());
@@ -125,51 +125,51 @@ base::Time ReadTime(const base::Value::Dict& d, const char* key) {
 
 }  // namespace
 
-base::Value::Dict SerializeSnapshot(const OrganizationSnapshot& snapshot) {
-  base::Value::Dict root;
+base::DictValue SerializeSnapshot(const OrganizationSnapshot& snapshot) {
+  base::DictValue root;
   root.Set("schema_version", snapshot.schema_version);
   root.Set("default_workspace", snapshot.default_workspace_id.value());
 
-  base::Value::List workspaces;
+  base::ListValue workspaces;
   for (const WorkspaceRecord& w : snapshot.workspaces) {
     workspaces.Append(WorkspaceToDict(w));
   }
   root.Set("workspaces", std::move(workspaces));
 
-  base::Value::List essentials;
+  base::ListValue essentials;
   for (const EssentialRecord& e : snapshot.essentials) {
     essentials.Append(EssentialToDict(e));
   }
   root.Set("essentials", std::move(essentials));
 
-  base::Value::List memberships;
+  base::ListValue memberships;
   for (const TabMembershipRecord& m : snapshot.memberships) {
     memberships.Append(MembershipToDict(m));
   }
   root.Set("memberships", std::move(memberships));
 
-  base::Value::List splits;
+  base::ListValue splits;
   for (const SplitGroupRecord& s : snapshot.splits) {
     splits.Append(SplitToDict(s));
   }
   root.Set("splits", std::move(splits));
 
-  base::Value::List windows;
+  base::ListValue windows;
   for (const WindowWorkspaceState& ws : snapshot.window_states) {
-    base::Value::Dict d;
+    base::DictValue d;
     d.Set("window_key", ws.window_key);
     d.Set("active_workspace", ws.active_workspace_id.value());
     windows.Append(std::move(d));
   }
   root.Set("windows", std::move(windows));
 
-  base::Value::List routing;
+  base::ListValue routing;
   for (const RoutingRule& r : snapshot.routing_rules) {
     routing.Append(RoutingToDict(r));
   }
   root.Set("routing_rules", std::move(routing));
 
-  base::Value::List archived;
+  base::ListValue archived;
   for (const ArchivedTabRecord& a : snapshot.archived_tabs) {
     archived.Append(ArchivedToDict(a));
   }
@@ -179,7 +179,7 @@ base::Value::Dict SerializeSnapshot(const OrganizationSnapshot& snapshot) {
 }
 
 MutationResult<OrganizationSnapshot> DeserializeSnapshot(
-    const base::Value::Dict& dict) {
+    const base::DictValue& dict) {
   std::optional<int> version = dict.FindInt("schema_version");
   if (!version) {
     return Err(OrganizationError::kCorruptState);
@@ -195,13 +195,13 @@ MutationResult<OrganizationSnapshot> DeserializeSnapshot(
   snap.default_workspace_id =
       def ? WorkspaceId::FromString(*def) : WorkspaceId();
 
-  const base::Value::List* workspaces = dict.FindList("workspaces");
+  const base::ListValue* workspaces = dict.FindList("workspaces");
   if (workspaces && workspaces->size() > kMaxWorkspaces) {
     return Err(OrganizationError::kLimitExceeded);
   }
   if (workspaces) {
     for (const base::Value& v : *workspaces) {
-      const base::Value::Dict* d = v.GetIfDict();
+      const base::DictValue* d = v.GetIfDict();
       if (!d) {
         return Err(OrganizationError::kCorruptState);
       }
@@ -224,13 +224,13 @@ MutationResult<OrganizationSnapshot> DeserializeSnapshot(
     }
   }
 
-  const base::Value::List* essentials = dict.FindList("essentials");
+  const base::ListValue* essentials = dict.FindList("essentials");
   if (essentials && essentials->size() > kMaxEssentials) {
     return Err(OrganizationError::kLimitExceeded);
   }
   if (essentials) {
     for (const base::Value& v : *essentials) {
-      const base::Value::Dict* d = v.GetIfDict();
+      const base::DictValue* d = v.GetIfDict();
       if (!d) {
         return Err(OrganizationError::kCorruptState);
       }
@@ -255,13 +255,13 @@ MutationResult<OrganizationSnapshot> DeserializeSnapshot(
     }
   }
 
-  const base::Value::List* memberships = dict.FindList("memberships");
+  const base::ListValue* memberships = dict.FindList("memberships");
   if (memberships && memberships->size() > kMaxTotalMemberships) {
     return Err(OrganizationError::kLimitExceeded);
   }
   if (memberships) {
     for (const base::Value& v : *memberships) {
-      const base::Value::Dict* d = v.GetIfDict();
+      const base::DictValue* d = v.GetIfDict();
       if (!d) {
         return Err(OrganizationError::kCorruptState);
       }
@@ -287,13 +287,13 @@ MutationResult<OrganizationSnapshot> DeserializeSnapshot(
     }
   }
 
-  const base::Value::List* splits = dict.FindList("splits");
+  const base::ListValue* splits = dict.FindList("splits");
   if (splits && splits->size() > kMaxTotalSplits) {
     return Err(OrganizationError::kLimitExceeded);
   }
   if (splits) {
     for (const base::Value& v : *splits) {
-      const base::Value::Dict* d = v.GetIfDict();
+      const base::DictValue* d = v.GetIfDict();
       if (!d) {
         return Err(OrganizationError::kCorruptState);
       }
@@ -304,7 +304,7 @@ MutationResult<OrganizationSnapshot> DeserializeSnapshot(
       }
       s.id = SplitGroupId::FromString(id);
       s.workspace_id = WorkspaceId::FromString(ws);
-      const base::Value::List* panes = d->FindList("panes");
+      const base::ListValue* panes = d->FindList("panes");
       if (!panes) {
         return Err(OrganizationError::kCorruptState);
       }
@@ -325,13 +325,13 @@ MutationResult<OrganizationSnapshot> DeserializeSnapshot(
     }
   }
 
-  const base::Value::List* windows = dict.FindList("windows");
+  const base::ListValue* windows = dict.FindList("windows");
   if (windows && windows->size() > kMaxWindowStates) {
     return Err(OrganizationError::kLimitExceeded);
   }
   if (windows) {
     for (const base::Value& v : *windows) {
-      const base::Value::Dict* d = v.GetIfDict();
+      const base::DictValue* d = v.GetIfDict();
       if (!d) {
         return Err(OrganizationError::kCorruptState);
       }
@@ -347,13 +347,13 @@ MutationResult<OrganizationSnapshot> DeserializeSnapshot(
     }
   }
 
-  const base::Value::List* routing = dict.FindList("routing_rules");
+  const base::ListValue* routing = dict.FindList("routing_rules");
   if (routing) {
     if (routing->size() > kMaxRoutingRules) {
       return Err(OrganizationError::kLimitExceeded);
     }
     for (const base::Value& v : *routing) {
-      const base::Value::Dict* d = v.GetIfDict();
+      const base::DictValue* d = v.GetIfDict();
       if (!d) {
         return Err(OrganizationError::kCorruptState);
       }
@@ -386,13 +386,13 @@ MutationResult<OrganizationSnapshot> DeserializeSnapshot(
     }
   }
 
-  const base::Value::List* archived = dict.FindList("archived_tabs");
+  const base::ListValue* archived = dict.FindList("archived_tabs");
   if (archived) {
     if (archived->size() > kMaxArchivedTabs) {
       return Err(OrganizationError::kLimitExceeded);
     }
     for (const base::Value& v : *archived) {
-      const base::Value::Dict* d = v.GetIfDict();
+      const base::DictValue* d = v.GetIfDict();
       if (!d) {
         return Err(OrganizationError::kCorruptState);
       }
@@ -421,7 +421,7 @@ MutationResult<OrganizationSnapshot> DeserializeSnapshot(
   return snap;
 }
 
-bool SerializedSizeWithinLimit(const base::Value::Dict& dict) {
+bool SerializedSizeWithinLimit(const base::DictValue& dict) {
   std::string json;
   if (!base::JSONWriter::Write(dict, &json)) {
     return false;

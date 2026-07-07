@@ -31,7 +31,7 @@ SiteLayerStatusResult ValidateSiteLayer(const SiteLayer& layer);
 // an error if the layer does not validate.
 SiteLayerResult<std::string> CompileSiteLayer(const SiteLayer& layer);
 
-base::Value::Dict SiteLayerToValue(const SiteLayer& layer);
+base::DictValue SiteLayerToValue(const SiteLayer& layer);
 SiteLayerResult<SiteLayer> SiteLayerFromValue(const base::Value& value);
 
 }  // namespace seoul

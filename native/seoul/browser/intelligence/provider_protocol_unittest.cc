@@ -27,18 +27,18 @@ TEST(ChatCompletionsTest, BuildsRequestWithSystemAndStructuredOutput) {
   request.system_prompt = "be terse";
   request.user_prompt = "hello";
   request.max_output_tokens = 256;
-  base::Value::Dict schema;
+  base::DictValue schema;
   schema.Set("type", "object");
   request.response_schema = std::move(schema);
 
   const std::string body =
       chat_completions::BuildRequestBody("local-3b", request, /*stream=*/true);
-  std::optional<base::Value> parsed = base::JSONReader::Read(body);
+  std::optional<base::Value> parsed = base::JSONReader::Read(body, base::JSON_PARSE_RFC);
   ASSERT_TRUE(parsed && parsed->is_dict());
-  const base::Value::Dict& dict = parsed->GetDict();
+  const base::DictValue& dict = parsed->GetDict();
   EXPECT_EQ(*dict.FindString("model"), "local-3b");
   EXPECT_TRUE(dict.FindBool("stream").value_or(false));
-  const base::Value::List* messages = dict.FindList("messages");
+  const base::ListValue* messages = dict.FindList("messages");
   ASSERT_TRUE(messages);
   ASSERT_EQ(messages->size(), 2u);  // system + user
   EXPECT_EQ(*(*messages)[0].GetDict().FindString("role"), "system");
@@ -71,11 +71,11 @@ TEST(MessagesTest, BuildsRequestWithTopLevelSystem) {
   request.max_output_tokens = 512;
   const std::string body =
       messages::BuildRequestBody("cloud-model", request, /*stream=*/true);
-  std::optional<base::Value> parsed = base::JSONReader::Read(body);
+  std::optional<base::Value> parsed = base::JSONReader::Read(body, base::JSON_PARSE_RFC);
   ASSERT_TRUE(parsed && parsed->is_dict());
-  const base::Value::Dict& dict = parsed->GetDict();
+  const base::DictValue& dict = parsed->GetDict();
   EXPECT_EQ(*dict.FindString("system"), "be terse");
-  const base::Value::List* messages_list = dict.FindList("messages");
+  const base::ListValue* messages_list = dict.FindList("messages");
   ASSERT_TRUE(messages_list);
   ASSERT_EQ(messages_list->size(), 1u);  // only the user turn
   EXPECT_EQ(*(*messages_list)[0].GetDict().FindString("role"), "user");

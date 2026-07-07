@@ -58,11 +58,11 @@ bool IsSupportedMethod(const std::string& method) {
 }  // namespace
 
 OpenApiImportResult ImportOpenApiCapabilities(
-    const base::Value::Dict& document,
+    const base::DictValue& document,
     const std::string& provider) {
   // Accept OpenAPI 3.x ("openapi") documents with a paths object.
   const std::string* version = document.FindString("openapi");
-  const base::Value::Dict* paths = document.FindDict("paths");
+  const base::DictValue* paths = document.FindDict("paths");
   if (!version || !paths) {
     return Failure(OpenApiImportError::kNotAnOpenApiDocument, "");
   }
@@ -70,7 +70,7 @@ OpenApiImportResult ImportOpenApiCapabilities(
   std::vector<OpenApiOperationBinding> bindings;
   std::set<std::string> seen_ids;
   for (const auto [path_template, path_value] : *paths) {
-    const base::Value::Dict* path_item = path_value.GetIfDict();
+    const base::DictValue* path_item = path_value.GetIfDict();
     if (!path_item) {
       continue;
     }
@@ -78,7 +78,7 @@ OpenApiImportResult ImportOpenApiCapabilities(
       if (!IsSupportedMethod(method)) {
         continue;  // parameters/summary keys and unsupported verbs
       }
-      const base::Value::Dict* operation = operation_value.GetIfDict();
+      const base::DictValue* operation = operation_value.GetIfDict();
       if (!operation) {
         continue;
       }
@@ -135,16 +135,16 @@ OpenApiImportResult ImportOpenApiCapabilities(
           path_template;
 
       // Query/path parameters become schema fields.
-      if (const base::Value::List* parameters =
+      if (const base::ListValue* parameters =
               operation->FindList("parameters")) {
         for (const base::Value& parameter_value : *parameters) {
-          const base::Value::Dict* parameter = parameter_value.GetIfDict();
+          const base::DictValue* parameter = parameter_value.GetIfDict();
           if (!parameter) {
             continue;
           }
           const std::string* in = parameter->FindString("in");
           const std::string* name = parameter->FindString("name");
-          const base::Value::Dict* schema = parameter->FindDict("schema");
+          const base::DictValue* schema = parameter->FindDict("schema");
           if (!in || !name || !schema) {
             return Failure(OpenApiImportError::kSchemaImportFailed,
                            sanitized);
@@ -154,13 +154,13 @@ OpenApiImportResult ImportOpenApiCapabilities(
                 OpenApiImportError::kUnsupportedParameterLocation,
                 sanitized + ":" + *in);
           }
-          base::Value::Dict object_schema;
+          base::DictValue object_schema;
           object_schema.Set("type", "object");
-          base::Value::Dict properties;
+          base::DictValue properties;
           properties.Set(*name, schema->Clone());
           object_schema.Set("properties", std::move(properties));
           if (parameter->FindBool("required").value_or(*in == "path")) {
-            base::Value::List required;
+            base::ListValue required;
             required.Append(*name);
             object_schema.Set("required", std::move(required));
           }
@@ -176,7 +176,7 @@ OpenApiImportResult ImportOpenApiCapabilities(
       }
 
       // A JSON request body merges its object properties into the input.
-      const base::Value::Dict* body_schema = operation->FindDictByDottedPath(
+      const base::DictValue* body_schema = operation->FindDictByDottedPath(
           "requestBody.content.application/json.schema");
       if (body_schema) {
         auto imported = ToolSchemaFromJsonSchema(*body_schema);
