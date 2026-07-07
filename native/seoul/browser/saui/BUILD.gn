@@ -45,6 +45,7 @@ test("seoul_saui_unittests") {
     "interface_compiler_unittest.cc",
     "saui_document_unittest.cc",
     "saui_patch_unittest.cc",
+    "saui_protocol_fixtures_unittest.cc",
     "saui_selection_unittest.cc",
     "saui_validator_unittest.cc",
   ]
@@ -57,4 +58,8 @@ test("seoul_saui_unittests") {
     "//testing/gtest",
     "//url",
   ]
+
+  # The cross-language conformance corpus, mirrored from the repository's
+  # protocol/ directory by materialize.sh.
+  data = [ "//seoul/protocol/" ]
 }

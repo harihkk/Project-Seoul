@@ -195,7 +195,7 @@ TEST(InterfaceCompilerTest, UserRepresentationRequestIsHonoredWhenHonest) {
 
 TEST(InterfaceCompilerTest, MisleadingChartRequestFallsBack) {
   SemanticResult single_point = TelemetryTimeSeries();
-  base::Value::List* rows = single_point.data.GetIfList();
+  base::ListValue* rows = single_point.data.GetIfList();
   while (rows->size() > 1) {
     rows->erase(rows->begin());
   }
@@ -351,7 +351,7 @@ TEST(InterfaceCompilerTest, CompositeStacksItsParts) {
       Field("current", FieldPrimitive::kNumber, SemanticRole::kMeasure)};
   composite.schema.parts.push_back(headline);
   composite.schema.parts.push_back(TelemetryTimeSeries().schema);
-  base::Value::Dict data;
+  base::DictValue data;
   data.Set("headline", 7.0);
   data.Set("trend", TelemetryTimeSeries().data.Clone());
   composite.data = base::Value(std::move(data));
@@ -399,7 +399,7 @@ TEST(InterfaceCompilerTest, FieldDirectivesFilterTheData) {
 
 TEST(InterfaceCompilerTest, EmptyCollectionRendersAnEmptyState) {
   SemanticResult empty = LeagueStandings();
-  empty.data = base::Value(base::Value::List());
+  empty.data = base::Value(base::ListValue());
   auto compiled = CompileInterface(empty, InterfaceIntent());
   ASSERT_TRUE(compiled.has_value());
   ASSERT_NE(Primary(compiled.value()), nullptr);

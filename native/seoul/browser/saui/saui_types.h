@@ -228,7 +228,7 @@ struct TableColumn {
   friend bool operator==(const TableColumn&, const TableColumn&) = default;
 };
 
-// base::Value, base::Value::Dict, and base::Value::List are move-only (their
+// base::Value, base::DictValue, and base::ListValue are move-only (their
 // copy constructors are deleted; use Clone()). The structs below hold them by
 // value, so they declare explicit clone-based copy semantics. Every aggregate
 // composed only of these (AdaptiveSurface, DataEntry) then becomes copyable
@@ -244,7 +244,7 @@ struct DataTable {
   std::vector<TableColumn> columns;
   // Row cells are primitives only (string/double/bool/int); validated at
   // parse. Cell count is bounded by kMaxTableRows * kMaxTableColumns.
-  std::vector<base::Value::List> rows;
+  std::vector<base::ListValue> rows;
 
   friend bool operator==(const DataTable&, const DataTable&) = default;
 };
@@ -259,7 +259,7 @@ struct DataEntry {
 
   DataEntryKind kind = DataEntryKind::kScalar;
   base::Value scalar;        // kScalar
-  base::Value::Dict record;  // kRecord
+  base::DictValue record;  // kRecord
   DataSeries series;         // kSeries
   DataTable table;           // kTable
   bool has_provenance = false;
@@ -292,7 +292,7 @@ struct SurfaceAction {
   std::string label;
   SurfaceActionKind kind = SurfaceActionKind::kLocalState;
   std::string target;
-  base::Value::Dict payload;
+  base::DictValue payload;
   bool requires_confirmation = false;
 
   friend bool operator==(const SurfaceAction&, const SurfaceAction&) = default;
@@ -308,7 +308,7 @@ struct ComponentNode {
 
   std::string id;  // stable, generator-assigned, charset-validated
   ComponentType type = ComponentType::kText;
-  base::Value::Dict props;
+  base::DictValue props;
   // slot name -> data entry name. The primary slot is "data".
   std::map<std::string, std::string> bindings;
   std::string accessible_name;

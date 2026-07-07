@@ -12,7 +12,7 @@ namespace seoul {
 
 namespace {
 
-bool NonEmptyStringProp(const base::Value::Dict& props, std::string_view key) {
+bool NonEmptyStringProp(const base::DictValue& props, std::string_view key) {
   const std::string* value = props.FindString(key);
   return value && !value->empty();
 }

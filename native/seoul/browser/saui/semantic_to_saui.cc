@@ -23,10 +23,10 @@ bool FieldHidden(const std::vector<std::string>& hidden,
 }
 
 // Copies a row dict keeping only visible declared fields, in field order.
-base::Value::List RowCells(const std::vector<FieldSpec>& fields,
+base::ListValue RowCells(const std::vector<FieldSpec>& fields,
                            const std::vector<std::string>& hidden,
-                           const base::Value::Dict& row) {
-  base::Value::List cells;
+                           const base::DictValue& row) {
+  base::ListValue cells;
   for (const FieldSpec& field : fields) {
     if (FieldHidden(hidden, field.id)) {
       continue;
@@ -39,7 +39,7 @@ base::Value::List RowCells(const std::vector<FieldSpec>& fields,
 
 DataEntry TableFromRows(const SemanticResult& result,
                         const std::vector<FieldSpec>& fields,
-                        const base::Value::List& rows,
+                        const base::ListValue& rows,
                         const std::vector<std::string>& hidden,
                         const std::vector<std::string>& keep_ids,
                         size_t* truncated_rows) {
@@ -64,7 +64,7 @@ DataEntry TableFromRows(const SemanticResult& result,
   }
   std::set<std::string> keep(keep_ids.begin(), keep_ids.end());
   for (const base::Value& row_value : rows) {
-    const base::Value::Dict* row = row_value.GetIfDict();
+    const base::DictValue* row = row_value.GetIfDict();
     if (!row) {
       continue;
     }
@@ -91,7 +91,7 @@ DataEntry TableFromRows(const SemanticResult& result,
 DataEntry RecordFromDict(const SemanticResult& result,
                          const std::vector<FieldSpec>& fields,
                          const std::vector<std::string>& hidden,
-                         const base::Value::Dict& dict) {
+                         const base::DictValue& dict) {
   DataEntry entry;
   entry.kind = DataEntryKind::kRecord;
   for (const FieldSpec& field : fields) {
@@ -111,7 +111,7 @@ DataEntry RecordFromDict(const SemanticResult& result,
 }
 
 void EmitSeriesEntries(const SemanticResult& result,
-                       const base::Value::List& rows,
+                       const base::ListValue& rows,
                        std::map<std::string, DataEntry>* entries) {
   const FieldSpec* timestamp =
       FindFieldByRole(result.schema, SemanticRole::kTimestamp);
@@ -132,7 +132,7 @@ void EmitSeriesEntries(const SemanticResult& result,
     entry.series.y_unit = measure->unit;
     entry.series.x_unit = "time";
     for (const base::Value& row_value : rows) {
-      const base::Value::Dict* row = row_value.GetIfDict();
+      const base::DictValue* row = row_value.GetIfDict();
       if (!row) {
         continue;
       }
@@ -186,7 +186,7 @@ void ConvertInto(const SemanticResult& result,
     case SemanticShape::kDocument:
     case SemanticShape::kArtifact:
     case SemanticShape::kDiff: {
-      const base::Value::Dict* dict = result.data.GetIfDict();
+      const base::DictValue* dict = result.data.GetIfDict();
       if (dict) {
         out->entries[name("record")] =
             RecordFromDict(result, schema.fields, hidden, *dict);
@@ -194,16 +194,16 @@ void ConvertInto(const SemanticResult& result,
       return;
     }
     case SemanticShape::kGraph: {
-      const base::Value::Dict* dict = result.data.GetIfDict();
+      const base::DictValue* dict = result.data.GetIfDict();
       if (!dict) {
         return;
       }
-      if (const base::Value::List* nodes = dict->FindList("nodes")) {
+      if (const base::ListValue* nodes = dict->FindList("nodes")) {
         out->entries[name("nodes")] =
             TableFromRows(result, schema.fields, *nodes, hidden, keep_ids,
                           &out->truncated_rows);
       }
-      if (const base::Value::List* edges = dict->FindList("edges")) {
+      if (const base::ListValue* edges = dict->FindList("edges")) {
         out->entries[name("edges")] =
             TableFromRows(result, schema.edge_fields, *edges, hidden,
                           keep_ids, &out->truncated_rows);
@@ -211,7 +211,7 @@ void ConvertInto(const SemanticResult& result,
       return;
     }
     case SemanticShape::kComposite: {
-      const base::Value::Dict* dict = result.data.GetIfDict();
+      const base::DictValue* dict = result.data.GetIfDict();
       if (!dict) {
         return;
       }
@@ -234,7 +234,7 @@ void ConvertInto(const SemanticResult& result,
     default: {
       // Every list shape becomes a table entry; temporal numeric measures
       // additionally become series entries for chart bindings.
-      const base::Value::List* rows = result.data.GetIfList();
+      const base::ListValue* rows = result.data.GetIfList();
       if (!rows) {
         return;
       }

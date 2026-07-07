@@ -32,15 +32,15 @@ SauiResult<AdaptiveSurface> ParseSurface(const base::Value& value);
 // Structural building blocks shared with the patch parser (saui_patch.h).
 // Each enforces the same charset, primitive-only, and bound rules as
 // ParseSurface.
-SauiStatusResult ValidateSurfacePropsDict(const base::Value::Dict& props);
-SauiResult<ComponentNode> ParseComponentValue(const base::Value::Dict& dict);
-SauiResult<DataEntry> ParseDataEntryValue(const base::Value::Dict& dict);
-SauiResult<SurfaceAction> ParseActionValue(const base::Value::Dict& dict);
+SauiStatusResult ValidateSurfacePropsDict(const base::DictValue& props);
+SauiResult<ComponentNode> ParseComponentValue(const base::DictValue& dict);
+SauiResult<DataEntry> ParseDataEntryValue(const base::DictValue& dict);
+SauiResult<SurfaceAction> ParseActionValue(const base::DictValue& dict);
 
 // Serializes a surface for persistence (pinning, Scene attachment, session
 // restore). ParseSurface(SurfaceToValue(s)) reproduces `s` except that
 // revision resets for a re-parsed document.
-base::Value::Dict SurfaceToValue(const AdaptiveSurface& surface);
+base::DictValue SurfaceToValue(const AdaptiveSurface& surface);
 
 }  // namespace seoul
 

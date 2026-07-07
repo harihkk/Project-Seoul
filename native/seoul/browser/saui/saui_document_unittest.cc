@@ -161,26 +161,26 @@ TEST(SauiDocumentTest, RejectsChildrenOnNonContainer) {
 
 TEST(SauiDocumentTest, RejectsExcessiveNestingDepth) {
   // Build a stack nested beyond kMaxComponentDepth.
-  base::Value::Dict leaf;
+  base::DictValue leaf;
   leaf.Set("id", "leaf");
   leaf.Set("type", "text");
-  base::Value::Dict leaf_props;
+  base::DictValue leaf_props;
   leaf_props.Set("text", "deep");
   leaf.Set("props", std::move(leaf_props));
-  base::Value::Dict current = std::move(leaf);
+  base::DictValue current = std::move(leaf);
   for (size_t i = 0; i <= kMaxComponentDepth; ++i) {
-    base::Value::Dict wrapper;
+    base::DictValue wrapper;
     wrapper.Set("id", "s" + std::to_string(i));
     wrapper.Set("type", "stack");
-    base::Value::List children;
+    base::ListValue children;
     children.Append(std::move(current));
     wrapper.Set("children", std::move(children));
     current = std::move(wrapper);
   }
-  base::Value::Dict doc;
+  base::DictValue doc;
   doc.Set("schema_version", 1);
   doc.Set("kind", "response");
-  base::Value::List components;
+  base::ListValue components;
   components.Append(std::move(current));
   doc.Set("components", std::move(components));
   EXPECT_EQ(ParseSurface(base::Value(std::move(doc))).error(),
@@ -287,7 +287,7 @@ TEST(SauiDocumentTest, SerializationRoundTrips) {
   })json");
   auto first = ParseSurface(doc);
   ASSERT_TRUE(first.has_value());
-  base::Value::Dict serialized = SurfaceToValue(first.value());
+  base::DictValue serialized = SurfaceToValue(first.value());
   auto second = ParseSurface(base::Value(serialized.Clone()));
   ASSERT_TRUE(second.has_value());
   EXPECT_EQ(first.value(), second.value());

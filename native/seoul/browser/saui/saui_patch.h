@@ -8,6 +8,7 @@
 #ifndef SEOUL_BROWSER_SAUI_SAUI_PATCH_H_
 #define SEOUL_BROWSER_SAUI_SAUI_PATCH_H_
 
+#include <map>
 #include <string>
 #include <vector>
 
@@ -21,6 +22,7 @@ enum class PatchOpKind {
   kSetProps,            // merge validated props into a component
   kSetState,            // set component state (+ optional message)
   kSetTitle,            // set the surface title
+  kSetBindings,         // replace a component's data bindings
   kUpsertDataEntry,     // insert or replace one data entry
   kAppendSeriesPoints,  // append points to an existing series entry
   kAppendChild,         // append a component under a container
@@ -29,7 +31,7 @@ enum class PatchOpKind {
   kSetActions,          // replace the surface action list
 };
 
-// Holds a move-only base::Value::Dict (props) plus copyable SAUI parts, so it
+// Holds a move-only base::DictValue (props) plus copyable SAUI parts, so it
 // declares clone-based copy semantics (defined in saui_patch.cc).
 struct SurfacePatchOp {
   SurfacePatchOp();
@@ -42,10 +44,11 @@ struct SurfacePatchOp {
   PatchOpKind kind = PatchOpKind::kSetProps;
   std::string target_component;                   // component ops
   std::string entry_name;                         // data ops
-  base::Value::Dict props;                        // kSetProps
+  base::DictValue props;                        // kSetProps
   ComponentState state = ComponentState::kReady;  // kSetState
   std::string state_message;                      // kSetState
   std::string title;                              // kSetTitle
+  std::map<std::string, std::string> bindings;    // kSetBindings
   DataEntry entry;                                // kUpsertDataEntry
   std::vector<SeriesPoint> points;                // kAppendSeriesPoints
   ComponentNode component;             // kAppendChild / kReplaceComponent

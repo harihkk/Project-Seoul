@@ -4,6 +4,7 @@
 
 #include "seoul/browser/saui/saui_patch.h"
 
+#include "base/strings/string_number_conversions.h"
 #include "base/test/values_test_util.h"
 #include "seoul/browser/saui/saui_document.h"
 #include "seoul/browser/saui/saui_limits.h"
@@ -162,6 +163,124 @@ TEST(SauiPatchTest, RemoveComponentAndStateChange) {
   EXPECT_TRUE(surface.components[0].children.empty());
 }
 
+TEST(SauiPatchTest, SetBindingsRebindsToExistingEntry) {
+  AdaptiveSurface surface = LiveChartSurface();
+
+  // Add a second series entry, then rebind the chart to it.
+  SurfacePatchOp add_entry;
+  add_entry.kind = PatchOpKind::kUpsertDataEntry;
+  add_entry.entry_name = "prices_backfill";
+  add_entry.entry.kind = DataEntryKind::kSeries;
+  SeriesPoint point;
+  point.has_time = true;
+  point.time = base::Time::UnixEpoch() + base::Seconds(1);
+  point.y = 9.0;
+  add_entry.entry.series.points.push_back(point);
+  add_entry.entry.has_provenance = true;
+  add_entry.entry.provenance.source_name = "fixture";
+  add_entry.entry.provenance.retrieved_at =
+      base::Time::UnixEpoch() + base::Seconds(5);
+  add_entry.entry.provenance.effective_at =
+      base::Time::UnixEpoch() + base::Seconds(4);
+  ASSERT_TRUE(
+      ApplySurfacePatch(surface, PatchFor(surface, add_entry)).has_value());
+
+  SurfacePatchOp rebind;
+  rebind.kind = PatchOpKind::kSetBindings;
+  rebind.target_component = "chart";
+  rebind.bindings["data"] = "prices_backfill";
+  auto applied = ApplySurfacePatch(surface, PatchFor(surface, rebind));
+  ASSERT_TRUE(applied.has_value());
+  ASSERT_EQ(applied->changed_component_ids.size(), 1u);
+  EXPECT_EQ(applied->changed_component_ids[0], "chart");
+  EXPECT_EQ(surface.components[0].children[0].bindings.at("data"),
+            "prices_backfill");
+}
+
+TEST(SauiPatchTest, SetBindingsToMissingEntryFailsAtomically) {
+  AdaptiveSurface surface = LiveChartSurface();
+  const AdaptiveSurface before = surface;
+
+  SurfacePatchOp rebind;
+  rebind.kind = PatchOpKind::kSetBindings;
+  rebind.target_component = "chart";
+  rebind.bindings["data"] = "does_not_exist";
+  auto applied = ApplySurfacePatch(surface, PatchFor(surface, rebind));
+  EXPECT_FALSE(applied.has_value());
+  EXPECT_EQ(surface, before);  // atomic: the dangling rebind never lands
+}
+
+TEST(SauiPatchTest, ParseSetBindingsValidatesSlotAndEntryNames) {
+  base::Value doc = base::test::ParseJson(R"json({
+    "surface_id": "8b6b02f2-6a0f-4d35-9c62-9b6f4de1a001",
+    "ops": [{"op": "set_bindings", "target": "chart",
+             "bindings": {"data": "prices_backfill"}}]
+  })json");
+  auto patch = ParseSurfacePatch(doc);
+  ASSERT_TRUE(patch.has_value());
+  ASSERT_EQ(patch->ops.size(), 1u);
+  EXPECT_EQ(patch->ops[0].kind, PatchOpKind::kSetBindings);
+  EXPECT_EQ(patch->ops[0].bindings.at("data"), "prices_backfill");
+
+  doc = base::test::ParseJson(R"json({
+    "surface_id": "8b6b02f2-6a0f-4d35-9c62-9b6f4de1a001",
+    "ops": [{"op": "set_bindings", "target": "chart",
+             "bindings": {"onload": "prices"}}]
+  })json");
+  EXPECT_EQ(ParseSurfacePatch(doc).error(), SauiError::kInvalidDataEntry);
+
+  doc = base::test::ParseJson(R"json({
+    "surface_id": "8b6b02f2-6a0f-4d35-9c62-9b6f4de1a001",
+    "ops": [{"op": "set_bindings", "target": "chart", "bindings": {}}]
+  })json");
+  EXPECT_EQ(ParseSurfacePatch(doc).error(), SauiError::kInvalidPatch);
+}
+
+TEST(SauiPatchTest, ReplaceUnderNewIdReportsOldIdToo) {
+  AdaptiveSurface surface = LiveChartSurface();
+  SurfacePatchOp op;
+  op.kind = PatchOpKind::kReplaceComponent;
+  op.target_component = "chart";
+  op.component.id = "chart-v2";
+  op.component.type = ComponentType::kText;
+  op.component.props.Set("text", "replaced");
+  auto applied = ApplySurfacePatch(surface, PatchFor(surface, op));
+  ASSERT_TRUE(applied.has_value());
+  // The renderer needs both: remove the stale "chart" element and render
+  // "chart-v2".
+  ASSERT_EQ(applied->changed_component_ids.size(), 2u);
+  EXPECT_EQ(applied->changed_component_ids[0], "chart");
+  EXPECT_EQ(applied->changed_component_ids[1], "chart-v2");
+}
+
+TEST(SauiPatchTest, AppendChildDepthIsBounded) {
+  AdaptiveSurface surface = LiveChartSurface();
+  // Build a chain of nested stacks up to the depth limit, then one more
+  // append must fail while the surface stays untouched.
+  std::string parent = "root";
+  for (size_t depth = 2; depth <= kMaxComponentDepth; ++depth) {
+    SurfacePatchOp op;
+    op.kind = PatchOpKind::kAppendChild;
+    op.target_component = parent;
+    op.component.id = "s" + base::NumberToString(depth);
+    op.component.type = ComponentType::kStack;
+    ASSERT_TRUE(ApplySurfacePatch(surface, PatchFor(surface, op)).has_value())
+        << "depth " << depth;
+    parent = op.component.id;
+  }
+  const AdaptiveSurface before = surface;
+  SurfacePatchOp too_deep;
+  too_deep.kind = PatchOpKind::kAppendChild;
+  too_deep.target_component = parent;
+  too_deep.component.id = "beyond";
+  too_deep.component.type = ComponentType::kText;
+  too_deep.component.props.Set("text", "x");
+  auto applied = ApplySurfacePatch(surface, PatchFor(surface, too_deep));
+  ASSERT_FALSE(applied.has_value());
+  EXPECT_EQ(applied.error(), SauiError::kLimitExceeded);
+  EXPECT_EQ(surface, before);
+}
+
 TEST(SauiPatchTest, WrongSurfaceIdIsRejected) {
   AdaptiveSurface surface = LiveChartSurface();
   SurfacePatchOp op;
@@ -175,9 +294,9 @@ TEST(SauiPatchTest, WrongSurfaceIdIsRejected) {
 
 TEST(SauiPatchTest, ParsesUntrustedPatchDocument) {
   AdaptiveSurface surface = LiveChartSurface();
-  base::Value::Dict doc;
+  base::DictValue doc;
   doc.Set("surface_id", surface.id.value());
-  base::Value::List ops;
+  base::ListValue ops;
   ops.Append(base::test::ParseJson(R"json({
     "op": "append_series_points", "entry": "prices",
     "points": [{"t_ms": 3000.0, "y": 3.0}]

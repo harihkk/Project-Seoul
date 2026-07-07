@@ -2,6 +2,7 @@
 
 #include "seoul/browser/saui/saui_patch.h"
 
+#include <algorithm>
 #include <cmath>
 #include <utility>
 
@@ -26,6 +27,7 @@ SurfacePatchOp::SurfacePatchOp(const SurfacePatchOp& other)
       state(other.state),
       state_message(other.state_message),
       title(other.title),
+      bindings(other.bindings),
       entry(other.entry),
       points(other.points),
       component(other.component),
@@ -38,6 +40,7 @@ SurfacePatchOp& SurfacePatchOp::operator=(const SurfacePatchOp& other) {
   state = other.state;
   state_message = other.state_message;
   title = other.title;
+  bindings = other.bindings;
   entry = other.entry;
   points = other.points;
   component = other.component;
@@ -82,6 +85,29 @@ size_t CountComponents(const std::vector<ComponentNode>& nodes) {
   return count;
 }
 
+size_t SubtreeHeight(const ComponentNode& node) {
+  size_t deepest = 0;
+  for (const ComponentNode& child : node.children) {
+    deepest = std::max(deepest, SubtreeHeight(child));
+  }
+  return 1 + deepest;
+}
+
+// 1-based depth of `id` in the tree; 0 when absent.
+size_t DepthOfComponent(const std::vector<ComponentNode>& nodes,
+                        std::string_view id,
+                        size_t depth = 1) {
+  for (const ComponentNode& node : nodes) {
+    if (node.id == id) {
+      return depth;
+    }
+    if (size_t found = DepthOfComponent(node.children, id, depth + 1)) {
+      return found;
+    }
+  }
+  return 0;
+}
+
 SauiResult<PatchOpKind> ParseOpKind(const std::string& name) {
   if (name == "set_props") {
     return PatchOpKind::kSetProps;
@@ -91,6 +117,9 @@ SauiResult<PatchOpKind> ParseOpKind(const std::string& name) {
   }
   if (name == "set_title") {
     return PatchOpKind::kSetTitle;
+  }
+  if (name == "set_bindings") {
+    return PatchOpKind::kSetBindings;
   }
   if (name == "upsert_data_entry") {
     return PatchOpKind::kUpsertDataEntry;
@@ -157,6 +186,19 @@ SauiStatusResult ApplyOp(AdaptiveSurface& surface,
       summary->title_changed = true;
       return SauiOk();
     }
+    case PatchOpKind::kSetBindings: {
+      ComponentNode* node =
+          FindComponent(surface.components, op.target_component);
+      if (!node) {
+        return SauiErr(SauiError::kPatchTargetMissing);
+      }
+      // Entry existence and binding-kind compatibility are re-checked for the
+      // whole surface by ApplySurfacePatch's ValidateSurface pass, so a rebind
+      // to a missing or mismatched entry fails atomically.
+      node->bindings = op.bindings;
+      summary->changed_component_ids.push_back(node->id);
+      return SauiOk();
+    }
     case PatchOpKind::kUpsertDataEntry: {
       if (!IsValidSauiIdentifier(op.entry_name)) {
         return SauiErr(SauiError::kInvalidDataEntry);
@@ -209,6 +251,14 @@ SauiStatusResult ApplyOp(AdaptiveSurface& surface,
           kMaxSurfaceComponents) {
         return SauiErr(SauiError::kLimitExceeded);
       }
+      // Reloading a persisted surface re-parses it, and parse rejects depth
+      // beyond kMaxComponentDepth; a patch must not create what a reload
+      // would then refuse.
+      if (DepthOfComponent(surface.components, parent->id) +
+              SubtreeHeight(op.component) >
+          kMaxComponentDepth) {
+        return SauiErr(SauiError::kLimitExceeded);
+      }
       parent->children.push_back(op.component);
       summary->changed_component_ids.push_back(parent->id);
       summary->changed_component_ids.push_back(op.component.id);
@@ -233,6 +283,16 @@ SauiStatusResult ApplyOp(AdaptiveSurface& surface,
           kMaxSurfaceComponents) {
         return SauiErr(SauiError::kLimitExceeded);
       }
+      if (DepthOfComponent(surface.components, node->id) - 1 +
+              SubtreeHeight(op.component) >
+          kMaxComponentDepth) {
+        return SauiErr(SauiError::kLimitExceeded);
+      }
+      // A replacement under a new id also reports the old id so renderers
+      // remove the stale element.
+      if (node->id != op.component.id) {
+        summary->changed_component_ids.push_back(node->id);
+      }
       *node = op.component;
       summary->changed_component_ids.push_back(op.component.id);
       return SauiOk();
@@ -252,7 +312,7 @@ SauiStatusResult ApplyOp(AdaptiveSurface& surface,
 }  // namespace
 
 SauiResult<SurfacePatch> ParseSurfacePatch(const base::Value& value) {
-  const base::Value::Dict* dict = value.GetIfDict();
+  const base::DictValue* dict = value.GetIfDict();
   if (!dict) {
     return base::unexpected(SauiError::kInvalidPatch);
   }
@@ -265,7 +325,7 @@ SauiResult<SurfacePatch> ParseSurfacePatch(const base::Value& value) {
   if (!patch.surface_id.is_valid()) {
     return base::unexpected(SauiError::kInvalidPatch);
   }
-  const base::Value::List* ops = dict->FindList("ops");
+  const base::ListValue* ops = dict->FindList("ops");
   if (!ops || ops->empty()) {
     return base::unexpected(SauiError::kInvalidPatch);
   }
@@ -273,7 +333,7 @@ SauiResult<SurfacePatch> ParseSurfacePatch(const base::Value& value) {
     return base::unexpected(SauiError::kPatchLimitExceeded);
   }
   for (const base::Value& op_value : *ops) {
-    const base::Value::Dict* op_dict = op_value.GetIfDict();
+    const base::DictValue* op_dict = op_value.GetIfDict();
     if (!op_dict) {
       return base::unexpected(SauiError::kInvalidPatch);
     }
@@ -301,7 +361,7 @@ SauiResult<SurfacePatch> ParseSurfacePatch(const base::Value& value) {
     }
     switch (op.kind) {
       case PatchOpKind::kSetProps: {
-        const base::Value::Dict* props = op_dict->FindDict("props");
+        const base::DictValue* props = op_dict->FindDict("props");
         if (!props || op.target_component.empty()) {
           return base::unexpected(SauiError::kInvalidPatch);
         }
@@ -330,8 +390,23 @@ SauiResult<SurfacePatch> ParseSurfacePatch(const base::Value& value) {
         op.title = *title;
         break;
       }
+      case PatchOpKind::kSetBindings: {
+        const base::DictValue* bindings = op_dict->FindDict("bindings");
+        if (!bindings || bindings->empty() || op.target_component.empty() ||
+            bindings->size() > kMaxBindingsPerComponent) {
+          return base::unexpected(SauiError::kInvalidPatch);
+        }
+        for (const auto [slot, entry_name] : *bindings) {
+          if (!IsValidPropKey(slot) || !entry_name.is_string() ||
+              !IsValidSauiIdentifier(entry_name.GetString())) {
+            return base::unexpected(SauiError::kInvalidDataEntry);
+          }
+          op.bindings[slot] = entry_name.GetString();
+        }
+        break;
+      }
       case PatchOpKind::kUpsertDataEntry: {
-        const base::Value::Dict* entry = op_dict->FindDict("value");
+        const base::DictValue* entry = op_dict->FindDict("value");
         if (!entry || op.entry_name.empty()) {
           return base::unexpected(SauiError::kInvalidPatch);
         }
@@ -343,13 +418,13 @@ SauiResult<SurfacePatch> ParseSurfacePatch(const base::Value& value) {
         break;
       }
       case PatchOpKind::kAppendSeriesPoints: {
-        const base::Value::List* points = op_dict->FindList("points");
+        const base::ListValue* points = op_dict->FindList("points");
         if (!points || points->empty() || op.entry_name.empty() ||
             points->size() > kMaxSeriesPoints) {
           return base::unexpected(SauiError::kInvalidPatch);
         }
         for (const base::Value& point_value : *points) {
-          const base::Value::Dict* point = point_value.GetIfDict();
+          const base::DictValue* point = point_value.GetIfDict();
           if (!point) {
             return base::unexpected(SauiError::kInvalidPatch);
           }
@@ -379,7 +454,7 @@ SauiResult<SurfacePatch> ParseSurfacePatch(const base::Value& value) {
       }
       case PatchOpKind::kAppendChild:
       case PatchOpKind::kReplaceComponent: {
-        const base::Value::Dict* component = op_dict->FindDict("component");
+        const base::DictValue* component = op_dict->FindDict("component");
         if (!component || op.target_component.empty()) {
           return base::unexpected(SauiError::kInvalidPatch);
         }
@@ -397,12 +472,12 @@ SauiResult<SurfacePatch> ParseSurfacePatch(const base::Value& value) {
         break;
       }
       case PatchOpKind::kSetActions: {
-        const base::Value::List* actions = op_dict->FindList("actions");
+        const base::ListValue* actions = op_dict->FindList("actions");
         if (!actions || actions->size() > kMaxSurfaceActions) {
           return base::unexpected(SauiError::kInvalidPatch);
         }
         for (const base::Value& action_value : *actions) {
-          const base::Value::Dict* action_dict = action_value.GetIfDict();
+          const base::DictValue* action_dict = action_value.GetIfDict();
           if (!action_dict) {
             return base::unexpected(SauiError::kInvalidPatch);
           }

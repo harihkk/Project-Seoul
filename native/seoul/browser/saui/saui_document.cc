@@ -22,7 +22,7 @@ DataTable& DataTable::operator=(DataTable&&) = default;
 DataTable::~DataTable() = default;
 DataTable::DataTable(const DataTable& other) : columns(other.columns) {
   rows.reserve(other.rows.size());
-  for (const base::Value::List& row : other.rows) {
+  for (const base::ListValue& row : other.rows) {
     rows.push_back(row.Clone());
   }
 }
@@ -30,7 +30,7 @@ DataTable& DataTable::operator=(const DataTable& other) {
   columns = other.columns;
   rows.clear();
   rows.reserve(other.rows.size());
-  for (const base::Value::List& row : other.rows) {
+  for (const base::ListValue& row : other.rows) {
     rows.push_back(row.Clone());
   }
   return *this;
@@ -158,7 +158,7 @@ double MillisFromTime(base::Time t) {
 }
 
 SauiStatusResult ParseStructuredListProp(std::string_view key,
-                                         const base::Value::List& list) {
+                                         const base::ListValue& list) {
   if (list.size() > kMaxStructuredListItems) {
     return SauiErr(SauiError::kLimitExceeded);
   }
@@ -169,7 +169,7 @@ SauiStatusResult ParseStructuredListProp(std::string_view key,
       }
       continue;
     }
-    const base::Value::Dict* dict = item.GetIfDict();
+    const base::DictValue* dict = item.GetIfDict();
     if (!dict) {
       return SauiErr(SauiError::kInvalidPropertyValue);
     }
@@ -195,7 +195,7 @@ SauiStatusResult ParseStructuredListProp(std::string_view key,
   return SauiOk();
 }
 
-SauiStatusResult ValidatePropsDict(const base::Value::Dict& props) {
+SauiStatusResult ValidatePropsDict(const base::DictValue& props) {
   if (props.size() > kMaxPropsPerComponent) {
     return SauiErr(SauiError::kLimitExceeded);
   }
@@ -243,7 +243,7 @@ SauiStatusResult ValidatePropsDict(const base::Value::Dict& props) {
   return SauiOk();
 }
 
-SauiResult<DataProvenance> ParseProvenance(const base::Value::Dict& dict) {
+SauiResult<DataProvenance> ParseProvenance(const base::DictValue& dict) {
   DataProvenance provenance;
   const std::string* source_name = dict.FindString("source_name");
   if (!source_name || source_name->empty() ||
@@ -300,7 +300,7 @@ SauiResult<DataProvenance> ParseProvenance(const base::Value::Dict& dict) {
   return provenance;
 }
 
-SauiResult<DataEntry> ParseDataEntry(const base::Value::Dict& dict) {
+SauiResult<DataEntry> ParseDataEntry(const base::DictValue& dict) {
   DataEntry entry;
   const std::string* kind = dict.FindString("kind");
   if (!kind || !DataEntryKindFromString(*kind, &entry.kind)) {
@@ -320,7 +320,7 @@ SauiResult<DataEntry> ParseDataEntry(const base::Value::Dict& dict) {
       break;
     }
     case DataEntryKind::kRecord: {
-      const base::Value::Dict* fields = dict.FindDict("fields");
+      const base::DictValue* fields = dict.FindDict("fields");
       if (!fields || fields->size() > kMaxRecordFields) {
         return base::unexpected(SauiError::kInvalidDataEntry);
       }
@@ -337,7 +337,7 @@ SauiResult<DataEntry> ParseDataEntry(const base::Value::Dict& dict) {
       break;
     }
     case DataEntryKind::kSeries: {
-      const base::Value::List* points = dict.FindList("points");
+      const base::ListValue* points = dict.FindList("points");
       if (!points || points->size() > kMaxSeriesPoints) {
         return base::unexpected(SauiError::kInvalidDataEntry);
       }
@@ -354,7 +354,7 @@ SauiResult<DataEntry> ParseDataEntry(const base::Value::Dict& dict) {
         entry.series.y_unit = *y_unit;
       }
       for (const base::Value& point_value : *points) {
-        const base::Value::Dict* point = point_value.GetIfDict();
+        const base::DictValue* point = point_value.GetIfDict();
         if (!point) {
           return base::unexpected(SauiError::kInvalidDataEntry);
         }
@@ -387,14 +387,14 @@ SauiResult<DataEntry> ParseDataEntry(const base::Value::Dict& dict) {
       break;
     }
     case DataEntryKind::kTable: {
-      const base::Value::List* columns = dict.FindList("columns");
-      const base::Value::List* rows = dict.FindList("rows");
+      const base::ListValue* columns = dict.FindList("columns");
+      const base::ListValue* rows = dict.FindList("rows");
       if (!columns || columns->empty() || columns->size() > kMaxTableColumns ||
           !rows || rows->size() > kMaxTableRows) {
         return base::unexpected(SauiError::kInvalidDataEntry);
       }
       for (const base::Value& column_value : *columns) {
-        const base::Value::Dict* column = column_value.GetIfDict();
+        const base::DictValue* column = column_value.GetIfDict();
         if (!column) {
           return base::unexpected(SauiError::kInvalidDataEntry);
         }
@@ -407,7 +407,7 @@ SauiResult<DataEntry> ParseDataEntry(const base::Value::Dict& dict) {
         entry.table.columns.push_back({*key, *label});
       }
       for (const base::Value& row_value : *rows) {
-        const base::Value::List* row = row_value.GetIfList();
+        const base::ListValue* row = row_value.GetIfList();
         if (!row || row->size() != entry.table.columns.size()) {
           return base::unexpected(SauiError::kInvalidDataEntry);
         }
@@ -425,7 +425,7 @@ SauiResult<DataEntry> ParseDataEntry(const base::Value::Dict& dict) {
       break;
     }
   }
-  if (const base::Value::Dict* provenance = dict.FindDict("provenance")) {
+  if (const base::DictValue* provenance = dict.FindDict("provenance")) {
     auto parsed = ParseProvenance(*provenance);
     if (!parsed.has_value()) {
       return base::unexpected(parsed.error());
@@ -436,7 +436,7 @@ SauiResult<DataEntry> ParseDataEntry(const base::Value::Dict& dict) {
   return entry;
 }
 
-SauiResult<SurfaceAction> ParseAction(const base::Value::Dict& dict) {
+SauiResult<SurfaceAction> ParseAction(const base::DictValue& dict) {
   SurfaceAction action;
   const std::string* id = dict.FindString("id");
   if (!id || !IsValidSauiIdentifier(*id)) {
@@ -460,7 +460,7 @@ SauiResult<SurfaceAction> ParseAction(const base::Value::Dict& dict) {
     return base::unexpected(SauiError::kInvalidUrlProperty);
   }
   action.target = *target;
-  if (const base::Value::Dict* payload = dict.FindDict("payload")) {
+  if (const base::DictValue* payload = dict.FindDict("payload")) {
     if (payload->size() > kMaxPropsPerComponent) {
       return base::unexpected(SauiError::kLimitExceeded);
     }
@@ -480,7 +480,7 @@ SauiResult<SurfaceAction> ParseAction(const base::Value::Dict& dict) {
   return action;
 }
 
-SauiResult<ComponentNode> ParseComponent(const base::Value::Dict& dict,
+SauiResult<ComponentNode> ParseComponent(const base::DictValue& dict,
                                          size_t depth,
                                          size_t* total_components) {
   if (depth > kMaxComponentDepth) {
@@ -502,13 +502,13 @@ SauiResult<ComponentNode> ParseComponent(const base::Value::Dict& dict,
     return base::unexpected(SauiError::kUnknownComponentType);
   }
   node.type = info->type;
-  if (const base::Value::Dict* props = dict.FindDict("props")) {
+  if (const base::DictValue* props = dict.FindDict("props")) {
     if (auto result = ValidatePropsDict(*props); !result.has_value()) {
       return base::unexpected(result.error());
     }
     node.props = props->Clone();
   }
-  if (const base::Value::Dict* bindings = dict.FindDict("bindings")) {
+  if (const base::DictValue* bindings = dict.FindDict("bindings")) {
     if (bindings->size() > kMaxBindingsPerComponent) {
       return base::unexpected(SauiError::kLimitExceeded);
     }
@@ -546,7 +546,7 @@ SauiResult<ComponentNode> ParseComponent(const base::Value::Dict& dict,
       return base::unexpected(SauiError::kInvalidDocument);
     }
   }
-  if (const base::Value::List* actions = dict.FindList("actions")) {
+  if (const base::ListValue* actions = dict.FindList("actions")) {
     if (actions->size() > kMaxActionsPerComponent) {
       return base::unexpected(SauiError::kLimitExceeded);
     }
@@ -558,7 +558,7 @@ SauiResult<ComponentNode> ParseComponent(const base::Value::Dict& dict,
       node.action_ids.push_back(action_id.GetString());
     }
   }
-  if (const base::Value::List* children = dict.FindList("children")) {
+  if (const base::ListValue* children = dict.FindList("children")) {
     if (!children->empty() && !info->container) {
       return base::unexpected(SauiError::kChildrenNotAllowed);
     }
@@ -566,7 +566,7 @@ SauiResult<ComponentNode> ParseComponent(const base::Value::Dict& dict,
       return base::unexpected(SauiError::kLimitExceeded);
     }
     for (const base::Value& child_value : *children) {
-      const base::Value::Dict* child = child_value.GetIfDict();
+      const base::DictValue* child = child_value.GetIfDict();
       if (!child) {
         return base::unexpected(SauiError::kInvalidDocument);
       }
@@ -580,8 +580,8 @@ SauiResult<ComponentNode> ParseComponent(const base::Value::Dict& dict,
   return node;
 }
 
-base::Value::Dict ProvenanceToValue(const DataProvenance& provenance) {
-  base::Value::Dict dict;
+base::DictValue ProvenanceToValue(const DataProvenance& provenance) {
+  base::DictValue dict;
   dict.Set("source_name", provenance.source_name);
   if (!provenance.source_url.empty()) {
     dict.Set("source_url", provenance.source_url);
@@ -599,8 +599,8 @@ base::Value::Dict ProvenanceToValue(const DataProvenance& provenance) {
   return dict;
 }
 
-base::Value::Dict DataEntryToValue(const DataEntry& entry) {
-  base::Value::Dict dict;
+base::DictValue DataEntryToValue(const DataEntry& entry) {
+  base::DictValue dict;
   dict.Set("kind", DataEntryKindToString(entry.kind));
   switch (entry.kind) {
     case DataEntryKind::kScalar:
@@ -616,9 +616,9 @@ base::Value::Dict DataEntryToValue(const DataEntry& entry) {
       if (!entry.series.y_unit.empty()) {
         dict.Set("y_unit", entry.series.y_unit);
       }
-      base::Value::List points;
+      base::ListValue points;
       for (const SeriesPoint& point : entry.series.points) {
-        base::Value::Dict point_dict;
+        base::DictValue point_dict;
         if (point.has_time) {
           point_dict.Set("t_ms", MillisFromTime(point.time));
         } else {
@@ -631,16 +631,16 @@ base::Value::Dict DataEntryToValue(const DataEntry& entry) {
       break;
     }
     case DataEntryKind::kTable: {
-      base::Value::List columns;
+      base::ListValue columns;
       for (const TableColumn& column : entry.table.columns) {
-        base::Value::Dict column_dict;
+        base::DictValue column_dict;
         column_dict.Set("key", column.key);
         column_dict.Set("label", column.label);
         columns.Append(std::move(column_dict));
       }
       dict.Set("columns", std::move(columns));
-      base::Value::List rows;
-      for (const base::Value::List& row : entry.table.rows) {
+      base::ListValue rows;
+      for (const base::ListValue& row : entry.table.rows) {
         rows.Append(row.Clone());
       }
       dict.Set("rows", std::move(rows));
@@ -653,15 +653,15 @@ base::Value::Dict DataEntryToValue(const DataEntry& entry) {
   return dict;
 }
 
-base::Value::Dict ComponentToValue(const ComponentNode& node) {
-  base::Value::Dict dict;
+base::DictValue ComponentToValue(const ComponentNode& node) {
+  base::DictValue dict;
   dict.Set("id", node.id);
   dict.Set("type", ComponentTypeName(node.type));
   if (!node.props.empty()) {
     dict.Set("props", node.props.Clone());
   }
   if (!node.bindings.empty()) {
-    base::Value::Dict bindings;
+    base::DictValue bindings;
     for (const auto& [slot, entry_name] : node.bindings) {
       bindings.Set(slot, entry_name);
     }
@@ -677,14 +677,14 @@ base::Value::Dict ComponentToValue(const ComponentNode& node) {
   dict.Set("update_policy",
            node.update_policy == UpdatePolicy::kLive ? "live" : "static");
   if (!node.action_ids.empty()) {
-    base::Value::List actions;
+    base::ListValue actions;
     for (const std::string& action_id : node.action_ids) {
       actions.Append(action_id);
     }
     dict.Set("actions", std::move(actions));
   }
   if (!node.children.empty()) {
-    base::Value::List children;
+    base::ListValue children;
     for (const ComponentNode& child : node.children) {
       children.Append(ComponentToValue(child));
     }
@@ -695,20 +695,20 @@ base::Value::Dict ComponentToValue(const ComponentNode& node) {
 
 }  // namespace
 
-SauiStatusResult ValidateSurfacePropsDict(const base::Value::Dict& props) {
+SauiStatusResult ValidateSurfacePropsDict(const base::DictValue& props) {
   return ValidatePropsDict(props);
 }
 
-SauiResult<ComponentNode> ParseComponentValue(const base::Value::Dict& dict) {
+SauiResult<ComponentNode> ParseComponentValue(const base::DictValue& dict) {
   size_t total_components = 0;
   return ParseComponent(dict, /*depth=*/1, &total_components);
 }
 
-SauiResult<DataEntry> ParseDataEntryValue(const base::Value::Dict& dict) {
+SauiResult<DataEntry> ParseDataEntryValue(const base::DictValue& dict) {
   return ParseDataEntry(dict);
 }
 
-SauiResult<SurfaceAction> ParseActionValue(const base::Value::Dict& dict) {
+SauiResult<SurfaceAction> ParseActionValue(const base::DictValue& dict) {
   return ParseAction(dict);
 }
 
@@ -756,7 +756,7 @@ bool IsValidPropKey(std::string_view key) {
 }
 
 SauiResult<AdaptiveSurface> ParseSurface(const base::Value& value) {
-  const base::Value::Dict* dict = value.GetIfDict();
+  const base::DictValue* dict = value.GetIfDict();
   if (!dict) {
     return base::unexpected(SauiError::kInvalidDocument);
   }
@@ -782,13 +782,13 @@ SauiResult<AdaptiveSurface> ParseSurface(const base::Value& value) {
     }
     surface.title = *title;
   }
-  const base::Value::List* components = dict->FindList("components");
+  const base::ListValue* components = dict->FindList("components");
   if (!components || components->empty()) {
     return base::unexpected(SauiError::kEmptySurface);
   }
   size_t total_components = 0;
   for (const base::Value& component_value : *components) {
-    const base::Value::Dict* component = component_value.GetIfDict();
+    const base::DictValue* component = component_value.GetIfDict();
     if (!component) {
       return base::unexpected(SauiError::kInvalidDocument);
     }
@@ -798,7 +798,7 @@ SauiResult<AdaptiveSurface> ParseSurface(const base::Value& value) {
     }
     surface.components.push_back(std::move(parsed.value()));
   }
-  if (const base::Value::Dict* data = dict->FindDict("data")) {
+  if (const base::DictValue* data = dict->FindDict("data")) {
     if (data->size() > kMaxDataEntries) {
       return base::unexpected(SauiError::kLimitExceeded);
     }
@@ -806,7 +806,7 @@ SauiResult<AdaptiveSurface> ParseSurface(const base::Value& value) {
       if (!IsValidSauiIdentifier(name)) {
         return base::unexpected(SauiError::kInvalidDataEntry);
       }
-      const base::Value::Dict* entry_dict = entry_value.GetIfDict();
+      const base::DictValue* entry_dict = entry_value.GetIfDict();
       if (!entry_dict) {
         return base::unexpected(SauiError::kInvalidDataEntry);
       }
@@ -817,12 +817,12 @@ SauiResult<AdaptiveSurface> ParseSurface(const base::Value& value) {
       surface.data[name] = std::move(entry.value());
     }
   }
-  if (const base::Value::List* actions = dict->FindList("actions")) {
+  if (const base::ListValue* actions = dict->FindList("actions")) {
     if (actions->size() > kMaxSurfaceActions) {
       return base::unexpected(SauiError::kLimitExceeded);
     }
     for (const base::Value& action_value : *actions) {
-      const base::Value::Dict* action_dict = action_value.GetIfDict();
+      const base::DictValue* action_dict = action_value.GetIfDict();
       if (!action_dict) {
         return base::unexpected(SauiError::kInvalidAction);
       }
@@ -833,7 +833,7 @@ SauiResult<AdaptiveSurface> ParseSurface(const base::Value& value) {
       surface.actions.push_back(std::move(action.value()));
     }
   }
-  if (const base::Value::Dict* provenance = dict->FindDict("provenance")) {
+  if (const base::DictValue* provenance = dict->FindDict("provenance")) {
     if (const std::string* generator = provenance->FindString("generator")) {
       if (generator->size() > kMaxLabelLength) {
         return base::unexpected(SauiError::kInvalidDocument);
@@ -847,7 +847,7 @@ SauiResult<AdaptiveSurface> ParseSurface(const base::Value& value) {
       }
       surface.provenance.created_at = TimeFromMillis(*created);
     }
-    if (const base::Value::List* sources =
+    if (const base::ListValue* sources =
             provenance->FindList("source_urls")) {
       if (sources->size() > kMaxStructuredListItems) {
         return base::unexpected(SauiError::kLimitExceeded);
@@ -864,30 +864,30 @@ SauiResult<AdaptiveSurface> ParseSurface(const base::Value& value) {
   return surface;
 }
 
-base::Value::Dict SurfaceToValue(const AdaptiveSurface& surface) {
-  base::Value::Dict dict;
+base::DictValue SurfaceToValue(const AdaptiveSurface& surface) {
+  base::DictValue dict;
   dict.Set("schema_version", surface.schema_version);
   dict.Set("id", surface.id.value());
   dict.Set("kind", SurfaceKindToString(surface.kind));
   if (!surface.title.empty()) {
     dict.Set("title", surface.title);
   }
-  base::Value::List components;
+  base::ListValue components;
   for (const ComponentNode& node : surface.components) {
     components.Append(ComponentToValue(node));
   }
   dict.Set("components", std::move(components));
   if (!surface.data.empty()) {
-    base::Value::Dict data;
+    base::DictValue data;
     for (const auto& [name, entry] : surface.data) {
       data.Set(name, DataEntryToValue(entry));
     }
     dict.Set("data", std::move(data));
   }
   if (!surface.actions.empty()) {
-    base::Value::List actions;
+    base::ListValue actions;
     for (const SurfaceAction& action : surface.actions) {
-      base::Value::Dict action_dict;
+      base::DictValue action_dict;
       action_dict.Set("id", action.id);
       action_dict.Set("label", action.label);
       action_dict.Set("kind", SurfaceActionKindToString(action.kind));
@@ -900,7 +900,7 @@ base::Value::Dict SurfaceToValue(const AdaptiveSurface& surface) {
     }
     dict.Set("actions", std::move(actions));
   }
-  base::Value::Dict provenance;
+  base::DictValue provenance;
   if (!surface.provenance.generator.empty()) {
     provenance.Set("generator", surface.provenance.generator);
   }
@@ -909,7 +909,7 @@ base::Value::Dict SurfaceToValue(const AdaptiveSurface& surface) {
                    MillisFromTime(surface.provenance.created_at));
   }
   if (!surface.provenance.source_urls.empty()) {
-    base::Value::List sources;
+    base::ListValue sources;
     for (const std::string& source : surface.provenance.source_urls) {
       sources.Append(source);
     }

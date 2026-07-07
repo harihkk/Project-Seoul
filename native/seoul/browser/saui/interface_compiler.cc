@@ -315,7 +315,7 @@ CompileResult CompileInterface(const SemanticResult& result,
       case ComponentType::kDiffView: {
         ComponentNode diff =
             MakeComponent("primary", ComponentType::kDiffView, "");
-        const base::Value::Dict* dict = result.data.GetIfDict();
+        const base::DictValue* dict = result.data.GetIfDict();
         const FieldSpec* body =
             FindFieldByRole(schema, SemanticRole::kBody);
         const std::string* text =
@@ -426,7 +426,7 @@ CompileResult CompileInterface(const SemanticResult& result,
         break;
       case SemanticShape::kDocumentSections: {
         // Materialize bounded collapsible sections from the rows.
-        const base::Value::List* rows = result.data.GetIfList();
+        const base::ListValue* rows = result.data.GetIfList();
         const FieldSpec* heading =
             FindFieldByRole(schema, SemanticRole::kName);
         const FieldSpec* body = FindFieldByRole(schema, SemanticRole::kBody);
@@ -436,7 +436,7 @@ CompileResult CompileInterface(const SemanticResult& result,
             compiled.reasons.push_back(CompilerReason::kRowsTruncated);
             break;
           }
-          const base::Value::Dict* row = row_value.GetIfDict();
+          const base::DictValue* row = row_value.GetIfDict();
           if (!row) {
             continue;
           }
@@ -463,18 +463,18 @@ CompileResult CompileInterface(const SemanticResult& result,
       }
       case SemanticShape::kCitations: {
         // Build the structured sources prop from the rows.
-        const base::Value::List* rows = result.data.GetIfList();
+        const base::ListValue* rows = result.data.GetIfList();
         const FieldSpec* url = FindFieldByRole(schema, SemanticRole::kUrl);
         const FieldSpec* title_field =
             FindFieldByRole(schema, SemanticRole::kName);
         ComponentNode sources =
             MakeComponent("primary", ComponentType::kSourceList, "");
-        base::Value::List source_items;
+        base::ListValue source_items;
         for (const base::Value& row_value : *rows) {
           if (source_items.size() >= kMaxCompiledSources) {
             break;
           }
-          const base::Value::Dict* row = row_value.GetIfDict();
+          const base::DictValue* row = row_value.GetIfDict();
           if (!row || !url) {
             continue;
           }
@@ -482,7 +482,7 @@ CompileResult CompileInterface(const SemanticResult& result,
           if (!href) {
             continue;
           }
-          base::Value::Dict item;
+          base::DictValue item;
           item.Set("href", *href);
           const std::string* text =
               title_field ? row->FindString(title_field->id) : nullptr;
@@ -507,7 +507,7 @@ CompileResult CompileInterface(const SemanticResult& result,
         compiled.reasons.push_back(CompilerReason::kFormFromMissingInputs);
         break;
       case SemanticShape::kActionSet: {
-        const base::Value::List* rows = result.data.GetIfList();
+        const base::ListValue* rows = result.data.GetIfList();
         const FieldSpec* identifier =
             FindFieldByRole(schema, SemanticRole::kIdentifier);
         const FieldSpec* label = FindFieldByRole(schema, SemanticRole::kName);
@@ -518,7 +518,7 @@ CompileResult CompileInterface(const SemanticResult& result,
           if (index >= kMaxCompiledActions) {
             break;
           }
-          const base::Value::Dict* row = row_value.GetIfDict();
+          const base::DictValue* row = row_value.GetIfDict();
           if (!row || !identifier) {
             continue;
           }
@@ -556,7 +556,7 @@ CompileResult CompileInterface(const SemanticResult& result,
         break;
       case SemanticShape::kComposite: {
         // Each part renders through the same rules and stacks in order.
-        const base::Value::Dict* dict = result.data.GetIfDict();
+        const base::DictValue* dict = result.data.GetIfDict();
         for (size_t i = 0; i < schema.parts.size() &&
                            i < kMaxCompiledSections;
              ++i) {
