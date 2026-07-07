@@ -14,6 +14,8 @@ source_set("semantic_core") {
     "semantic_types.h",
     "semantic_validation.cc",
     "semantic_validation.h",
+    "semantic_wire.cc",
+    "semantic_wire.h",
   ]
 
   deps = [
@@ -24,7 +26,10 @@ source_set("semantic_core") {
 
 test("seoul_semantic_unittests") {
   testonly = true
-  sources = [ "semantic_validation_unittest.cc" ]
+  sources = [
+    "semantic_validation_unittest.cc",
+    "semantic_wire_unittest.cc",
+  ]
   deps = [
     ":semantic_core",
     "//base",
@@ -32,4 +37,8 @@ test("seoul_semantic_unittests") {
     "//seoul/browser/data:data_core",
     "//testing/gtest",
   ]
+
+  # The cross-language conformance corpus, mirrored from the repository's
+  # protocol/ directory by materialize.sh.
+  data = [ "//seoul/protocol/" ]
 }

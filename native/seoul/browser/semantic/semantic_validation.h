@@ -60,7 +60,7 @@ SemanticValidationResult ValidateSemanticResult(const SemanticResult& result);
 // Appends rows to a streaming/partial list-shaped result. Rows are validated
 // against the schema first; the merge is atomic (no partial append).
 SemanticValidationResult MergeStreamingRows(SemanticResult& result,
-                                            const base::Value::List& rows);
+                                            const base::ListValue& rows);
 
 }  // namespace seoul
 

@@ -53,7 +53,7 @@ bool GeoEligible(const SemanticSchema& schema) {
 }
 
 size_t RowCount(const SemanticResult& result) {
-  const base::Value::List* list = result.data.GetIfList();
+  const base::ListValue* list = result.data.GetIfList();
   return list ? list->size() : 0;
 }
 

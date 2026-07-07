@@ -149,7 +149,7 @@ TEST(SemanticResultTest, ValidatesUnseenSchemasEndToEnd) {
 
 TEST(SemanticResultTest, RejectsUndeclaredColumnsAndTypeMismatches) {
   SemanticResult result = StandingsResult();
-  base::Value::List* rows = result.data.GetIfList();
+  base::ListValue* rows = result.data.GetIfList();
   rows->front().GetDict().Set("invented_column", 1);
   auto validation = ValidateSemanticResult(result);
   ASSERT_FALSE(validation.has_value());
@@ -217,7 +217,7 @@ TEST(SemanticResultTest, GraphAndCompositeShapesValidate) {
       Field("total", FieldPrimitive::kNumber, SemanticRole::kMeasure)};
   composite.schema.parts.push_back(summary);
   composite.schema.parts.push_back(TelemetryResult().schema);
-  base::Value::Dict data;
+  base::DictValue data;
   data.Set("summary", 47.6);
   data.Set("points", TelemetryResult().data.Clone());
   composite.data = base::Value(std::move(data));
@@ -269,7 +269,7 @@ TEST(SemanticInspectionTest, RoleQueriesDriveGenericDecisions) {
 
   // One point is never a chart.
   SemanticResult single = TelemetryResult();
-  base::Value::List* rows = single.data.GetIfList();
+  base::ListValue* rows = single.data.GetIfList();
   while (rows->size() > 1) {
     rows->erase(rows->begin());
   }

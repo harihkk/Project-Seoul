@@ -310,7 +310,7 @@ SemanticValidationResult ValidateValueForField(const FieldSpec& field,
 SemanticValidationResult ValidateRow(
     const std::vector<FieldSpec>& fields,
     const std::set<std::string>& unavailable,
-    const base::Value::Dict& row) {
+    const base::DictValue& row) {
   for (const auto [key, value] : row) {
     const FieldSpec* declared = nullptr;
     for (const FieldSpec& field : fields) {
@@ -353,7 +353,7 @@ SemanticValidationResult ValidateDataForSchema(
     const base::Value& data,
     size_t depth) {
   if (schema.shape == SemanticShape::kComposite) {
-    const base::Value::Dict* dict = data.GetIfDict();
+    const base::DictValue* dict = data.GetIfDict();
     if (!dict) {
       return Violation(SemanticFabricError::kInvalidShapeData, "composite");
     }
@@ -375,19 +375,19 @@ SemanticValidationResult ValidateDataForSchema(
     return ValidateValueForField(schema.fields[0], data);
   }
   if (IsDictShape(schema.shape)) {
-    const base::Value::Dict* dict = data.GetIfDict();
+    const base::DictValue* dict = data.GetIfDict();
     if (!dict) {
       return Violation(SemanticFabricError::kInvalidShapeData, "record");
     }
     return ValidateRow(schema.fields, unavailable, *dict);
   }
   if (schema.shape == SemanticShape::kGraph) {
-    const base::Value::Dict* dict = data.GetIfDict();
+    const base::DictValue* dict = data.GetIfDict();
     if (!dict) {
       return Violation(SemanticFabricError::kInvalidShapeData, "graph");
     }
-    const base::Value::List* nodes = dict->FindList("nodes");
-    const base::Value::List* edges = dict->FindList("edges");
+    const base::ListValue* nodes = dict->FindList("nodes");
+    const base::ListValue* edges = dict->FindList("edges");
     if (!nodes || !edges) {
       return Violation(SemanticFabricError::kInvalidShapeData,
                        "graph_nodes_edges");
@@ -397,7 +397,7 @@ SemanticValidationResult ValidateDataForSchema(
       return Violation(SemanticFabricError::kRowLimitExceeded, "graph");
     }
     for (const base::Value& node : *nodes) {
-      const base::Value::Dict* row = node.GetIfDict();
+      const base::DictValue* row = node.GetIfDict();
       if (!row) {
         return Violation(SemanticFabricError::kInvalidShapeData, "node");
       }
@@ -407,7 +407,7 @@ SemanticValidationResult ValidateDataForSchema(
       }
     }
     for (const base::Value& edge : *edges) {
-      const base::Value::Dict* row = edge.GetIfDict();
+      const base::DictValue* row = edge.GetIfDict();
       if (!row) {
         return Violation(SemanticFabricError::kInvalidShapeData, "edge");
       }
@@ -419,7 +419,7 @@ SemanticValidationResult ValidateDataForSchema(
     return base::ok();
   }
   if (IsListShape(schema.shape)) {
-    const base::Value::List* list = data.GetIfList();
+    const base::ListValue* list = data.GetIfList();
     if (!list) {
       return Violation(SemanticFabricError::kInvalidShapeData, "list");
     }
@@ -427,7 +427,7 @@ SemanticValidationResult ValidateDataForSchema(
       return Violation(SemanticFabricError::kRowLimitExceeded, "");
     }
     for (const base::Value& row_value : *list) {
-      const base::Value::Dict* row = row_value.GetIfDict();
+      const base::DictValue* row = row_value.GetIfDict();
       if (!row) {
         return Violation(SemanticFabricError::kInvalidShapeData, "row");
       }
@@ -461,13 +461,13 @@ SemanticValidationResult ValidateSemanticResult(
 }
 
 SemanticValidationResult MergeStreamingRows(SemanticResult& result,
-                                            const base::Value::List& rows) {
+                                            const base::ListValue& rows) {
   if (result.state != ResultState::kStreaming &&
       result.state != ResultState::kPartial) {
     return base::unexpected(SemanticViolation{
         SemanticFabricError::kNotStreaming, std::string()});
   }
-  base::Value::List* existing = result.data.GetIfList();
+  base::ListValue* existing = result.data.GetIfList();
   if (!existing) {
     return base::unexpected(SemanticViolation{
         SemanticFabricError::kInvalidShapeData, "list"});
@@ -479,7 +479,7 @@ SemanticValidationResult MergeStreamingRows(SemanticResult& result,
   // Validate all incoming rows before appending any (atomic merge).
   std::set<std::string> unavailable(result.unavailable_field_ids.begin(),
                                     result.unavailable_field_ids.end());
-  base::Value::List candidate = existing->Clone();
+  base::ListValue candidate = existing->Clone();
   for (const base::Value& row : rows) {
     candidate.Append(row.Clone());
   }
