@@ -9,6 +9,8 @@ source_set("site_layers_core") {
   sources = [
     "site_layer_compiler.cc",
     "site_layer_compiler.h",
+    "site_layer_registry.cc",
+    "site_layer_registry.h",
     "site_layer_types.h",
   ]
 
@@ -17,7 +19,10 @@ source_set("site_layers_core") {
 
 test("seoul_site_layers_unittests") {
   testonly = true
-  sources = [ "site_layer_compiler_unittest.cc" ]
+  sources = [
+    "site_layer_compiler_unittest.cc",
+    "site_layer_registry_unittest.cc",
+  ]
   deps = [
     ":site_layers_core",
     "//base",
