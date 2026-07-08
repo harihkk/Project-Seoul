@@ -115,10 +115,11 @@ audio. Transcript segments are bounded by `kMaxTranscriptLength` (8192) and
 
 ## Local and cloud route visibility
 
-`SpeechRoute` (`kLocal` or `kCloud`) is surfaced next to the microphone state via
-`VoiceSession::speech_route`. Local transcription is the default;
-`VoiceSettings.allow_cloud_speech` defaults to false. Each `TranscriptSegment`
-records the `route` that produced it, so the origin of every segment is visible.
+`SpeechRoute` (`kLocal` or `kCloud`) is surfaced next to microphone state in the
+typed voice model. For the product Canvas realtime path, route visibility comes
+from `RealtimeVoiceAgentSnapshot`: the route is cloud, the configured model is
+shown, and session creation errors are surfaced instead of pretending local
+dictation is available.
 
 ## Spoken-reference resolution
 
