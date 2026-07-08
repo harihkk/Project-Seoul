@@ -152,6 +152,14 @@ body {
   background: color-mix(in srgb, var(--seoul-accent) 14%, transparent);
 }
 
+#voice-toggle[data-state="connecting"] {
+  opacity: 0.72;
+}
+
+#voice-toggle[data-realtime-configured="false"] {
+  border-style: dashed;
+}
+
 [hidden] {
   display: none !important;
 }
