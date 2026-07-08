@@ -497,12 +497,22 @@ void SeoulCanvasPageHandler::PushStatus(const std::string& detail) {
     status.Set("voice_provider_available", voice.speech_provider_available);
     status.Set("voice_output_available", voice.speech_output_available);
     status.Set("voice_active_task_id", voice.active_task_id);
+    const RealtimeVoiceAgentSnapshot realtime_voice =
+        runtime_->RealtimeVoiceSnapshot();
+    status.Set("voice_engine", "seoul_realtime_voice_agent");
+    status.Set("voice_api_model", realtime_voice.api_model);
+    status.Set("voice_product_target", realtime_voice.product_target);
+    status.Set("voice_realtime_configured", realtime_voice.configured);
+    status.Set("voice_realtime_creating",
+               realtime_voice.creating_session);
+    status.Set("voice_realtime_error", realtime_voice.last_error);
   } else {
     status.Set("local_ready", false);
     status.Set("cloud_ready", false);
     status.Set("voice_state", "failed");
     status.Set("voice_error", "provider_unavailable");
     status.Set("voice_provider_available", false);
+    status.Set("voice_realtime_configured", false);
   }
   std::string json;
   base::JSONWriter::Write(status, &json);
