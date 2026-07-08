@@ -601,11 +601,24 @@ callbackRouter.setStatus.addListener((statusJson: string) => {
       'partial_transcript',
       'finalizing_transcript',
     ].includes(voiceState);
-    if (voiceToggleEl) {
-      voiceToggleEl.setAttribute('aria-pressed', voiceActive ? 'true' : 'false');
-      voiceToggleEl.dataset.state = voiceState;
+    if (!realtimeConnection) {
+      setVoiceActive(voiceActive, voiceState || 'idle');
+      if (voiceToggleEl) {
+        voiceToggleEl.dataset.realtimeConfigured =
+            status.voice_realtime_configured ? 'true' : 'false';
+        voiceToggleEl.title = status.voice_realtime_configured ?
+            'Seoul Voice' : 'Add the realtime voice credential';
+      }
+      if (status.voice_realtime_creating) {
+        setRouteText('Connecting');
+      } else if (status.voice_realtime_configured) {
+        setRouteText(route);
+      } else if (status.voice_realtime_error) {
+        setRouteText('Voice unavailable');
+      } else {
+        setRouteText('Voice key missing');
+      }
     }
-    routeEl.textContent = route;
   } catch {
     /* inert */
   }
