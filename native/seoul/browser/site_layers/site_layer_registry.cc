@@ -1,0 +1,137 @@
+// Project Seoul Site Layers.
+
+#include "seoul/browser/site_layers/site_layer_registry.h"
+
+#include <optional>
+#include <utility>
+
+#include "base/strings/string_util.h"
+#include "seoul/browser/site_layers/site_layer_compiler.h"
+
+namespace seoul {
+
+namespace {
+
+struct OriginPatternParts {
+  bool wildcard = false;
+  std::string host;
+  std::string port;
+};
+
+std::optional<OriginPatternParts> ParseOriginPattern(
+    const std::string& origin,
+    bool allow_wildcard) {
+  if (!IsValidOriginPattern(origin)) {
+    return std::nullopt;
+  }
+  OriginPatternParts parts;
+  std::string host;
+  if (base::StartsWith(origin, "*.")) {
+    if (!allow_wildcard) {
+      return std::nullopt;
+    }
+    parts.wildcard = true;
+    host = origin.substr(2);
+  } else if (base::StartsWith(origin, "https://")) {
+    host = origin.substr(8);
+  } else {
+    return std::nullopt;
+  }
+  const size_t colon = host.find(':');
+  if (colon != std::string::npos) {
+    parts.port = host.substr(colon + 1);
+    host = host.substr(0, colon);
+  }
+  parts.host = base::ToLowerASCII(host);
+  return parts;
+}
+
+bool HostMatchesWildcard(const std::string& host,
+                         const std::string& wildcard_host) {
+  return host == wildcard_host ||
+         (host.size() > wildcard_host.size() &&
+          base::EndsWith(host, "." + wildcard_host,
+                         base::CompareCase::SENSITIVE));
+}
+
+}  // namespace
+
+SiteLayerRegistry::SiteLayerRegistry() = default;
+
+SiteLayerRegistry::~SiteLayerRegistry() = default;
+
+SiteLayerStatusResult SiteLayerRegistry::Upsert(SiteLayer layer) {
+  if (auto valid = ValidateSiteLayer(layer); !valid.has_value()) {
+    return valid;
+  }
+  const bool exists = layers_.find(layer.id) != layers_.end();
+  if (!exists && layers_.size() >= kMaxSiteLayers) {
+    return base::unexpected(SiteLayerError::kLimitExceeded);
+  }
+  const std::string id = layer.id;
+  layers_[id] = std::move(layer);
+  return base::ok();
+}
+
+SiteLayerStatusResult SiteLayerRegistry::Remove(const std::string& layer_id) {
+  if (layers_.erase(layer_id) == 0) {
+    return base::unexpected(SiteLayerError::kUnknownLayer);
+  }
+  return base::ok();
+}
+
+const SiteLayer* SiteLayerRegistry::Find(const std::string& layer_id) const {
+  auto it = layers_.find(layer_id);
+  return it == layers_.end() ? nullptr : &it->second;
+}
+
+bool SiteLayerRegistry::Exists(const std::string& layer_id) const {
+  return Find(layer_id) != nullptr;
+}
+
+std::vector<const SiteLayer*> SiteLayerRegistry::List() const {
+  std::vector<const SiteLayer*> result;
+  for (const auto& [id, layer] : layers_) {
+    result.push_back(&layer);
+  }
+  return result;
+}
+
+SiteLayerResult<std::string> SiteLayerRegistry::CompileForOrigin(
+    const std::string& origin,
+    const std::string& scene_id) const {
+  if (!ParseOriginPattern(origin, /*allow_wildcard=*/false).has_value()) {
+    return base::unexpected(SiteLayerError::kInvalidOrigin);
+  }
+  std::string css;
+  for (const auto& [id, layer] : layers_) {
+    if (!layer.enabled || !SiteLayerMatchesOrigin(layer, origin)) {
+      continue;
+    }
+    if (!layer.scene_scope.empty() && layer.scene_scope != scene_id) {
+      continue;
+    }
+    auto compiled = CompileSiteLayer(layer);
+    if (!compiled.has_value()) {
+      return base::unexpected(compiled.error());
+    }
+    css += compiled.value();
+  }
+  return css;
+}
+
+bool SiteLayerMatchesOrigin(const SiteLayer& layer, const std::string& origin) {
+  std::optional<OriginPatternParts> pattern =
+      ParseOriginPattern(layer.origin_pattern, /*allow_wildcard=*/true);
+  std::optional<OriginPatternParts> page =
+      ParseOriginPattern(origin, /*allow_wildcard=*/false);
+  if (!pattern.has_value() || !page.has_value()) {
+    return false;
+  }
+  if (pattern->wildcard) {
+    return page->port.empty() && HostMatchesWildcard(page->host, pattern->host);
+  }
+  return page->host == pattern->host && page->port == pattern->port;
+}
+
+}  // namespace seoul
