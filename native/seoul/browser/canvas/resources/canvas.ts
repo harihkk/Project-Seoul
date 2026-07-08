@@ -85,6 +85,11 @@ const surfaceEl = document.getElementById('surface') as HTMLElement;
 const idleEl = document.getElementById('idle') as HTMLElement;
 const routeEl = document.getElementById('route-indicator') as HTMLElement;
 let voiceToggleEl: HTMLButtonElement | undefined;
+let realtimeConnection: RealtimeConnection | undefined;
+let realtimeStarting = false;
+let realtimeStartGeneration = 0;
+const realtimeToolCalls: Map<string, { callId: string; name: string }> = new Map();
+const completedRealtimeToolCalls: Set<string> = new Set();
 
 // Current surface actions, so a component event can resolve its declared
 // action id (the renderer reports the id; the browser authorizes it).
