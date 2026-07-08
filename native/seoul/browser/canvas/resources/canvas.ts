@@ -585,10 +585,15 @@ callbackRouter.setStatus.addListener((statusJson: string) => {
     const status = JSON.parse(statusJson) as {
       route?: string;
       voice_state?: string;
+      voice_api_model?: string;
+      voice_product_target?: string;
+      voice_realtime_configured?: boolean;
+      voice_realtime_creating?: boolean;
+      voice_realtime_error?: string;
     };
-    const route =
-        status.route === 'cloud' ? 'Cloud' :
-        status.route === 'local' ? 'On-device' : '';
+    const route = status.voice_product_target || status.voice_api_model ||
+        (status.route === 'cloud' ? 'Cloud' :
+         status.route === 'local' ? 'On-device' : 'Voice');
     const voiceState = status.voice_state ?? '';
     const voiceActive = [
       'microphone_requesting',
