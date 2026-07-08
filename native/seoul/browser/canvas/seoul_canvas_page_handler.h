@@ -24,6 +24,7 @@
 #include <string>
 
 #include "base/memory/raw_ptr.h"
+#include "base/memory/weak_ptr.h"
 #include "base/unguessable_token.h"
 #include "mojo/public/cpp/bindings/pending_receiver.h"
 #include "mojo/public/cpp/bindings/pending_remote.h"
@@ -32,6 +33,7 @@
 #include "seoul/browser/canvas/canvas.mojom.h"
 #include "seoul/browser/product/surface_service.h"
 #include "seoul/browser/product/task_service.h"
+#include "seoul/browser/product/realtime_voice_agent.h"
 #include "seoul/browser/lifecycle/lifecycle_identity.h"
 #include "seoul/browser/tasks/task_types.h"
 
@@ -61,6 +63,11 @@ class SeoulCanvasPageHandler : public canvas::mojom::PageHandler,
   void SubmitTurn(canvas::mojom::TurnInputPtr input) override;
   void StartVoice() override;
   void StopVoice() override;
+  void CreateRealtimeVoiceSession(
+      CreateRealtimeVoiceSessionCallback callback) override;
+  void SubmitRealtimeToolCall(
+      canvas::mojom::RealtimeToolCallPtr call,
+      SubmitRealtimeToolCallCallback callback) override;
   void ListTasks(ListTasksCallback callback) override;
   void PauseTask(const std::string& task_id) override;
   void ResumeTask(const std::string& task_id) override;
@@ -96,6 +103,9 @@ class SeoulCanvasPageHandler : public canvas::mojom::PageHandler,
   // reported to the renderer as workflow_edit_rejected.
   bool ApplyWorkflowEdit(const std::string& node_id,
                          const base::DictValue& payload);
+  void OnRealtimeVoiceSessionCreated(
+      CreateRealtimeVoiceSessionCallback callback,
+      RealtimeVoiceAgent::CreateSessionResult result);
 
   // Pushes a compact status document (provider/voice/task state) to the
   // renderer so it never shows a blank page when the runtime is initializing.
@@ -109,6 +119,7 @@ class SeoulCanvasPageHandler : public canvas::mojom::PageHandler,
   raw_ptr<SeoulRuntimeService> runtime_;  // null when the profile is ineligible
   base::UnguessableToken window_binding_token_;
   bool observing_ = false;
+  base::WeakPtrFactory<SeoulCanvasPageHandler> weak_factory_{this};
 };
 
 }  // namespace seoul
