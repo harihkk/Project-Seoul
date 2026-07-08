@@ -390,6 +390,10 @@ void SeoulRuntimeService::Shutdown() {
   task_service_.reset();
   text_to_speech_.reset();
   speech_to_text_.reset();
+  if (realtime_voice_agent_) {
+    realtime_voice_agent_->Cancel();
+    realtime_voice_agent_.reset();
+  }
   planner_.reset();
   if (provider_registry_) {
     provider_registry_->Shutdown();
