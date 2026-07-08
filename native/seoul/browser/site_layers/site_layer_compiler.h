@@ -2,7 +2,7 @@
 // Validation and deterministic compilation of a Site Layer into a scoped CSS
 // string. The compiler accepts only a safe selector subset and typed values;
 // it rejects any input that could break out of a declaration (braces,
-// semicolons, url(), expression(), @-rules, comments, backslashes, angle
+// semicolons, url(), expression(), @-rules, comments, backslashes, left angle
 // brackets) so a layer can never inject arbitrary style or script.
 
 #ifndef SEOUL_BROWSER_SITE_LAYERS_SITE_LAYER_COMPILER_H_
@@ -24,11 +24,15 @@ bool IsSafeSelector(const std::string& selector);
 // True when `origin` is "https://host[:port]" or "*.host" (host label glob).
 bool IsValidOriginPattern(const std::string& origin);
 
+// Stable layer id used by registries and Scenes. Lowercase slug with digits,
+// '_' and '-' allowed after the first character.
+bool IsValidSiteLayerId(const std::string& id);
+
 SiteLayerStatusResult ValidateSiteLayer(const SiteLayer& layer);
 
-// Compiles the validated layer to a CSS string (empty adjustments -> empty
-// string). Rules are emitted deterministically in adjustment order. Returns
-// an error if the layer does not validate.
+// Compiles the validated layer to a CSS string. Rules are emitted
+// deterministically in adjustment order. Returns an error if the layer does not
+// validate.
 SiteLayerResult<std::string> CompileSiteLayer(const SiteLayer& layer);
 
 base::DictValue SiteLayerToValue(const SiteLayer& layer);
