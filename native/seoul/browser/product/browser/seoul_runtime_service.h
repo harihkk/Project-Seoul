@@ -41,6 +41,7 @@
 #include "seoul/browser/product/task_service.h"
 #include "seoul/browser/product/task_surface_bridge.h"
 #include "seoul/browser/product/thread_service.h"
+#include "seoul/browser/product/voice_runtime_controller.h"
 #include "seoul/browser/product/workflow_service.h"
 #include "seoul/browser/runtime/seoul_runtime.h"
 #include "seoul/browser/tools/tool_registry.h"
@@ -63,6 +64,7 @@ class SeoulOrganizationService;
 class CredentialStore;
 class HttpTransport;
 class PageAgent;
+class SiteLayerRegistry;
 
 // Single dict pref holding the bounded product state (pinned surfaces,
 // threads, workflows, provider settings). Secrets are excluded by construction.
@@ -103,6 +105,8 @@ class SeoulRuntimeService : public KeyedService {
   ProviderRegistry* providers() { return provider_registry_.get(); }
   ToolRegistry& capabilities() { return runtime_.capabilities(); }
   PageAgent* page_agent() { return page_agent_.get(); }
+  SiteLayerRegistry* site_layers() { return site_layers_.get(); }
+  VoiceRuntimeController* voice() { return voice_controller_.get(); }
 
   // The permission context for a user-initiated turn in `window`, built from
   // provider availability and the connected connector providers.
@@ -121,6 +125,9 @@ class SeoulRuntimeService : public KeyedService {
   // `window`, returning the task id. The final semantic result flows to the
   // surface service; the Canvas observes both services.
   TaskId StartGoal(const std::string& goal, const LiveWindowKey& window);
+  VoiceStatusResult StartVoice(const LiveWindowKey& window);
+  VoiceStatusResult StopVoice();
+  VoiceRuntimeSnapshot VoiceSnapshot() const;
 
   // Runs one already-chosen capability with an explicit typed payload as a
   // single-step task. A surface action that declared a tool_call executes
@@ -163,6 +170,9 @@ class SeoulRuntimeService : public KeyedService {
   std::unique_ptr<CredentialStore> credentials_;
   std::unique_ptr<PageAgent> page_agent_;
 
+  // Runtime-owned appearance catalogs that Scene resolvers reference.
+  std::unique_ptr<SiteLayerRegistry> site_layers_;
+
   // The pure runtime composition (capability graph, connectors, scenes,
   // routing policy) - this is what instantiates SeoulRuntime.
   SeoulRuntime runtime_;
@@ -172,6 +182,9 @@ class SeoulRuntimeService : public KeyedService {
   std::unique_ptr<ProviderRegistry> provider_registry_;
   std::unique_ptr<Planner> planner_;
   std::unique_ptr<TaskService> task_service_;
+  std::unique_ptr<SpeechToTextProvider> speech_to_text_;
+  std::unique_ptr<TextToSpeechProvider> text_to_speech_;
+  std::unique_ptr<VoiceRuntimeController> voice_controller_;
   std::unique_ptr<SurfaceService> surface_service_;
   // Projects verified task results into surfaces; observes task_service_ and
   // drives surface_service_, so it is constructed after both and destroyed
