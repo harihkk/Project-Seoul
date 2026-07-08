@@ -21,7 +21,6 @@ bool ContainsUnsafeCssChar(const std::string& text) {
       case '}':
       case ';':
       case '<':
-      case '>':
       case '\\':
       case '"':
       case '\'':
@@ -322,7 +321,8 @@ bool IsSafeSelector(const std::string& selector) {
         (c >= 'a' && c <= 'z') || (c >= 'A' && c <= 'Z') ||
         (c >= '0' && c <= '9') || c == '.' || c == '#' || c == '-' ||
         c == '_' || c == '[' || c == ']' || c == '=' || c == '*' || c == '~' ||
-        c == '^' || c == '$' || c == '|' || c == ':' || c == ' ' || c == '+';
+        c == '^' || c == '$' || c == '|' || c == ':' || c == ' ' || c == '>' ||
+        c == '+';
     if (!allowed) {
       return false;
     }
@@ -382,9 +382,28 @@ bool IsValidOriginPattern(const std::string& origin) {
   return host.front() != '.' && host.back() != '.';
 }
 
+bool IsValidSiteLayerId(const std::string& id) {
+  if (id.empty() || id.size() > kMaxLayerNameLength) {
+    return false;
+  }
+  if (id[0] < 'a' || id[0] > 'z') {
+    return false;
+  }
+  for (char c : id) {
+    if (!((c >= 'a' && c <= 'z') || (c >= '0' && c <= '9') ||
+          c == '_' || c == '-')) {
+      return false;
+    }
+  }
+  return true;
+}
+
 SiteLayerStatusResult ValidateSiteLayer(const SiteLayer& layer) {
   if (layer.schema_version != kSiteLayerSchemaVersion) {
     return base::unexpected(SiteLayerError::kUnsupportedSchema);
+  }
+  if (!IsValidSiteLayerId(layer.id)) {
+    return base::unexpected(SiteLayerError::kInvalidId);
   }
   if (layer.name.empty() || layer.name.size() > kMaxLayerNameLength) {
     return base::unexpected(SiteLayerError::kInvalidName);
@@ -525,6 +544,8 @@ SiteLayerResult<SiteLayer> SiteLayerFromValue(const base::Value& value) {
 
 const char* SiteLayerErrorToString(SiteLayerError error) {
   switch (error) {
+    case SiteLayerError::kInvalidId:
+      return "invalid_id";
     case SiteLayerError::kInvalidName:
       return "invalid_name";
     case SiteLayerError::kInvalidOrigin:
@@ -549,6 +570,10 @@ const char* SiteLayerErrorToString(SiteLayerError error) {
       return "selector_not_allowed";
     case SiteLayerError::kUnsupportedSchema:
       return "unsupported_schema";
+    case SiteLayerError::kUnknownLayer:
+      return "unknown_layer";
+    case SiteLayerError::kLimitExceeded:
+      return "limit_exceeded";
   }
   return "invalid_selector";
 }
