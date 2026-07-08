@@ -27,6 +27,8 @@ source_set("product_core") {
     "task_surface_bridge.h",
     "thread_service.cc",
     "thread_service.h",
+    "voice_runtime_controller.cc",
+    "voice_runtime_controller.h",
     "workflow_service.cc",
     "workflow_service.h",
   ]
@@ -40,6 +42,7 @@ source_set("product_core") {
     "//seoul/browser/semantic:semantic_core",
     "//seoul/browser/tasks:tasks_core",
     "//seoul/browser/tools:tools_core",
+    "//seoul/browser/voice:voice_core",
     "//seoul/browser/workflows:workflows_core",
     "//url",
   ]
@@ -57,6 +60,7 @@ test("seoul_product_unittests") {
     "task_snapshot_wire_unittest.cc",
     "task_surface_bridge_unittest.cc",
     "thread_workflow_service_unittest.cc",
+    "voice_runtime_controller_unittest.cc",
   ]
   deps = [
     ":product_core",
@@ -70,6 +74,8 @@ test("seoul_product_unittests") {
     "//seoul/browser/semantic:semantic_core",
     "//seoul/browser/tasks:tasks_core",
     "//seoul/browser/tools:tools_core",
+    "//seoul/browser/voice:voice_core",
+    "//seoul/browser/voice:voice_test_support",
     "//seoul/browser/workflows:workflows_core",
     "//testing/gtest",
     "//url",
