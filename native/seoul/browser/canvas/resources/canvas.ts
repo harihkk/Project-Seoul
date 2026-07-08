@@ -642,8 +642,8 @@ function wireInputBar(): void {
   });
   voice.addEventListener('click', () => {
     if (!pageHandler) return;
-    if (voice.getAttribute('aria-pressed') === 'true') pageHandler.stopVoice();
-    else pageHandler.startVoice();
+    if (realtimeConnection || realtimeStarting) void stopRealtimeVoice();
+    else void startRealtimeVoice();
   });
 }
 
