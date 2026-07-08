@@ -147,6 +147,11 @@ body {
   font-size: 11px;
 }
 
+#voice-toggle[aria-pressed="true"] {
+  border-color: var(--seoul-accent);
+  background: color-mix(in srgb, var(--seoul-accent) 14%, transparent);
+}
+
 [hidden] {
   display: none !important;
 }
