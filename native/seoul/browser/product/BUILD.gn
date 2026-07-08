@@ -17,6 +17,8 @@ source_set("product_core") {
     "planner.h",
     "provider_registry.cc",
     "provider_registry.h",
+    "realtime_voice_agent.cc",
+    "realtime_voice_agent.h",
     "surface_service.cc",
     "surface_service.h",
     "task_service.cc",
