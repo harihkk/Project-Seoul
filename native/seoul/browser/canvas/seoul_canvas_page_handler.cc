@@ -239,6 +239,66 @@ void SeoulCanvasPageHandler::StopVoice() {
                                 : VoiceErrorToString(result.error()));
 }
 
+void SeoulCanvasPageHandler::CreateRealtimeVoiceSession(
+    CreateRealtimeVoiceSessionCallback callback) {
+  if (!runtime_) {
+    std::move(callback).Run(ErrorJson("runtime_unavailable"));
+    return;
+  }
+  std::optional<LiveWindowKey> window = ResolveBoundWindow();
+  if (!window.has_value()) {
+    PushStatus("window_unbound");
+    std::move(callback).Run(ErrorJson("window_unbound"));
+    return;
+  }
+  runtime_->CreateRealtimeVoiceSession(
+      window->value(),
+      base::BindOnce(&SeoulCanvasPageHandler::OnRealtimeVoiceSessionCreated,
+                     weak_factory_.GetWeakPtr(), std::move(callback)));
+  PushStatus("realtime_voice_session_requested");
+}
+
+void SeoulCanvasPageHandler::SubmitRealtimeToolCall(
+    canvas::mojom::RealtimeToolCallPtr call,
+    SubmitRealtimeToolCallCallback callback) {
+  if (!call || !runtime_) {
+    std::move(callback).Run(ErrorJson("runtime_unavailable"));
+    return;
+  }
+  if (call->name != kSeoulRealtimeVoiceToolName ||
+      call->arguments_json.size() > kMaxEventValueBytes) {
+    std::move(callback).Run(ErrorJson("realtime_tool_rejected"));
+    return;
+  }
+  std::optional<base::Value> parsed =
+      base::JSONReader::Read(call->arguments_json, base::JSON_PARSE_RFC);
+  if (!parsed.has_value() || !parsed->is_dict()) {
+    std::move(callback).Run(ErrorJson("malformed_realtime_tool_args"));
+    return;
+  }
+  const std::string* goal = parsed->GetDict().FindString("goal");
+  if (!goal || goal->empty() || goal->size() > kMaxTurnBytes) {
+    std::move(callback).Run(ErrorJson("invalid_realtime_goal"));
+    return;
+  }
+
+  const TaskId task_id = StartBoundGoal(*goal);
+  if (!task_id.is_valid()) {
+    std::move(callback).Run(ErrorJson("task_rejected"));
+    return;
+  }
+
+  base::DictValue output;
+  output.Set("status", "accepted");
+  output.Set("task_id", task_id.value());
+  output.Set("goal", *goal);
+  output.Set("message",
+             "Seoul accepted the browser task. Canvas will show task state, "
+             "approval prompts, and visual results as they are produced.");
+  PushStatus("realtime_tool_started");
+  std::move(callback).Run(WriteJson(std::move(output)));
+}
+
 void SeoulCanvasPageHandler::ListTasks(ListTasksCallback callback) {
   std::vector<std::string> snapshots_json;
   const std::optional<LiveWindowKey> window = ResolveBoundWindow();
