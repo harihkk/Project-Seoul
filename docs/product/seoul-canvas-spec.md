@@ -5,9 +5,9 @@ Status: Source complete; not compiled or runtime-verified on the authoring host.
 The Seoul Canvas is the persistent voice, conversational, and visual side panel
 that renders validated SAUI surfaces. This spec describes the typed boundary the
 Canvas sits behind, drawing on the SAUI sources in
-`native/seoul/browser/saui/` and the voice session in
-`native/seoul/browser/voice/voice_session.h`. The rich Canvas surface itself is
-architecture intent, not built; the native shell today is Chromium Views.
+`native/seoul/browser/saui/`, the voice session in
+`native/seoul/browser/voice/voice_session.h`, and the realtime voice bridge in
+`native/seoul/browser/product/realtime_voice_agent.h`.
 
 ## First-party, not arbitrary web content
 
