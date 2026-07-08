@@ -57,6 +57,7 @@ test("seoul_product_unittests") {
     "planner_unittest.cc",
     "product_e2e_unittest.cc",
     "provider_registry_unittest.cc",
+    "realtime_voice_agent_unittest.cc",
     "surface_service_unittest.cc",
     "task_service_unittest.cc",
     "task_snapshot_wire_unittest.cc",
