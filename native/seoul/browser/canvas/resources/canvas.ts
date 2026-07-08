@@ -62,6 +62,7 @@ const callbackRouter = new PageCallbackRouter();
 const surfaceEl = document.getElementById('surface') as HTMLElement;
 const idleEl = document.getElementById('idle') as HTMLElement;
 const routeEl = document.getElementById('route-indicator') as HTMLElement;
+let voiceToggleEl: HTMLButtonElement | undefined;
 
 // Current surface actions, so a component event can resolve its declared
 // action id (the renderer reports the id; the browser authorizes it).
@@ -344,8 +345,25 @@ callbackRouter.pushTaskSnapshot.addListener((snapshotJson: string) => {
 
 callbackRouter.setStatus.addListener((statusJson: string) => {
   try {
-    const status = JSON.parse(statusJson) as { route?: string };
-    routeEl.textContent = status.route === 'cloud' ? 'Cloud' : status.route === 'local' ? 'On-device' : '';
+    const status = JSON.parse(statusJson) as {
+      route?: string;
+      voice_state?: string;
+    };
+    const route =
+        status.route === 'cloud' ? 'Cloud' :
+        status.route === 'local' ? 'On-device' : '';
+    const voiceState = status.voice_state ?? '';
+    const voiceActive = [
+      'microphone_requesting',
+      'listening',
+      'partial_transcript',
+      'finalizing_transcript',
+    ].includes(voiceState);
+    if (voiceToggleEl) {
+      voiceToggleEl.setAttribute('aria-pressed', voiceActive ? 'true' : 'false');
+      voiceToggleEl.dataset.state = voiceState;
+    }
+    routeEl.textContent = route;
   } catch {
     /* inert */
   }
@@ -355,6 +373,7 @@ function wireInputBar(): void {
   const input = document.getElementById('turn-input') as HTMLInputElement;
   const send = document.getElementById('turn-send') as HTMLButtonElement;
   const voice = document.getElementById('voice-toggle') as HTMLButtonElement;
+  voiceToggleEl = voice;
   const submit = () => {
     const text = input.value.trim();
     if (text && pageHandler) {
@@ -366,12 +385,10 @@ function wireInputBar(): void {
   input.addEventListener('keydown', (e) => {
     if (e.key === 'Enter') submit();
   });
-  let voiceOn = false;
   voice.addEventListener('click', () => {
     if (!pageHandler) return;
-    voiceOn = !voiceOn;
-    if (voiceOn) pageHandler.startVoice();
-    else pageHandler.stopVoice();
+    if (voice.getAttribute('aria-pressed') === 'true') pageHandler.stopVoice();
+    else pageHandler.startVoice();
   });
 }
 
