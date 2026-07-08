@@ -1,12 +1,47 @@
 # Seoul Voice Specification
 
-Status: Source complete; not compiled or runtime-verified on the authoring host.
+Status: Realtime voice source path authored; not compiled or runtime-verified on
+the authoring host.
 
-The voice layer gives Seoul one conversational session shared by voice, typed
-text, and Canvas interaction. This spec describes the source in
-`native/seoul/browser/voice/`. The module stores bounded transcript segments
-only; there is no audio buffer type anywhere in it, so raw audio cannot be
-persisted by construction.
+The voice layer gives Seoul one conversational session shared by realtime voice,
+typed text, and Canvas interaction. The product target is GPT-Live style
+full-duplex voice; until the announced GPT-Live API surface is generally
+available, the production bridge mints short-lived sessions for the official
+realtime API model in
+`native/seoul/browser/product/realtime_voice_agent.*`.
+
+The older `native/seoul/browser/voice/` state machine remains the typed turn
+model for transcript, interruption, and task-state semantics, but the Canvas
+microphone button does not drive platform dictation. It creates one realtime
+voice session, streams microphone audio with WebRTC, and routes browser work
+through a single function tool named `seoul_browser_task`.
+
+The voice module stores bounded transcript segments only; there is no audio
+buffer type anywhere in it, so raw audio cannot be persisted by construction.
+
+## Primary realtime agent
+
+`RealtimeVoiceAgent` is the product voice entrypoint. It reads the API key from
+the injected credential store account `voice_realtime`, calls
+`/v1/realtime/client_secrets` through the injected HTTP transport, and returns
+only the short-lived client secret to Canvas. The standard API key never crosses
+the Mojo boundary.
+
+The generated session uses one model constant (`gpt-realtime-2.1`) and records
+the product target (`gpt-live-1`) separately. There is no silent fallback loop:
+if the credential is missing or the session response is invalid, the request
+fails visibly and no browser action is started.
+
+The realtime instructions bias the model toward short, interruptible speech and
+tool use for browser work. Research, page understanding, comparisons, weather,
+markets, products, maps, sports, and similar data-backed questions are not
+hardcoded categories in the UI. The model requests a browser task with a natural
+language `goal`; the native planner and SAUI visual layer decide the right
+capabilities and surface shape from that goal and verified data.
+
+Risky mutations still go through Seoul's task approval and receipt path. Voice
+may ask for the task, but native execution remains typed, window-bound, and
+auditable.
 
 ## Session states
 
