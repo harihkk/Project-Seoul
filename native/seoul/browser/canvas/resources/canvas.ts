@@ -52,6 +52,28 @@ interface SurfaceAction {
   kind: string;
   target: string;
 }
+interface RealtimeVoiceSessionDoc {
+  status?: string;
+  detail?: string;
+  api_model?: string;
+  product_target?: string;
+  connect_url?: string;
+  client_secret?: string;
+  instructions?: string;
+  tools?: unknown[];
+}
+interface RealtimeConnection {
+  peer: RTCPeerConnection;
+  dataChannel: RTCDataChannel;
+  stream: MediaStream;
+  audio: HTMLAudioElement;
+}
+interface RealtimeFunctionCall {
+  key: string;
+  callId: string;
+  name: string;
+  argumentsJson: string;
+}
 
 const handler = PageHandlerFactory.getRemote
   ? PageHandlerFactory.getRemote()
