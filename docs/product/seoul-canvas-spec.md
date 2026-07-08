@@ -74,12 +74,12 @@ same surface the user is looking at.
 
 ## Architecture intent for the rich surface
 
-The native shell stays Chromium Views. The rich Canvas described here would be a
-first-party, browser-owned WebUI behind a Mojo boundary that speaks only the
-typed SAUI-document-in, `ComponentEvent`-out contract described above. That WebUI
-surface is architecture intent and is not built; what exists today is the typed
-document, catalog, validator, patch, selection, and event model that such a
-surface would render.
+The native shell stays Chromium Views. The rich Canvas is a first-party,
+browser-owned WebUI behind a Mojo boundary that speaks the typed
+SAUI-document-in, `ComponentEvent`-out contract described above, plus the
+explicit realtime voice session and tool-call methods. It cannot load remote
+scripts or arbitrary HTML; its CSP permits only the packaged resources and the
+realtime connection endpoint needed for voice.
 
 The wire contract those models implement is canonical and cross-language:
 `protocol/` holds the versioned JSON Schemas (semantic result, adaptive
