@@ -36,6 +36,15 @@ struct TurnInput {
   string text;
 };
 
+// A tool call emitted by the realtime voice model. The browser owns the
+// decision: it parses and validates the arguments, binds the work to this
+// Canvas window token, and returns a compact output string for the model.
+struct RealtimeToolCall {
+  string call_id;
+  string name;
+  string arguments_json;
+};
+
 // Implemented in the browser. The renderer calls these.
 interface PageHandler {
   // The renderer is ready; the browser replies by pushing the current surface
