@@ -7,6 +7,7 @@
 #include "base/functional/bind.h"
 #include "base/json/values_util.h"
 #include "base/time/time.h"
+#include "build/build_config.h"
 #include "chrome/browser/profiles/profile.h"
 #include "chrome/browser/ui/browser_window/public/browser_window_interface.h"
 #include "components/pref_registry/pref_registry_syncable.h"
@@ -23,6 +24,12 @@
 #include "seoul/browser/product/browser/network_http_transport.h"
 #include "seoul/browser/product/browser/page_agent.h"
 #include "seoul/browser/scenes/scene_registry.h"
+#include "seoul/browser/site_layers/site_layer_registry.h"
+
+#if BUILDFLAG(IS_MAC)
+#include "seoul/browser/voice/platform/apple_speech_recognizer.h"
+#include "seoul/browser/voice/platform/apple_tts_engine.h"
+#endif
 
 namespace seoul {
 
@@ -32,10 +39,11 @@ base::Time Now() {
   return base::Time::Now();
 }
 
-// Builds the scene resolvers over the organization model plus the runtime's
-// own theme/site-layer awareness. Themes and site layers are validated as
-// present when the id is non-empty in V1; the Studio owns their catalogs.
-SceneResolvers MakeSceneResolvers(SeoulOrganizationService* organization) {
+// Builds the scene resolvers over the organization model plus runtime-owned
+// catalogs. Themes remain validation-only in V1; Site Layers now resolve
+// against the product registry so Scenes cannot reference phantom layers.
+SceneResolvers MakeSceneResolvers(SeoulOrganizationService* organization,
+                                  SiteLayerRegistry* site_layers) {
   SceneResolvers resolvers;
   resolvers.workspace_exists = base::BindRepeating(
       [](SeoulOrganizationService* org, const std::string& workspace_id) {
@@ -46,7 +54,10 @@ SceneResolvers MakeSceneResolvers(SeoulOrganizationService* organization) {
   resolvers.theme_exists = base::BindRepeating(
       [](const std::string& theme_id) { return !theme_id.empty(); });
   resolvers.site_layer_exists = base::BindRepeating(
-      [](const std::string& site_layer_id) { return !site_layer_id.empty(); });
+      [](SiteLayerRegistry* registry, const std::string& site_layer_id) {
+        return registry && registry->Exists(site_layer_id);
+      },
+      site_layers);
   return resolvers;
 }
 
@@ -60,7 +71,8 @@ SeoulRuntimeService::SeoulRuntimeService(
     : profile_(profile),
       prefs_(prefs),
       organization_(organization),
-      runtime_(MakeSceneResolvers(organization)) {
+      site_layers_(std::make_unique<SiteLayerRegistry>()),
+      runtime_(MakeSceneResolvers(organization, site_layers_.get())) {
   // Concrete transports: the general one for cloud/connectors, a
   // loopback-only one for the local reasoning provider.
   scoped_refptr<network::SharedURLLoaderFactory> factory =
@@ -83,6 +95,15 @@ SeoulRuntimeService::SeoulRuntimeService(
   task_service_ =
       std::make_unique<TaskService>(&runtime_.capabilities(), &executors_,
                                     planner_.get(), base::BindRepeating(&Now));
+#if BUILDFLAG(IS_MAC)
+  speech_to_text_ = std::make_unique<AppleSpeechRecognizer>();
+  text_to_speech_ = std::make_unique<AppleTtsEngine>();
+#endif
+  voice_controller_ = std::make_unique<VoiceRuntimeController>(
+      task_service_.get(), speech_to_text_.get(), text_to_speech_.get(),
+      base::BindRepeating(&SeoulRuntimeService::StartGoal,
+                          base::Unretained(this)),
+      base::BindRepeating(&Now));
   surface_service_ = std::make_unique<SurfaceService>();
   // The bridge is the production path that turns a verified task result into a
   // Canvas surface; without it, tasks would complete with no artifact.
@@ -273,6 +294,26 @@ TaskId SeoulRuntimeService::StartGoal(const std::string& goal,
                                   use_model, prefer_local);
 }
 
+VoiceStatusResult SeoulRuntimeService::StartVoice(
+    const LiveWindowKey& window) {
+  if (shutting_down_ || !voice_controller_) {
+    return VoiceErr(VoiceError::kProviderUnavailable);
+  }
+  return voice_controller_->StartVoice(window);
+}
+
+VoiceStatusResult SeoulRuntimeService::StopVoice() {
+  if (shutting_down_ || !voice_controller_) {
+    return VoiceErr(VoiceError::kProviderUnavailable);
+  }
+  return voice_controller_->StopVoice();
+}
+
+VoiceRuntimeSnapshot SeoulRuntimeService::VoiceSnapshot() const {
+  return voice_controller_ ? voice_controller_->Snapshot()
+                           : VoiceRuntimeSnapshot();
+}
+
 bool SeoulRuntimeService::SetCredential(const std::string& account_key,
                                         const std::string& secret) {
   return credentials_ && credentials_->Set(account_key, secret);
@@ -328,6 +369,7 @@ void SeoulRuntimeService::Shutdown() {
   window_bindings_.clear();
   // Reverse dependency order: tasks depend on providers/executors; workflows
   // depend on tasks; the runtime registries are torn down last.
+  voice_controller_.reset();
   if (task_service_) {
     task_service_->Shutdown();
   }
@@ -338,6 +380,8 @@ void SeoulRuntimeService::Shutdown() {
   thread_service_.reset();
   surface_service_.reset();
   task_service_.reset();
+  text_to_speech_.reset();
+  speech_to_text_.reset();
   planner_.reset();
   if (provider_registry_) {
     provider_registry_->Shutdown();
