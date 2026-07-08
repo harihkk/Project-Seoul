@@ -305,6 +305,216 @@ function emitComponentEvent(
   });
 }
 
+function setVoiceActive(active: boolean, state: string): void {
+  if (!voiceToggleEl) return;
+  voiceToggleEl.setAttribute('aria-pressed', active ? 'true' : 'false');
+  voiceToggleEl.dataset.state = state;
+}
+
+function setRouteText(text: string): void {
+  routeEl.textContent = text || 'Voice';
+}
+
+function sendRealtimeEvent(event: Record<string, unknown>): void {
+  const channel = realtimeConnection?.dataChannel;
+  if (!channel || channel.readyState !== 'open') return;
+  channel.send(JSON.stringify(event));
+}
+
+function isCurrentRealtimeStart(generation: number): boolean {
+  return realtimeStarting && generation === realtimeStartGeneration;
+}
+
+function rememberRealtimeToolCall(event: Record<string, unknown>): void {
+  const item = event.item as Record<string, unknown> | undefined;
+  if (!item || item.type !== 'function_call') return;
+  const key = String(item.id ?? event.item_id ?? '');
+  const name = typeof item.name === 'string' ? item.name : '';
+  const callId = typeof item.call_id === 'string' ? item.call_id : key;
+  if (key && name) {
+    realtimeToolCalls.set(key, { callId, name });
+  }
+}
+
+function extractRealtimeToolCall(event: Record<string, unknown>): RealtimeFunctionCall | undefined {
+  rememberRealtimeToolCall(event);
+  const item = event.item as Record<string, unknown> | undefined;
+  const itemId = String(event.item_id ?? item?.id ?? '');
+  const remembered = itemId ? realtimeToolCalls.get(itemId) : undefined;
+  const type = String(event.type ?? '');
+  const name =
+      typeof event.name === 'string' ? event.name :
+      typeof item?.name === 'string' ? item.name :
+      remembered?.name ?? '';
+  const callId =
+      typeof event.call_id === 'string' ? event.call_id :
+      typeof item?.call_id === 'string' ? item.call_id :
+      remembered?.callId ?? itemId;
+  const rawArgs =
+      typeof event.arguments === 'string' ? event.arguments :
+      typeof event.arguments_json === 'string' ? event.arguments_json :
+      typeof item?.arguments === 'string' ? item.arguments : '';
+  const key = callId || itemId;
+  if (!key || !name || !rawArgs || completedRealtimeToolCalls.has(key)) {
+    return undefined;
+  }
+  if (
+    type === 'response.function_call_arguments.done' ||
+    type === 'response.output_item.done' ||
+    type === 'conversation.item.created'
+  ) {
+    return { key, callId, name, argumentsJson: rawArgs };
+  }
+  return undefined;
+}
+
+async function sendRealtimeToolOutput(call: RealtimeFunctionCall, outputJson: string): Promise<void> {
+  completedRealtimeToolCalls.add(call.key);
+  sendRealtimeEvent({
+    type: 'conversation.item.create',
+    item: {
+      type: 'function_call_output',
+      call_id: call.callId,
+      output: outputJson,
+    },
+  });
+  sendRealtimeEvent({ type: 'response.create' });
+}
+
+async function handleRealtimeEvent(data: string): Promise<void> {
+  let event: Record<string, unknown>;
+  try {
+    event = JSON.parse(data) as Record<string, unknown>;
+  } catch {
+    return;
+  }
+  const call = extractRealtimeToolCall(event);
+  if (!call || !pageHandler) return;
+  try {
+    const result = await pageHandler.submitRealtimeToolCall({
+      callId: call.callId,
+      name: call.name,
+      argumentsJson: call.argumentsJson,
+    });
+    await sendRealtimeToolOutput(call, result.outputJson);
+  } catch {
+    await sendRealtimeToolOutput(call, JSON.stringify({ status: 'error', detail: 'tool_bridge_failed' }));
+  }
+}
+
+async function stopRealtimeVoice(): Promise<void> {
+  const connection = realtimeConnection;
+  realtimeStarting = false;
+  realtimeStartGeneration += 1;
+  realtimeConnection = undefined;
+  realtimeToolCalls.clear();
+  completedRealtimeToolCalls.clear();
+  if (connection) {
+    connection.dataChannel.close();
+    connection.peer.close();
+    for (const track of connection.stream.getTracks()) {
+      track.stop();
+    }
+    connection.audio.remove();
+  }
+  setVoiceActive(false, 'idle');
+  setRouteText('Voice');
+}
+
+async function startRealtimeVoice(): Promise<void> {
+  if (!pageHandler || realtimeConnection || realtimeStarting) return;
+  realtimeStarting = true;
+  const generation = realtimeStartGeneration + 1;
+  realtimeStartGeneration = generation;
+  setVoiceActive(true, 'connecting');
+  setRouteText('Connecting');
+  try {
+    const response = await pageHandler.createRealtimeVoiceSession();
+    if (!isCurrentRealtimeStart(generation)) return;
+    const session = JSON.parse(response.sessionJson || '{}') as RealtimeVoiceSessionDoc;
+    if (session.status !== 'ready' || !session.client_secret ||
+        !session.connect_url || !session.api_model) {
+      throw new Error(session.detail || 'realtime_voice_unavailable');
+    }
+
+    const stream = await navigator.mediaDevices.getUserMedia({
+      audio: {
+        echoCancellation: true,
+        noiseSuppression: true,
+        autoGainControl: true,
+      },
+    });
+    if (!isCurrentRealtimeStart(generation)) {
+      for (const track of stream.getTracks()) {
+        track.stop();
+      }
+      return;
+    }
+    const peer = new RTCPeerConnection();
+    const audio = document.createElement('audio');
+    audio.autoplay = true;
+    audio.hidden = true;
+    document.body.appendChild(audio);
+    peer.ontrack = (event) => {
+      audio.srcObject = event.streams[0] ?? null;
+    };
+    for (const track of stream.getAudioTracks()) {
+      peer.addTrack(track, stream);
+    }
+
+    const dataChannel = peer.createDataChannel('oai-events');
+    realtimeConnection = { peer, dataChannel, stream, audio };
+    dataChannel.addEventListener('open', () => {
+      sendRealtimeEvent({
+        type: 'session.update',
+        session: {
+          instructions: session.instructions ?? '',
+          tools: session.tools ?? [],
+          tool_choice: 'auto',
+        },
+      });
+      setVoiceActive(true, 'listening');
+      setRouteText(session.product_target || session.api_model || 'Voice');
+    });
+    dataChannel.addEventListener('message', (event) => {
+      void handleRealtimeEvent(String(event.data));
+    });
+    dataChannel.addEventListener('close', () => {
+      void stopRealtimeVoice();
+    });
+
+    const offer = await peer.createOffer();
+    await peer.setLocalDescription(offer);
+    const sdpResponse = await fetch(
+      `${session.connect_url}?model=${encodeURIComponent(session.api_model)}`,
+      {
+        method: 'POST',
+        body: offer.sdp ?? '',
+        headers: {
+          Authorization: `Bearer ${session.client_secret}`,
+          'Content-Type': 'application/sdp',
+        },
+      },
+    );
+    if (!sdpResponse.ok) {
+      throw new Error(`realtime_sdp_${sdpResponse.status}`);
+    }
+    if (!isCurrentRealtimeStart(generation)) return;
+    await peer.setRemoteDescription({
+      type: 'answer',
+      sdp: await sdpResponse.text(),
+    });
+    if (isCurrentRealtimeStart(generation)) {
+      realtimeStarting = false;
+    }
+  } catch {
+    if (generation === realtimeStartGeneration) {
+      await stopRealtimeVoice();
+      setRouteText('Voice unavailable');
+    }
+  }
+}
+
 // --- Mojo Page implementation (browser -> renderer) ---
 
 callbackRouter.pushSurface.addListener((surfaceId: string, surfaceJson: string) => {
