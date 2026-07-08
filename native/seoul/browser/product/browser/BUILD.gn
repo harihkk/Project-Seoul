@@ -61,12 +61,18 @@ source_set("product_chromium") {
     "//seoul/browser/organization:organization_model",
     "//seoul/browser/scenes:scenes_core",
     "//seoul/browser/semantic:semantic_core",
+    "//seoul/browser/site_layers:site_layers_core",
     "//seoul/browser/tasks:tasks_core",
     "//seoul/browser/tools:tools_core",
+    "//seoul/browser/voice:voice_core",
     "//services/network/public/cpp",
     "//ui/accessibility",
     "//url",
   ]
+
+  if (is_mac) {
+    deps += [ "//seoul/browser/voice/platform:voice_platform_apple" ]
+  }
 }
 
 source_set("product_browser_tests") {
