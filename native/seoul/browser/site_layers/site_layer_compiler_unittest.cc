@@ -77,6 +77,12 @@ TEST(SiteLayerCompilerTest, RejectsUnsafeSelectorInAdjustment) {
   EXPECT_EQ(CompileSiteLayer(layer).error(), SiteLayerError::kUnsafeSelector);
 }
 
+TEST(SiteLayerCompilerTest, RejectsInvalidLayerId) {
+  SiteLayer layer = ReadableLayer();
+  layer.id = "Bad Id";
+  EXPECT_EQ(CompileSiteLayer(layer).error(), SiteLayerError::kInvalidId);
+}
+
 TEST(SiteLayerCompilerTest, EnforcesSelectorScopingRules) {
   SiteLayer layer = ReadableLayer();
   // Reading mode is document-scoped; giving it selectors is rejected.
