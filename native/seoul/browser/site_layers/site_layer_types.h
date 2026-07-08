@@ -22,6 +22,7 @@ inline constexpr size_t kMaxSelectorLength = 256;
 inline constexpr size_t kMaxSelectorsPerRule = 8;
 inline constexpr size_t kMaxLayerNameLength = 120;
 inline constexpr size_t kMaxOriginPatternLength = 256;
+inline constexpr size_t kMaxSiteLayers = 256;
 
 enum class SiteAdjustmentKind {
   kAccentColor,  // recolor accent/link elements
@@ -74,6 +75,7 @@ struct SiteLayer {
 };
 
 enum class SiteLayerError {
+  kInvalidId,
   kInvalidName,
   kInvalidOrigin,
   kEmptyLayer,
@@ -86,6 +88,8 @@ enum class SiteLayerError {
   kSelectorRequired,
   kSelectorNotAllowed,
   kUnsupportedSchema,
+  kUnknownLayer,
+  kLimitExceeded,
 };
 
 const char* SiteLayerErrorToString(SiteLayerError error);
