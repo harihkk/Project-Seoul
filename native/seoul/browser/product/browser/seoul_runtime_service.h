@@ -37,6 +37,7 @@
 #include "seoul/browser/product/capability_executor.h"
 #include "seoul/browser/product/planner.h"
 #include "seoul/browser/product/provider_registry.h"
+#include "seoul/browser/product/realtime_voice_agent.h"
 #include "seoul/browser/product/surface_service.h"
 #include "seoul/browser/product/task_service.h"
 #include "seoul/browser/product/task_surface_bridge.h"
@@ -128,6 +129,10 @@ class SeoulRuntimeService : public KeyedService {
   VoiceStatusResult StartVoice(const LiveWindowKey& window);
   VoiceStatusResult StopVoice();
   VoiceRuntimeSnapshot VoiceSnapshot() const;
+  void CreateRealtimeVoiceSession(
+      const std::string& safety_identifier,
+      RealtimeVoiceAgent::CreateSessionCallback callback);
+  RealtimeVoiceAgentSnapshot RealtimeVoiceSnapshot() const;
 
   // Runs one already-chosen capability with an explicit typed payload as a
   // single-step task. A surface action that declared a tool_call executes
@@ -180,6 +185,7 @@ class SeoulRuntimeService : public KeyedService {
   // Product services (owned; pure product_core).
   CapabilityExecutorRegistry executors_;
   std::unique_ptr<ProviderRegistry> provider_registry_;
+  std::unique_ptr<RealtimeVoiceAgent> realtime_voice_agent_;
   std::unique_ptr<Planner> planner_;
   std::unique_ptr<TaskService> task_service_;
   std::unique_ptr<SpeechToTextProvider> speech_to_text_;

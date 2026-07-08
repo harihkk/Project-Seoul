@@ -84,15 +84,13 @@ SeoulRuntimeService::SeoulRuntimeService(
 
   provider_registry_ = std::make_unique<ProviderRegistry>(
       local_transport_.get(), cloud_transport_.get(), credentials_.get());
+  realtime_voice_agent_ = std::make_unique<RealtimeVoiceAgent>(
+      cloud_transport_.get(), credentials_.get());
   planner_ = std::make_unique<Planner>(runtime_.capabilities(),
                                        provider_registry_->MakePlanRequester());
   task_service_ =
       std::make_unique<TaskService>(&runtime_.capabilities(), &executors_,
                                     planner_.get(), base::BindRepeating(&Now));
-#if BUILDFLAG(IS_MAC)
-  speech_to_text_ = std::make_unique<AppleSpeechRecognizer>();
-  text_to_speech_ = std::make_unique<AppleTtsEngine>();
-#endif
   voice_controller_ = std::make_unique<VoiceRuntimeController>(
       task_service_.get(), speech_to_text_.get(), text_to_speech_.get(),
       base::BindRepeating(&SeoulRuntimeService::StartGoal,
