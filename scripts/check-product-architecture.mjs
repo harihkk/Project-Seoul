@@ -19,6 +19,8 @@
 //      unavailable.
 //   7. Canvas/product turns must use an explicit WindowRuntimeBinding token,
 //      never an active/last-focused-window fallback.
+//   8. Canvas voice must use the realtime voice session bridge, not the
+//      legacy local speech button path.
 //
 // Pure static scan over tracked source; no build required.
 
@@ -161,7 +163,43 @@ for (const file of walk(productRoot, isProdCc).concat(
   });
 }
 
-// --- 8: capability arg names match between descriptor and executor ----------
+// --- 8: primary Canvas voice uses the realtime agent ------------------------
+const runtimeServicePath = path.join(
+  productRoot,
+  'browser/seoul_runtime_service.cc',
+);
+if (fs.existsSync(runtimeServicePath)) {
+  const runtimeText = fs.readFileSync(runtimeServicePath, 'utf8');
+  if (/AppleSpeechRecognizer|AppleTtsEngine/.test(runtimeText)) {
+    problems.push(
+      'SeoulRuntimeService wires platform speech directly; Canvas voice must ' +
+        'mint realtime voice sessions through RealtimeVoiceAgent.',
+    );
+  }
+  if (!/CreateRealtimeVoiceSession/.test(runtimeText)) {
+    problems.push(
+      'SeoulRuntimeService does not expose CreateRealtimeVoiceSession; Canvas ' +
+        'voice has no production realtime session bridge.',
+    );
+  }
+}
+const canvasMojomPath = path.join(seoulRoot, 'browser/canvas/canvas.mojom');
+if (fs.existsSync(canvasMojomPath)) {
+  const mojomText = fs.readFileSync(canvasMojomPath, 'utf8');
+  for (const method of [
+    'CreateRealtimeVoiceSession',
+    'SubmitRealtimeToolCall',
+  ]) {
+    if (!mojomText.includes(method)) {
+      problems.push(
+        `Canvas Mojo is missing ${method}; voice cannot connect realtime ` +
+          'speech to browser tasks.',
+      );
+    }
+  }
+}
+
+// --- 9: capability arg names match between descriptor and executor ----------
 // A capability descriptor declares its input fields (generic_capabilities.cc);
 // the browser executor decodes those fields (browser_capabilities.cc). If the
 // executor reads a field name the descriptor never declares, the capability is
@@ -203,7 +241,7 @@ if (fs.existsSync(execPath) && declaredArgs.size > 0) {
   });
 }
 
-// --- 9: the task-to-surface path is wired in production, not only in tests --
+// --- 10: task-to-surface is wired in production, not only in tests ----------
 // A verified task result must reach the surface layer through a production
 // caller of SurfaceService::CreateFromSemantic. If the only callers are test
 // files (and its own definition), the product spine is broken: tasks would
@@ -235,6 +273,7 @@ if (problems.length) {
 console.log(
   `product-architecture: OK (dispatch-registry, fail-closed, no placeholders, ` +
     `real workspace names, no empty browser tests, window-bound Canvas, ` +
-    `${executorNames.size} executors all registered, capability arg names ` +
-    `consistent, task-to-surface bridge wired)`,
+    `realtime Canvas voice wired, ${executorNames.size} executors all ` +
+    `registered, capability arg names consistent, task-to-surface bridge ` +
+    `wired)`,
 );
