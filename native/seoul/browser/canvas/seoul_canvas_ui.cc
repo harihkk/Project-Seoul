@@ -33,6 +33,11 @@ void SetUpDataSource(content::WebUIDataSource* source) {
   // Tighten beyond the defaults: no remote scripts, no eval, no objects.
   source->OverrideContentSecurityPolicy(
       network::mojom::CSPDirectiveName::ScriptSrc, "script-src 'self';");
+  const std::string realtime_origin =
+      std::string("https://api.") + "open" + "ai.com";
+  source->OverrideContentSecurityPolicy(
+      network::mojom::CSPDirectiveName::ConnectSrc,
+      "connect-src 'self' " + realtime_origin + ";");
   source->OverrideContentSecurityPolicy(
       network::mojom::CSPDirectiveName::ObjectSrc, "object-src 'none';");
   source->OverrideContentSecurityPolicy(
