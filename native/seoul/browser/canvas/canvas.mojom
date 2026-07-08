@@ -60,6 +60,8 @@ interface PageHandler {
   // Voice control from Canvas UI affordances.
   StartVoice();
   StopVoice();
+  CreateRealtimeVoiceSession() => (string session_json);
+  SubmitRealtimeToolCall(RealtimeToolCall call) => (string output_json);
 
   // Task control. Every mutation is authorized against the bound window's
   // tasks; snapshots are canonical task-snapshot JSON documents
