@@ -22,6 +22,19 @@ constexpr size_t kMaxEventValueBytes = 64 * 1024;
 // Bound on a conversational turn accepted from the renderer.
 constexpr size_t kMaxTurnBytes = 8 * 1024;
 
+std::string WriteJson(base::DictValue value) {
+  std::string json;
+  base::JSONWriter::Write(value, &json);
+  return json;
+}
+
+std::string ErrorJson(const std::string& detail) {
+  base::DictValue value;
+  value.Set("status", "error");
+  value.Set("detail", detail);
+  return WriteJson(std::move(value));
+}
+
 ComponentEventKind FromMojo(canvas::mojom::ComponentEventKind kind) {
   switch (kind) {
     case canvas::mojom::ComponentEventKind::kActivate:
