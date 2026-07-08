@@ -202,11 +202,28 @@ void SeoulCanvasPageHandler::SubmitTurn(canvas::mojom::TurnInputPtr input) {
 }
 
 void SeoulCanvasPageHandler::StartVoice() {
-  PushStatus("voice_requested");
+  if (!runtime_) {
+    PushStatus("runtime_unavailable");
+    return;
+  }
+  std::optional<LiveWindowKey> window = ResolveBoundWindow();
+  if (!window.has_value()) {
+    PushStatus("window_unbound");
+    return;
+  }
+  const VoiceStatusResult result = runtime_->StartVoice(window.value());
+  PushStatus(result.has_value() ? "voice_started"
+                                : VoiceErrorToString(result.error()));
 }
 
 void SeoulCanvasPageHandler::StopVoice() {
-  PushStatus("voice_stopped");
+  if (!runtime_) {
+    PushStatus("runtime_unavailable");
+    return;
+  }
+  const VoiceStatusResult result = runtime_->StopVoice();
+  PushStatus(result.has_value() ? "voice_stopped"
+                                : VoiceErrorToString(result.error()));
 }
 
 void SeoulCanvasPageHandler::ListTasks(ListTasksCallback callback) {
@@ -387,9 +404,20 @@ void SeoulCanvasPageHandler::PushStatus(const std::string& detail) {
     status.Set("route", providers.local_healthy ? "local" : "cloud");
     status.Set("active_task_count",
                static_cast<int>(runtime_->tasks()->task_count()));
+    const VoiceRuntimeSnapshot voice = runtime_->VoiceSnapshot();
+    status.Set("voice_state", VoiceSessionStateToString(voice.state));
+    status.Set("voice_error", VoiceErrorToString(voice.last_error));
+    status.Set("voice_route", voice.route == SpeechRoute::kCloud ? "cloud"
+                                                                 : "local");
+    status.Set("voice_provider_available", voice.speech_provider_available);
+    status.Set("voice_output_available", voice.speech_output_available);
+    status.Set("voice_active_task_id", voice.active_task_id);
   } else {
     status.Set("local_ready", false);
     status.Set("cloud_ready", false);
+    status.Set("voice_state", "failed");
+    status.Set("voice_error", "provider_unavailable");
+    status.Set("voice_provider_available", false);
   }
   std::string json;
   base::JSONWriter::Write(status, &json);
