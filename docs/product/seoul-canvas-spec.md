@@ -57,14 +57,20 @@ in-place refreshes.
 
 ## Coordination with the voice session
 
-The Canvas shares the voice session in
-`native/seoul/browser/voice/voice_session.h`: voice, typed text, and Canvas
-interaction drive one state machine. A follow-up (spoken or typed) enters
-`kUnderstanding` on the same session and thread, and its result updates the open
-surfaces in place through typed patches keyed by the stable component ids, rather
-than opening a new panel. Spoken references resolve to visible component ids
-through the reference resolver (see the Voice spec), so "make that chart a bar
-chart" targets the same surface the user is looking at.
+The Canvas microphone button creates a realtime voice session through
+`CreateRealtimeVoiceSession`, then streams microphone audio over WebRTC. The
+browser gives that realtime session one tool, `seoul_browser_task`, and Canvas
+bridges tool calls back to native with `SubmitRealtimeToolCall`. The tool accepts
+a bounded natural-language `goal`; native code resolves the bound window,
+starts the same task engine used by typed turns, and pushes task snapshots,
+approval prompts, and SAUI surfaces back to Canvas.
+
+Typed text and Canvas interaction keep using the same native task and surface
+path. A follow-up (spoken or typed) updates the open surfaces in place through
+typed patches keyed by stable component ids, rather than opening a new panel.
+Spoken references resolve to visible component ids through the reference
+resolver (see the Voice spec), so "make that chart a bar chart" targets the
+same surface the user is looking at.
 
 ## Architecture intent for the rich surface
 
