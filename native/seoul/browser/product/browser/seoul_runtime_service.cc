@@ -7,7 +7,6 @@
 #include "base/functional/bind.h"
 #include "base/json/values_util.h"
 #include "base/time/time.h"
-#include "build/build_config.h"
 #include "chrome/browser/profiles/profile.h"
 #include "chrome/browser/ui/browser_window/public/browser_window_interface.h"
 #include "components/pref_registry/pref_registry_syncable.h"
@@ -25,11 +24,6 @@
 #include "seoul/browser/product/browser/page_agent.h"
 #include "seoul/browser/scenes/scene_registry.h"
 #include "seoul/browser/site_layers/site_layer_registry.h"
-
-#if BUILDFLAG(IS_MAC)
-#include "seoul/browser/voice/platform/apple_speech_recognizer.h"
-#include "seoul/browser/voice/platform/apple_tts_engine.h"
-#endif
 
 namespace seoul {
 
@@ -312,6 +306,22 @@ VoiceStatusResult SeoulRuntimeService::StopVoice() {
 VoiceRuntimeSnapshot SeoulRuntimeService::VoiceSnapshot() const {
   return voice_controller_ ? voice_controller_->Snapshot()
                            : VoiceRuntimeSnapshot();
+}
+
+void SeoulRuntimeService::CreateRealtimeVoiceSession(
+    const std::string& safety_identifier,
+    RealtimeVoiceAgent::CreateSessionCallback callback) {
+  if (shutting_down_ || !realtime_voice_agent_) {
+    std::move(callback).Run(
+        base::unexpected("Realtime voice agent is unavailable."));
+    return;
+  }
+  realtime_voice_agent_->CreateSession(safety_identifier, std::move(callback));
+}
+
+RealtimeVoiceAgentSnapshot SeoulRuntimeService::RealtimeVoiceSnapshot() const {
+  return realtime_voice_agent_ ? realtime_voice_agent_->Snapshot()
+                               : RealtimeVoiceAgentSnapshot();
 }
 
 bool SeoulRuntimeService::SetCredential(const std::string& account_key,

@@ -70,9 +70,6 @@ source_set("product_chromium") {
     "//url",
   ]
 
-  if (is_mac) {
-    deps += [ "//seoul/browser/voice/platform:voice_platform_apple" ]
-  }
 }
 
 source_set("product_browser_tests") {
