@@ -10,7 +10,7 @@ validated to prevent style injection or escaping the target document.
 ## Declarative per-site adjustments
 
 `native/seoul/browser/site_layers/site_layer_types.h` defines `SiteLayer` (schema
-version, id, name, `origin_pattern`, optional `scene_scope`, `enabled`, and a
+version, stable id, name, `origin_pattern`, optional `scene_scope`, `enabled`, and a
 bounded list of `SiteAdjustment`). `SiteAdjustmentKind` lists the supported
 adjustments: `kAccentColor`, `kBackgroundColor`, `kTextColor`, `kFontFamily`,
 `kFontSizeScale`, `kContentWidth`, `kLineSpacing`, `kDensity`, `kHide`,
@@ -30,7 +30,7 @@ uses `!important`. The compiler never emits or references any script.
 ## Safe selector subset and rejected characters
 
 `ContainsUnsafeCssChar` rejects any selector or value containing the characters
-`{`, `}`, `;`, `<`, `>`, `\`, double quote, single quote, `@`, `(`, `)`, or
+`{`, `}`, `;`, `<`, `\`, double quote, single quote, `@`, `(`, `)`, or
 backtick, the comment sequences `/*` and `*/`, or the tokens `url`, `expression`,
 `javascript`, or `import` (case-insensitive). `IsSafeSelector` additionally
 requires the selector to be non-empty, within the length cap, drawn only from
@@ -40,7 +40,11 @@ so a bare universal selector is not allowed. Because quotes are rejected, only
 attribute-presence and prefix forms survive, which the header notes is acceptable
 for the safe subset.
 
-## Origin-pattern validation
+## Identity and origin-pattern validation
+
+Layer ids are stable lowercase slugs. They must start with a letter and may then
+contain lowercase letters, digits, `_`, and `-`; missing or malformed ids are
+rejected before storage or import so Scenes can safely reference layers.
 
 `IsValidOriginPattern` accepts only `https://host[:port]` or `*.host`. A
 `https://` pattern may carry an optional numeric port in 1 to 65535. The host is
@@ -66,3 +70,12 @@ generates JavaScript. `SiteLayerFromValue` parses an imported layer and then run
 and the value checks) before returning, so a layer whose selectors or values
 attempt to break out of a declaration is rejected at import time rather than
 compiled. `SiteLayerToValue` and `SiteLayerFromValue` form the round trip.
+
+## Registry and page resolution
+
+`SiteLayerRegistry` stores validated layers by id, rejects over-limit inserts,
+and resolves CSS for a page origin plus optional Scene id. Disabled layers are
+ignored. A layer with no `scene_scope` applies globally to matching origins; a
+layer with `scene_scope` applies only when that Scene is active. Matching is
+deterministic: exact `https://host[:port]` patterns require the same host and
+port, while `*.host` matches the host and its subdomains.
