@@ -464,6 +464,18 @@ bool SeoulCanvasPageHandler::ApplyWorkflowEdit(
   return false;  // unknown ops fail closed and are reported by the caller
 }
 
+void SeoulCanvasPageHandler::OnRealtimeVoiceSessionCreated(
+    CreateRealtimeVoiceSessionCallback callback,
+    RealtimeVoiceAgent::CreateSessionResult result) {
+  if (!result.has_value()) {
+    PushStatus("realtime_voice_unavailable");
+    std::move(callback).Run(ErrorJson(result.error()));
+    return;
+  }
+  PushStatus("realtime_voice_ready");
+  std::move(callback).Run(WriteJson(std::move(result.value())));
+}
+
 void SeoulCanvasPageHandler::PushStatus(const std::string& detail) {
   if (!page_) {
     return;
