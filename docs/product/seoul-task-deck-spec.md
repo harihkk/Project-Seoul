@@ -40,9 +40,17 @@ permission context: non-empty plan and valid budgets; the step count within
 resolvability and permission (`kUnknownTool`, `kToolNotPermitted`);
 schema-valid args; read-only parallelism (a non-read-only tool in a parallel
 group is `kParallelMutation`); and approval gating. `NeedsApproval` is true for
-always-required approval, irreversible mutations, and external side effects; such
-a step must carry `requires_approval` or follow an unconsumed `kApprovalGate`,
-else `kMissingApprovalGate`.
+first-use-per-scope or always-required approval, irreversible mutations, and
+external side effects; such a step must carry `requires_approval`, else
+`kMissingApprovalGate`. A generic earlier approval gate cannot substitute for
+the exact tool step because it is not bound to the live execution scope.
+
+Validation proves that a gate exists; execution proves that its scope is exact.
+`AgentPermissionService` matches a reusable grant only when capability, live
+window, live tab, main frame, committed source origin, optional destination
+origin, and connector service scope all match. Grants expire, are revoked with
+their tab/window lifecycle, and are never reused for irreversible or external
+side effects. Invalid or unresolved page scopes fail closed.
 
 ## Execution state machine
 
@@ -65,8 +73,10 @@ Key rules in the source:
   outcome may retry within `max_retries_per_step`.
 - Retry, replan, ask-user: a plain failure retries only when the tool is
   read-only or idempotent and retries remain; otherwise a bounded `kReplan`
-  returns the step to pending (up to `max_replans`); when replans are exhausted
-  the task pauses and asks the user.
+  preserves receipts and asks the configured planner for a fresh validated
+  plan using the original local/cloud preference (up to `max_replans`); it does
+  not silently downgrade model-backed reasoning to lexical matching. When
+  replans are exhausted the task pauses and asks the user.
 - Budgets: `BudgetsExceeded` stops the task when steps, model calls,
   navigations, cloud cost, duration, or identical-action repeats exceed the
   `TaskBudgets` ceilings; execution never silently continues.
@@ -74,10 +84,17 @@ Key rules in the source:
   everything after it while keeping completed work; a rejected `requires_approval`
   step is skipped and the task continues. This is how "prepare but do not
   submit" completes the rest of a plan.
+- User-input semantics: a `kUserInput` step exposes a bounded typed input form
+  tied to that exact task and step. The accepted value is recorded as a receipt
+  and appended to bounded planning context, then the configured planner builds
+  a fresh validated execution. Input is never applied to another step or
+  treated as an implicit capability result.
 - Checkpoints: `Checkpoint` serializes step statuses, retries, loop iterations,
   and usage. `RestoreFromCheckpoint` continues a task after a browser restart
   with the same plan and converts any step that was mid-run into
-  `kOutcomeUnknown` so it does not silently re-run.
+  `kOutcomeUnknown` so it does not silently re-run. Because permission grants
+  are session-memory only, an approved-but-still-pending tool is restored to an
+  approval wait and must resolve/confirm its current scope again.
 
 ## ActionReceipt
 

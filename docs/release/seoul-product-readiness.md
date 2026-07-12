@@ -41,7 +41,7 @@ and browser-test execution, the Chrome build, and a profile launch. None of it
 was faked. The verdict is `SEOUL PRODUCT BUILD INCOMPLETE` and cannot honestly
 be raised; `SEOUL PRODUCT FUNCTIONAL ALPHA` additionally requires the full
 native product spine (typed task snapshots over Mojo, every declared surface
-action handled, the Lit Canvas WebUI, the visual engine, measured local voice,
+action handled, the Lit Canvas WebUI and visual engine, measured local voice,
 the shell differentiators, origin-scoped agent permissions) verified by the
 production browser-test scenario - see sections 13 and 14. A standalone
 prototype cannot earn that verdict, and this report does not claim it.
@@ -92,15 +92,16 @@ verifiable on this host):
   a browser smoke test proves the artifact element, its margin, focus, text
   selection, and scroll position all survive a patch and that a
   representation switch does NOT replace the artifact element. Full-DOM
-  replacement is gone. `npm run test:canvas` (type-check + 22 tests including
+  replacement is gone. `npm run test:canvas` (type-check + 28 tests including
   the headless-browser suite) is now part of `npm run ci`.
 
-Hardening pass (2026-07-03, host-side parse verification against the REAL
+Hardening pass (re-run 2026-07-11 against the REAL
 pinned checkout headers): a new gate, `native/scripts/syntax-check.sh`
 (`npm run check:syntax`, in `npm run ci`), parses every Seoul .cc with clang
 -fsyntax-only against the actual M149 headers in the external checkout,
-stubbing only gn-generated buildflag headers. Result: 126 files parse clean;
-27 files that need gn-generated code are SKIPPED, each with the exact missing
+stubbing only gn-generated buildflag headers. It now enumerates both tracked
+and untracked Seoul sources, including native Views. Result: 150 files parse
+clean; 36 files that need gn-generated code are SKIPPED, each with the exact missing
 generated header named in the output (mojom-forward headers, optimization-
 guide protos, perfetto tracing protos). Skip classification is
 EVIDENCE-BASED - a file is skipped only when the parse itself demonstrates a
@@ -163,11 +164,12 @@ build" confidence and found real defects, all now fixed:
   now report the old id); the descriptor schema advertising a `url` field
   type the native importer rejects (removed); and a shared depth-cap gap on
   structural patch ops (native ApplyOp now bounds depth like parse does,
-  with tests). One finding remains OPEN as a named blocker: the semantic
-  field-id budget (64) exceeds the SAUI key budgets it projects into
-  (40/64-with-prefix) on BOTH compilers; the Lab degrades to an explained
-  error artifact, an invariant test pins the corpus, and bounded key
-  derivation belongs with the native compiler work on the build host.
+  with tests). The final finding in that review is now CLOSED: semantic field
+  ids may use their full 64-character budget while tighter SAUI keys are
+  derived collision-free in both compilers. Safe keys stay unchanged; longer
+  or reserved identifiers receive deterministic schema-local `field_N` keys,
+  composite entries use bounded ordinal paths, and adversarial native/TS tests
+  pin the mapping.
 - Design Lab chart policy brought to parity with the native compiler's
   honesty guards: single-point data and data without complete provenance
   (source, retrieved-at, effective-at) never chart and never appear in the
@@ -252,27 +254,30 @@ Why the verdict is still INCOMPLETE:
   Keychain credential store, page agent, providers, planner, task/surface/
   thread/workflow services, and builtin executors. It is not compiled or
   runtime-verified, so reachability is source evidence only.
-- The Seoul Canvas WebUI (controller, `WebUIConfig`, Mojo `PageHandlerFactory`,
-  page handler, packaged resources) is source-connected and registered at
-  `chrome://seoul-canvas`, and the page handler routes bound turns into the
-  runtime. The remaining integration gap is the actual window-scoped Seoul
-  side-panel entry; tab-loaded Canvas documents intentionally fail closed as
-  unbound.
+- The Seoul Canvas WebUI (top-chrome controller/config, Mojo
+  `PageHandlerFactory`, Lit renderer, page handler, packaged resources) is
+  source-connected and registered at `chrome://seoul-canvas`. The pinned patch
+  registers one window-scoped side-panel entry per regular browser and the
+  Shell launcher opens that exact entry; tab-loaded Canvas documents
+  intentionally fail closed as unbound. None of this path has compiled or run.
 - Provider adapters (local model, cloud model, Apple speech-to-text and
   text-to-speech) are authored with injected transports and are unit-tested
   through deterministic fakes. Concrete loopback/cloud HTTP transport and
   Keychain credential storage source exists, but real endpoint, credential,
   and audio behavior is not runtime-verified.
-- Shell interaction placeholders remain: the Essential live-association resolver
-  and duplicate-open prevention, the explicit split-partner chooser, the
-  searchable command launcher with full dispatch, per-window action/accelerator
-  registration, tab-role decoration, and the collapsed-mode shell. (Workspace
-  create/rename now use a real `ui::DialogModel` text-input dialog instead of a
-  fixed name; `check:product-arch` fails CI on a hardcoded workspace name.)
-- Scene reference validation for themes and site layers is a V1 stub
-  (`MakeSceneResolvers` accepts any non-empty id) because those catalogs are not
-  wired yet; Scenes are not user-reachable, so this path is inert, but it is not
-  real validation and is listed here rather than hidden.
+- Shell source now includes exact current- and cross-window Essential reuse,
+  an explicit split-partner chooser, searchable typed-action dispatch, a
+  window-scoped launcher accelerator, a persistent Task Deck status foothold,
+  and compact-shell presentation. These Views paths remain uncompiled and need
+  native focus, accessibility, geometry, multi-window, and postcondition tests.
+  Tab-role decoration and the remaining shell surfaces are still absent.
+- Scene reference validation now resolves workspaces, Themes, and Site Layers
+  against their authoritative registries; phantom non-empty Theme IDs no longer
+  pass. Scene and catalog metadata are reachable through Studio's read-only
+  index. Scene, Theme, and Site Layer registries round-trip validated, bounded
+  state in the product pref; Scenes restore only after referenced catalogs and
+  skip removed references. Creation/editing, activation, mutation scheduling,
+  and reference application remain unreachable.
 - Nothing was built or run on this host: no GN generation, no `gn check`, no
   compilation, no linking, no browser launch (the build-host gate refuses this
   host).
@@ -281,7 +286,8 @@ Why the verdict is still INCOMPLETE:
 
 - Branch `main`; no commits, no history rewrite, no push, no reset, no
   discarded local changes. The working tree is uncommitted as required.
-- 341 tracked files. Source spans 21 module directories under
+- All tracked and non-ignored untracked files are covered by the repository
+  boundary gate. Source spans 21 module directories under
   `native/seoul/browser/`: `canvas`, `commands`, `connectors`, `context`,
   `data`, `intelligence`, `lifecycle`, `organization`, `projection`, `runtime`,
   `saui`, `scenes`, `semantic`, `shell`, `site_layers`, `tasks`, `themes`,
@@ -326,7 +332,7 @@ None were discarded or rebuilt in another style.
 
 ## 4. Native browser tests (cleared this pass)
 
-Four files, 16 `IN_PROC_BROWSER_TEST_F` cases, zero empty bodies, all grounded
+Four files, 18 `IN_PROC_BROWSER_TEST_F` cases, zero empty bodies, all grounded
 in APIs verified by reading the source and the pinned checkout:
 
 - `shell/shell_browsertest.cc` (3): the profile-scoped services are constructed
@@ -342,11 +348,14 @@ in APIs verified by reading the source and the pinned checkout:
 - `projection/vertical_presentation_browsertest.cc` (2): a real tab-strip change
   publishes a live snapshot that the projection service turns into a controller
   and switcher keyed to the real window; an unknown window is never projected.
-- `product/browser/seoul_runtime_browsertest.cc` (5): the product runtime is
+- `product/browser/seoul_runtime_browsertest.cc` (7): the product runtime is
   wired for a regular profile; available capabilities are executor-backed;
   text goals create tasks through an explicit window binding; two browser
   windows resolve to separate binding tokens; and `chrome://seoul-canvas` is
-  registered as a first-party WebUI config.
+  registered as a first-party WebUI config. Preview opens outside the tab strip
+  and dismisses without residue. A bounded real-page AX snapshot classifies
+  password, payment, and one-time-code fields, refuses model value mutations,
+  and leaves an ordinary field writable.
 
 Wiring: `chrome/test/BUILD.gn` gains the four `*_browser_tests` source_sets in
 the `browser_tests` target's deps via the integration patch. These have NOT been
@@ -366,30 +375,57 @@ layering keeps Chromium-facing code in `_chromium` targets, and
 `check:native-arch` confirms no unscoped process-global singletons or
 namespace-scope mutable globals in production source.
 
+The native page boundary no longer serializes current form-control values into
+model-visible semantic results. `page_field_safety.*` classifies Chromium's
+protected-password state plus standards-defined credential, one-time-code, and
+payment `autocomplete` tokens. Sensitive controls remain focusable/clickable so
+browser-owned autofill can operate, but model-driven type/clear/select actions
+fail before an AX mutation reaches the renderer. The product architecture gate
+prevents value projection or removal of this refusal path.
+
 Gap: source-connected only. No native target has compiled or run, so profile
-startup, shutdown ordering, credential behavior, provider health, and task
-runtime behavior still need capable-host verification.
+startup, shutdown ordering, credential behavior, AX/HTML sensitive-field
+classification, provider health, and task runtime behavior still need
+capable-host verification. Standards-nonconforming payment fields do not leak
+their current values, but native Chromium Autofill field-type integration is a
+future defense-in-depth improvement for action refusal.
 
 ## 6. Seoul Canvas
 
-Authored (`canvas/`): `SeoulCanvasUI` (`MojoWebUIController`),
-`SeoulCanvasUIConfig` (`WebUIConfig`, host `seoul-canvas`), the Mojo
-`PageHandlerFactory`/`PageHandler`/`Page` boundary, the page handler, and
-packaged resources (`canvas.html`, `canvas.ts`, `canvas.css`) served under a
-strict CSP (script-src 'self', no eval, no remote script) that render SAUI with
-safe DOM only.
+Authored (`canvas/`): `SeoulCanvasUI` (`TopChromeWebUIController`),
+`SeoulCanvasUIConfig` (`DefaultTopChromeWebUIConfig`, host `seoul-canvas`), the
+Mojo `PageHandlerFactory`/`PageHandler`/`Page` boundary, the page handler, and
+packaged Chromium Lit resources (`CrLitElement`, checked-in `canvas.html.ts`,
+generated CSS module) served under a strict CSP (script-src 'self', no eval, no
+remote script). Payload values are escaped Lit interpolations; raw HTML and
+imperative DOM rendering sinks are architecture-gated out. Every accepted
+chart and non-input map primitive has a deterministic local SVG renderer with
+the canonical source data retained as an accessible table. Catalog growth
+fails CI until the new visual type is deliberately handled.
 
 The patch adds `//seoul/browser/canvas` to browser deps, registers
-`SeoulCanvasUIConfig`, wires the build_webui resource pack, and adds the
-`kSeoulCanvas` side-panel id. The page handler now obtains its target browser
+`SeoulCanvasUIConfig`, wires the build_webui resource pack, and registers one
+window-scoped `kSeoulCanvas` side-panel entry per regular-profile browser. The
+Shell command launcher opens that exact entry. The page handler obtains its target browser
 from Chromium's WebUI embedding context, creates a runtime window-binding
 token, and routes component events and text turns only after that token resolves
 to the same live browser window.
 
-Gap: the actual Seoul side-panel entry is not registered yet. A direct
-`chrome://seoul-canvas` tab is intentionally `window_unbound`; the product still
-needs a first-party, window-scoped side-panel entry plus capable-host WebUI and
-multi-window tests.
+Canvas also contains a reachable read-only Studio index. A typed Mojo snapshot
+projects the live profile's provider-route flags, Scene, Theme, and Site Layer
+metadata into Lit cards and honest empty states. It deliberately excludes
+credentials, local endpoints, selected model names, raw provider errors, page
+content, and executable markup. This is an inspection surface only: Studio
+editing, Scene activation, Theme management, and applying Site Layers to a live
+page are not implemented.
+
+Gap: none of the top-chrome controller, generated Mojo/Lit resources, entry
+registration, or launcher path has compiled or run in Chromium on this 8 GiB
+host. A direct `chrome://seoul-canvas` tab remains intentionally
+`window_unbound`. The responsive shipping stylesheet was visually checked at
+the default viewport and 420x800 through a temporary local fixture (no overflow
+or console warnings), but this is not a substitute for capable-host WebUI,
+multi-window, accessibility, and production-data visual tests.
 
 ## 7. Provider adapters
 
@@ -435,14 +471,18 @@ local file, browser, information) build capabilities into the graph.
 
 ## 10. Static verification performed this pass (all clean)
 
-- `npm run ci`: green end to end. This chains `tsc --noEmit`, the harness build,
-  extension validation, and 110 harness tests (110 pass, 0 fail), then
+- `npm run ci`: every deterministic/static stage is green. This chains
+  `tsc --noEmit`, the harness build, extension validation, and 110 harness tests
+  (110 pass, 0 fail), then
   `check:scripts` (`bash -n` over all shell scripts), `check:json`,
-  `check:manifest` (patch sha256 consistency), `check:boundary` (341 tracked
-  files, no Chromium source/build/profile/secret/evidence), `check:neutrality`
-  (core domain-neutral), `check:harness-arch`, and `check:native-arch`.
-- clang-format (Chromium style, via the pinned checkout's binary) on all C++
-  authored this pass: clean.
+  `check:manifest` (patch sha256 consistency), `check:boundary` (tracked and
+  non-ignored untracked files, no Chromium source/build/profile/secret/evidence), `check:neutrality`
+  (core domain-neutral), `check:harness-arch`, and `check:native-arch`. The last
+  Puppeteer smoke test is sandbox-blocked; the identical elevated command passes
+  28/28, as recorded below.
+- The pinned checkout has no clang-format binary and none is installed on this
+  host, so a formatter gate was not run. Native parse checks and
+  `git diff --check` are not substitutes; formatting remains a build-host gate.
 - `git diff --check`: clean (a stray single-space blank context line in the
   patch was made a true empty line so the patch stays whitespace-clean and still
   applies).
@@ -487,18 +527,24 @@ native feature development does not continue until Chrome builds and launches.
 1. A capable Apple-silicon build host (>= 16 GiB RAM, >= 150 GiB free fast
    storage, full Xcode) - mandatory to compile, run every Seoul unit-test and
    browser-test executable, build Chrome, and launch a disposable profile.
-   The earlier runtime-service and Canvas-host wiring blockers are CLOSED in
-   source: `SeoulRuntimeServiceFactory` registration, `SeoulCanvasUIConfig`,
-   and the per-window `kSeoulCanvas` side-panel entry are all in the
-   integration patch, and `TaskSurfaceBridge` projects task results to
-   surfaces in production. None of it has compiled or run.
+   Runtime-service registration and the Canvas host are connected in source:
+   the integration patch registers `SeoulRuntimeServiceFactory`, the top-chrome
+   `SeoulCanvasUIConfig`, and one `kSeoulCanvas` `SidePanelEntry` per regular
+   browser window; the Shell launcher opens the entry for its exact bound
+   window. `TaskSurfaceBridge` projects task results to surfaces in production.
+   None of this has compiled or run.
 2. Typed task snapshots over Mojo - SOURCE COMPLETE, awaiting build-host
    compile. `canvas.mojom` now carries `PushTaskSnapshot` plus
-   ListTasks/GetTask/Pause/Resume/Cancel/ApproveStep/ListTaskSurfaces/
-   SaveTaskAsWorkflow; the handler pushes `task_snapshot_wire` JSON on every
-   task observer event (window-filtered), and the WebUI renders a task ribbon
-   with pause/resume/approve/reject controls. `ProvideInput` remains open
-   (TaskService has no input-step seam yet). Mojom/handler cannot be
+   ListTasks/GetTask/Pause/Resume/Cancel/ApproveStep/ProvideTaskInput/
+   ListTaskSurfaces/SaveTaskAsWorkflow; the handler pushes
+   `task_snapshot_wire` JSON on every task observer event (window-filtered),
+   and the WebUI renders pause/resume/approve/reject plus a typed missing-input
+   form. Input is bounded, tied to the exact pending `kUserInput` step, recorded
+   as a receipt, and replanned through the configured reasoning route; it is
+   not discarded or applied to a different step. This pass also fixed
+   TaskService's failure to consume an already-recorded initial approval/input
+   wait, which could otherwise become a false assumption-invalid stop.
+   Mojom/handler cannot be
    parse-verified on this host (mojo codegen); they compile first on the
    build host.
 3. `SurfaceActionKind` completeness - SOURCE COMPLETE at the dispatch layer:
@@ -507,11 +553,18 @@ native feature development does not continue until Chrome builds and launches.
    `SurfaceActionCompletenessTest.EveryDeclaredActionKindHasAnOutcome` proves
    every declared kind resolves to a non-silent outcome. Runtime behavior
    still needs the build host.
-4. The shipping Canvas WebUI in Chromium Lit (`CrLitElement`, checked-in
-   `.html.ts`, `build_webui`) consuming the canonical protocol - the Design
-   Lab's imperative `canvas.ts` must NOT be copied in. Then the full visual
-   engine (every accepted chart type rendered or removed from the accepted
-   set).
+4. Shipping Canvas Lit + visual engine - SOURCE COMPLETE, awaiting build-host
+   compile/runtime proof. The production resource is a `CrLitElement` with a
+   checked-in `.html.ts`, `build_webui` Lit dependency, generated CSS module,
+   and no raw HTML/imperative rendering sinks. A deterministic local SVG engine
+   covers every accepted chart and non-input map component and always exposes
+   its source data as an accessible table. `check:canvas-webui` type-checks the
+   source without a Chromium out directory; `check:product-arch` derives visual
+   coverage from the canonical catalog and locks the canonical `actions` wire
+   field (fixing the old renderer's incorrect `action_ids` lookup). Responsive
+   fixture QA passed at desktop and 420x800 with zero console warnings/errors
+   and no horizontal overflow. Generated-resource compile, actual Mojo data,
+   keyboard/screen-reader QA, and side-panel runtime remain build-host work.
 5. Seoul Voice from measured local components. `apps/voice-lab` exists and
    the first measurement rounds have RUN on the dev M2 (8 GiB) - weaker than
    any target host, so these numbers are upper bounds. Runtime and all model
@@ -542,10 +595,83 @@ native feature development does not continue until Chrome builds and launches.
 6. The shell differentiators, in the ordered list from the product definition
    (Essential associations, split chooser, dynamic launcher, Task Deck,
    Preview, Scenes, Themes, Site Layers, workflow editor, Context Threads,
-   routing, archive, Studio, collapsed shell).
-7. Origin-scoped agent permissions (profile/window/tab/frame scopes,
-   source/destination origins, cross-origin read/write policy, expiration)
-   with prompt-injection and exfiltration tests.
+   routing, archive, Studio, collapsed shell). The dynamic launcher slice is
+   now source-connected as a native searchable bubble: bounded local filtering,
+   Enter-to-run, Down-to-results keyboard traversal, accessible labels and
+   disabled reasons, and typed `ShellUtilityAction` dispatch. The previous
+   static menu's silent self-launcher entry was removed. It still needs native
+   compile plus focus/accessibility runtime tests. Collapsed-shell presentation is also connected in
+   source: workspace icon/initial, vertical Essential controls, compact utility
+   glyphs, and preserved accessible names/tooltips replace text that previously
+   overflowed the narrow rail; runtime geometry and screen-reader proof remain.
+   Essential association is now connected across current and other live
+   profile windows: the live
+   snapshot carries only a bounded title and serialized origin (never path,
+   query, or fragment), the shell matches an Essential's origin, and opening it
+   activates the exact existing tab/window instead of duplicating it.
+   Cross-window browser-test proof remains.
+   Split creation now requires an explicit titled partner through a native
+   keyboard menu. Candidate derivation excludes the active tab and tabs already
+   in a split; the non-UI convenience path succeeds only when exactly one
+   candidate exists and can no longer pick the first of several tabs. Native
+   menu geometry and command postcondition tests remain build-host work.
+   The launcher now has a window-scoped Shift+Cmd/Ctrl+K accelerator registered
+   by the footer view itself. FocusManager ownership makes registration and
+   teardown follow the exact shell window without a process-global command;
+   cross-platform conflict and interactive focus tests remain.
+   Live title/origin refresh is limited to `TabChangeType::kAll`; loading-only,
+   attention-only, and blocked-only churn does not rebuild metadata or publish
+   shell snapshots. Capable-host tracing still has to confirm frame-time and
+   allocation budgets under heavy tab activity.
+   Recovery, reconciliation, and workspace-switch status text is a polite
+   accessibility live region, so state changes are announced without stealing
+   focus. VoiceOver/NVDA behavior still requires runtime evidence.
+   The persistent Task Deck now has a native shell foothold. `TaskService`
+   publishes `planning` immediately before any provider round trip; the profile
+   runtime observes task changes and sends only bounded per-window state counts
+   (total/active/waiting/paused/failed) to `ShellService`. A permanently
+   reachable, accessible Task Deck button shows attention first in compact mode
+   and opens the detailed Canvas deck. Goals, prompts, receipts, and results do
+   not cross into the shell summary. Native observer-lifecycle and visual tests
+   remain build-host work. The bridge consumes `StateSummaries()` rather than
+   full task snapshots, so an update scans at most 500 tiny `{window,state}`
+   records and never copies receipts or semantic payloads into browser chrome.
+   Essential association now searches deterministic live snapshots across the
+   profile after preferring the current window. The controller submits the
+   exact tab/window pair through `CommandExecutor`, then a separately validated
+   `ProfileBrowserCollection` lookup activates that exact normal window—never
+   an active/last-focused fallback. Only origin and bounded title participate;
+   native multi-window postcondition tests remain.
+   Studio's first production surface is also source-connected: Canvas requests
+   a bounded read-only projection of provider-route state, Scenes, Themes, and
+   Site Layers from the exact window-bound runtime. No fixture catalog is used, and
+   secrets, endpoints, raw errors, page data, and model names stay browser-side.
+   Editors, activation/application paths, generated Mojo compile, visual QA,
+   and runtime evidence remain.
+   Preview now has a bounded pure lifecycle rather than only a reserved routing
+   enum: safe HTTP(S) admission, one ephemeral record per exact window/parent,
+   replacement isolation, navigation bounds, lifecycle cleanup, and explicit
+   begin/commit/abort promotion to tab or split. A local M149 source audit
+   confirms `views::WebView` can embed a separately owned WebContents and
+   Chromium can accept that same ownership during promotion. The profile
+   runtime now owns this lifecycle and dismisses it on exact parent-tab/window
+   removal. A Chromium `SeoulPreviewWebView` containment layer blocks popup
+   creation, downloads, script dialogs, and fullscreen escape. The bubble/
+   transfer service, gesture/capability entry point, focus restoration, and
+   visible controls remain unconnected and uncompiled.
+7. Origin-scoped agent permissions - PARTIAL SOURCE COMPLETE, awaiting native
+   build/runtime proof and adversarial browser tests. `AgentPermissionService`
+   grants only exact capability + window + tab + main-frame + source origin +
+   destination origin + connector-service tuples, expires grants (30-minute
+   default, 24-hour hard maximum), and observes live window snapshots to revoke
+   on tab or window removal independently of Canvas bindings. Page observation
+   is first-use-per-origin; a matching grant auto-approves only that exact
+   scope. Irreversible mutations and external side effects are never reusable.
+   Invalid scopes become failed receipts rather than skipped work that could
+   look successful. Pure adversarial tests cover origin/destination/tab/frame
+   mismatch, expiry, high-risk non-reuse, internal-page denial, and revocation;
+   prompt-injection/exfiltration browser tests and real navigation/tab-close
+   lifecycle proof remain.
 8. The production browser-test scenario: open Canvas -> submit goal -> plan ->
    execute a real browser operation -> observe actual state -> verify
    postcondition -> receipt -> automatic surface -> render -> patch the same
@@ -554,13 +680,13 @@ native feature development does not continue until Chrome builds and launches.
 
 ## 14. Continuation checkpoint (exact next action)
 
-State at checkpoint (2026-07-06, post-crash integrity sweep re-verified:
-native parse sweep 126 files clean, header audit 153 includes resolved,
-full `npm run ci` exit 0): every gate this host can run is green -
-`npm run ci` end to end (static gates, harness suite, protocol drift gate,
-protocol conformance tests, Design Lab type-check + 22 tests including the
-headless-browser patch/focus/scroll suite), checkout verification,
-materialization (now mirroring `protocol/`), and the patch round-trip. The
+State at checkpoint (2026-07-11): tracked plus untracked native parse sweep is
+150 files clean with 36 evidence-based generated-code skips. Static gates, 110
+harness tests, protocol drift and 8 conformance tests, shipping Canvas strict
+TypeScript, and 27 non-browser Design Lab tests pass in the sandbox. The one
+Puppeteer smoke test cannot launch Chromium inside the sandbox; the exact
+`npm run test:canvas` command passes 28/28 when run with browser-launch
+permission. The
 canonical protocol is in place on both sides; the native conformance suites
 are authored and wired into GN but have never compiled.
 

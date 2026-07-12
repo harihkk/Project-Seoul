@@ -150,9 +150,13 @@ Seoul-domain concepts, not Chromium concepts):
   archive is backed by TabRestoreService or by a Seoul-owned store is an open
   decision: see the archive command, marked RESEARCH REQUIRED for the chosen
   backing store.
-- Preview / promote-preview: no native "preview tab" class confirmed. Possible
-  native primitives (prerender, unactivated WebContents, hover-card preview) are
-  NOT confirmed as the correct mechanism: RESEARCH REQUIRED.
+- Preview / promote-preview: Chromium has no native "preview tab" class. The
+  selected mechanism is a Seoul-owned, non-strip `WebContents` embedded
+  non-owningly in `views::WebView`; `WebView::SetWebContents` explicitly does
+  not take ownership. Promotion detaches the view and moves the same
+  `unique_ptr<WebContents>` through `chrome::AddWebContents`, then uses
+  `TabStripModel::AddToNewSplit` for split promotion. This mechanism is source-
+  confirmed at the pinned revision but not yet connected, compiled, or run.
 
 ---
 
@@ -494,13 +498,11 @@ exactly what 3.10 consumes.
 
 - Preconditions: a source intent to preview a URL/target without fully
   committing it as a normal tab; preview policy (lifetime, visibility) defined.
-- Chromium API candidate: RESEARCH REQUIRED. There is no confirmed native
-  "preview tab" primitive at this revision. Candidate mechanisms (prerender,
-  an unactivated/background WebContents, or a Seoul-rendered preview surface)
-  are NOT confirmed; do not assume any specific Chromium class. If preview is
-  implemented as a real but background tab, it would route through
-  InsertWebContentsAt (tab_strip_model.h:278) WITHOUT ActivateTabAt, but whether
-  preview should be a real strip tab at all is itself RESEARCH REQUIRED.
+- Chromium API candidate: the Preview host owns a non-strip
+  `content::WebContents`, displays it via non-owning
+  `views::WebView::SetWebContents`, and keeps it out of `TabStripModel` until an
+  explicit promotion. This preserves the source tab and prevents inbound tab
+  observation from misclassifying a Preview as retained.
 - Organization mutation timing: AFTER the Chromium event (if any). A preview is
   recorded as a preview-typed entry only once its creation is reconciled. If
   preview is a non-strip surface, timing is Seoul-internal.
@@ -516,35 +518,36 @@ exactly what 3.10 consumes.
 - Accessibility implications: a preview must be clearly announced as a preview
   (transient, not yet committed) and must not steal focus from the user's
   current tab unless the user explicitly drove the preview.
-- Deferred compile/runtime requirement: blocked on the preview mechanism
-  decision (RESEARCH REQUIRED above). Until the mechanism is chosen this command
-  cannot compile against real Chromium.
+- Deferred compile/runtime requirement: the mechanism is chosen; the host,
+  policy delegate, command entry point, and browser tests remain to be authored,
+  compiled, and run.
 
 ### 3.14 Promote preview
 
 - Preconditions: a live preview entry exists; the user/engine intends to commit
   it to a normal (retained or temporary) tab in a target workspace.
-- Chromium API candidate: contingent on the 3.13 preview mechanism. If preview
-  was a background strip tab, promotion may be only an ActivateTabAt
-  (tab_strip_model.h:367) plus a Seoul type change. If preview was a non-strip
-  surface, promotion creates a real tab via InsertWebContentsAt
-  (tab_strip_model.h:278). RESEARCH REQUIRED until 3.13 is decided.
+- Chromium API candidate: detach the `WebView`, move its separately owned
+  `WebContents` through `chrome::AddWebContents` as a foreground tab, then for
+  split promotion call `TabStripModel::AddToNewSplit` with the parent and newly
+  inserted tab indices. Commit the Preview lifecycle only after both operations
+  succeed; otherwise abort promotion back to ready.
 - Organization mutation timing: AFTER the Chromium event. The preview entry
   flips to a normal tab entry only when the promotion (activation or insertion)
   is reconciled, so the engine never shows a committed tab that does not exist.
 - Rollback: if promotion fails, leave the preview as a preview (do not destroy
   it); the user can retry. Do not half-promote.
-- Observer feedback handling: register an expectation tagged "promote" keyed by
-  the tab handle. The inbound bridge reconciles by converting the existing
-  preview record into a normal tab record, NOT by applying a new insert/activate
-  as if the user opened a fresh tab. This conversion-not-duplication is the key
-  loop-avoidance point for promotion.
+- Observer feedback handling: `LifecycleCoordinator::ExpectTabInsertion`
+  records one exact window+tab retained role before insertion. A matching event
+  creates that retained membership; a mismatched window consumes the expectation
+  and uses the safe temporary default. Expectations are bounded, cancellable,
+  and cleared on reconciliation, queue overflow, shutdown, or window removal.
 - Failure behavior: if the preview is gone, fail with "preview expired". If the
   destination workspace is gone, retarget or report.
 - Accessibility implications: announce that the preview is now a committed tab
   and, if it was activated, that focus moved into it.
-- Deferred compile/runtime requirement: blocked on the 3.13 mechanism decision;
-  preview and promote ship together.
+- Deferred compile/runtime requirement: the mechanism and lifecycle handshake
+  are chosen; the bubble/transfer service and browser tests remain. Preview and
+  promote still ship together.
 
 ---
 
@@ -566,7 +569,7 @@ exactly what 3.10 consumes.
   REQUIRED.
 - Archive backing store: native TabRestoreService vs Seoul-owned store; required
   by 3.8 and 3.10. RESEARCH REQUIRED.
-- Preview mechanism: required by 3.13 and 3.14. RESEARCH REQUIRED.
+- Preview mechanism: source-confirmed; Chromium host/policy/runtime tests remain.
 - Profile plumbing: a Profile handle must reach the command layer for 3.2.
 
 End of contract. Reminder: none of the above is implemented. The current

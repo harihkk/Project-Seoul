@@ -1,6 +1,9 @@
 # Seoul Theme System Specification
 
-Status: Source complete; not compiled or runtime-verified on the authoring host.
+Status: Validation, the bounded profile runtime registry, and durable
+round-tripping are source complete; Theme metadata is visible in Studio's
+read-only index. Creation, editing, mutation scheduling, application,
+compilation, and runtime verification remain.
 
 A Seoul theme is a bounded set of design tokens plus accessibility preferences.
 This spec describes the source in `native/seoul/browser/themes/`. Contrast is

@@ -33,7 +33,7 @@ table of phrases mapped to canned behaviors; goals enter one general operator
 (`native/seoul/browser/tasks/`, `tools/`) that plans over currently available
 permitted tools.
 
-## The four persistent surfaces
+## The five persistent surfaces
 
 - Seoul Shell: the native Chromium Views browser interface (context header,
   Scene and workspace navigation, Essentials, projected tab views, role
@@ -46,6 +46,11 @@ permitted tools.
 - Task Deck: the always-visible list and detail of active, paused, monitoring,
   completed, and failed tasks and workflows, with receipts. Model in
   `native/seoul/browser/tasks/task_deck_model.*`.
+- Library: the searchable home for browser-owned archives/downloads plus Seoul
+  Boards, captures, adaptive surfaces, workflows, and refreshable Live
+  Collections. Its durable provider-neutral core is in
+  `native/seoul/browser/library/`; see
+  `seoul-library-boards-live-collections-spec.md`.
 - Studio: the product area for Themes, Site Layers, Scenes, routing, workflow
   editing, local model management, providers, and connected tools. Backed by
   `themes/`, `site_layers/`, `scenes/`, `workflows/`, `intelligence/`,
@@ -57,6 +62,9 @@ permitted tools.
 | --- | --- | --- |
 | Adaptive visual UI (SAUI) | `native/seoul/browser/saui/` | seoul-adaptive-ui-spec.md |
 | Canvas | `saui/` + `voice/` | seoul-canvas-spec.md |
+| Library, Boards, Live Collections | `native/seoul/browser/library/` | seoul-library-boards-live-collections-spec.md |
+| Studio | `canvas/` + profile runtime registries | seoul-studio-spec.md |
+| Preview lifecycle | `native/seoul/browser/preview/` | seoul-organization-v0.md + seoul-shell-interaction-contract.md |
 | Voice operating layer | `native/seoul/browser/voice/` | seoul-voice-spec.md |
 | Tool registry + operator | `tools/`, `tasks/` | seoul-task-deck-spec.md |
 | Workflows | `native/seoul/browser/workflows/` | seoul-workflow-spec.md |
@@ -85,7 +93,11 @@ permitted tools.
   (`tasks/task_execution.*`).
 - User-owned, minimized context. Forbidden content classes (passwords, cookies,
   tokens, raw audio, full history) are unrepresentable in a Context Thread, and
-  cloud scope is minimized before sending (`context/context_thread.*`).
+  cloud scope is minimized before sending (`context/context_thread.*`). Native
+  page observations omit all current form-control values; protected-password
+  state and standards-defined credential/payment autofill tokens also block
+  model value mutations before they reach the renderer
+  (`product/page_field_safety.*`, `product/browser/page_agent.*`).
 - No hidden automation. Every background workflow and monitor is visible in the
   Task Deck (`tasks/task_deck_model.*`, `workflows/workflow_types.h`).
 - Voice is not always-on; there is no raw-audio persistence by construction
@@ -94,10 +106,12 @@ permitted tools.
 ## What exists today vs what remains
 
 Source complete and unit-tested at the source level: the twelve subsystems
-above, plus the previously landed organization, projection, command, and shell
-layers. Not done: compilation, linking, test execution, the first-party Canvas
-WebUI, native Views for the launcher/dialogs/chooser, real STT/TTS and local
-model runtime adapters, and cloud provider adapters. The single reversible
+above, plus the previously landed organization, projection, command, shell,
+and first-party Lit Canvas layers, including Studio's source-connected
+read-only runtime index. Not done: native compilation, linking and
+test execution, native Views for the remaining dialogs/chooser, real STT/TTS and local
+model runtime adapters, cloud provider adapters, and Studio editing/activation
+paths. The single reversible
 Chromium integration patch wires the native services into the browser and
 applies and reverses cleanly against the pinned checkout. See the readiness
 report for the exact per-feature status and the verdict.

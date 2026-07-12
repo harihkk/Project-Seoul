@@ -1,6 +1,9 @@
 # Seoul Site Layers Specification
 
-Status: Source complete; not compiled or runtime-verified on the authoring host.
+Status: Compiler/registry source complete with durable validated round-tripping
+and visible in Studio's read-only index; editing, mutation scheduling, and
+live-page application are not user-reachable, compiled, or runtime-verified on
+the authoring host.
 
 A Site Layer is a declarative, per-site visual customization that compiles to
 safe scoped CSS and never carries or generates JavaScript. This spec describes

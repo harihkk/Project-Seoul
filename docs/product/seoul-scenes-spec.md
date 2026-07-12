@@ -1,6 +1,9 @@
 # Seoul Scenes Specification
 
-Status: Source complete; not compiled or runtime-verified on the authoring host.
+Status: Registry and bounded durable round-tripping are source complete and
+visible in Studio's read-only index; creation, editing, mutation scheduling,
+and activation are not user-reachable, compiled, or runtime-verified on the
+authoring host.
 
 A Scene is a reusable browsing environment composed entirely of id-references
 into other subsystems. This spec describes the source in
@@ -29,7 +32,8 @@ order.
 Every field that points at another subsystem is a string id or a list of string
 ids; no theme tokens, no CSS, no workspace contents are stored in the Scene.
 Bounds include `kMaxScenes` (100), `kMaxSceneSiteLayers` (64),
-`kMaxSceneWorkflowShortcuts` (32), and `kMaxSceneContextTools` (64).
+`kMaxSceneRoutingRules` (64), `kMaxSceneWorkflowShortcuts` (32),
+`kMaxSceneContextTools` (64), and a 128-byte bound on every external reference.
 
 ## Validation against resolver callbacks
 
@@ -43,6 +47,15 @@ the schema version; a slug-form id and a bounded non-empty name; a non-empty
 or site layer with the corresponding `SceneError`. Because existence is checked
 through callbacks, the registry validates references without inlining their
 state. `Upsert` validates before storing and enforces `kMaxScenes`.
+
+## Durable recovery
+
+`TakePersistedState` serializes every Scene field into a versioned bounded
+document. `RestorePersistedState` parses into a temporary registry, rejects
+oversized or malformed lists, skips invalid individual entries, and replaces
+live state only for a recognized schema. The product runtime restores Themes
+and Site Layers first, then Scenes, so a Scene whose referenced catalog item was
+removed is rejected during recovery rather than retained as a latent failure.
 
 ## Deterministic ordered activation plan
 

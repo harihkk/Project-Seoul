@@ -127,8 +127,9 @@ Vertical-tab mode required for V0 projection visibility. Horizontal strip does n
 ## Open a preview
 - Trigger: preview gesture on a link.
 - Visible: an ephemeral overlay shows the destination; underlying tab unchanged.
-- Model: preview state (reserved `kPreview` disposition; full PreviewRecord is the
-  next addition).
+- Model: `PreviewManager::Open` creates one bounded ephemeral record for the
+  exact live window and parent tab; a second open replaces only that window's
+  non-promoting Preview.
 - Persistence: none (previews are ephemeral, do not persist across restart).
 - Focus: focus enters the preview; dismissal returns focus to the parent tab.
 - Accessibility: preview is a modal-like region with a clear escape.
@@ -138,7 +139,9 @@ Vertical-tab mode required for V0 projection visibility. Horizontal strip does n
 ## Promote a preview
 - Trigger: explicit promote action (to tab or to split).
 - Visible: the preview becomes a real tab, or joins a split pane.
-- Model: create a `TabMembership` (retained) or `CreateSplitGroup`.
+- Model: `BeginPromotion(kTab|kSplit)` locks the lifecycle; only a successful
+  Chromium transfer may call `CommitPromotion`, while failure calls
+  `AbortPromotion` and leaves the Preview ready.
 - Persistence: the new membership/split persists; the preview identity ends.
 - Focus: focus the promoted tab/pane.
 - Accessibility: announce "Preview opened as tab".

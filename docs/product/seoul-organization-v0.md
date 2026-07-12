@@ -111,15 +111,26 @@ split id), `created_at`.
 - Multi-pane: only `kMaxSplitPanesV0` changes later; no four-pane assumption is
   hardcoded.
 
-## 8. Preview (state model only; no UI this milestone)
+## 8. Preview (source-connected; native compile/runtime evidence pending)
 
-Seoul's future Peek/Glance equivalent. v0 defines the STATE contract (the model
-reserves the `kPreview` routing disposition; a full PreviewRecord is a near-term
-addition). A preview has: ephemeral identity, a parent tab, a destination,
-promotion-to-tab and promotion-to-split paths, dismissal, and defined history /
-permission / download / popup / navigation / crash behavior. A preview must NEVER
-silently become an ordinary retained tab: promotion is always explicit. Whether
-previews persist across restart: they do NOT in v0 (ephemeral).
+Seoul's Peek/Glance equivalent. The organization model reserves the `kPreview`
+routing disposition, while `native/seoul/browser/preview/` owns the bounded
+ephemeral lifecycle and the source-connected Chromium host. A preview has an
+ephemeral identity, exact parent tab and window, destination, loading/error
+state, explicit promotion-to-tab and promotion-to-split paths, dismissal, and
+defined permission/download/popup/navigation/crash behavior. `PreviewHostService`
+owns a separately created non-tab `WebContents` in a native bubble; the typed
+`browser.preview.open` capability reaches it through exact window, tab,
+main-frame, source-origin, and destination-origin permission scope. Promotion
+is two-phase (`BeginPromotion`, same-`WebContents` Chromium transfer, then
+`CommitPromotion` or `AbortPromotion`) and the lifecycle bridge classifies the
+inserted tab as retained through an exact bounded handshake. A preview must
+NEVER silently become an ordinary retained tab, and previews do NOT persist
+across restart. The pinned integration patch adds a localized, DLP-gated
+**Preview link** command to Chromium's existing link context menu and passes
+the exact source `WebContents` into the same host. A faster modifier/hover
+gesture beyond that menu and capable-host compile/runtime evidence remain
+outstanding; this source state is not claimed as compiled or shipped.
 
 ## 9. Window projection
 

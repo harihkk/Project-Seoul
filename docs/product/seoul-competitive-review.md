@@ -1,6 +1,7 @@
 # Seoul competitive review
 
-Research date: 2026-07-01. This document separates four things and never blends
+Research date: 2026-07-11 (Arc, Zen, and VoiceOS primary sources rechecked).
+This document separates four things and never blends
 them: (a) documented competitor capability, (b) capability the reviewer could
 personally confirm from an official source, (c) uncertainty, and (d) Seoul's
 own implemented behavior with its evidence. It makes no claim that Seoul is
@@ -27,7 +28,9 @@ taken as verified.
 
 Seoul rows describe source that exists in this repository at the milestone.
 "Source complete" means the logic is authored and unit-tested at the source
-level; it does NOT mean compiled or runtime-verified (see
+level; it does NOT mean compiled or runtime-verified. "State contract only"
+means no reachable UI exists yet and must not be treated as an implemented
+feature (see
 `docs/release/seoul-product-readiness.md` for the exact per-feature status and
 the overall verdict). No Seoul row below should be read as a shipped,
 measured, or user-visible capability yet.
@@ -71,6 +74,11 @@ measured, or user-visible capability yet.
   defaults; Split View up to four tabs; Glance link preview; Compact Mode;
   Mods registry and CSS live editing. [OFFICIAL: github releases + docs] No AI,
   voice, or agentic features documented.
+- The 2026-07-11 docs recheck confirms the interaction details Seoul should
+  test rather than imitate visually: Compact Mode reveals hidden chrome at the
+  relevant edge; Glance can close, promote to a tab, or become a split; Split
+  View supports horizontal, vertical, and grid arrangements; and Workspaces can
+  carry default container identities. [OFFICIAL: docs.zen-browser.app]
 
 ### Vivaldi
 - Workspaces, tab stacking, tab tiling (split), Quick Commands palette, Command
@@ -118,11 +126,18 @@ measured, or user-visible capability yet.
 ### VoiceOS (WakoAI)
 - OS-level voice assistant app for macOS (and Windows; mobile waitlist), NOT a
   browser. Dictation with per-app formatting; Agent Mode does multi-step
-  voice-to-action across 20+ integrated apps; draft-action confirmation cards
-  before execution; free tier plus paid tiers; "audio never stored unless you
-  choose to share." [OFFICIAL: voiceos.com] Browser-native execution,
+  voice-to-action across named connected services; draft-action confirmation
+  cards expose the destination and content before execution, with explicit
+  send/edit/cancel choices and click or voice confirmation; free tier plus paid
+  tiers; "audio never stored unless you choose to share." [OFFICIAL:
+  voiceos.com and voiceos.com/blog/send-emails-and-slack-messages-by-voice]
+  Browser-native execution,
   plan-step transparency beyond the confirm card, local/cloud split, BYOK, MCP:
   UNCERTAIN. Distinct from the unrelated open-source Open Voice OS project.
+- VoiceOS publishes 300-350 ms transcription latency and 97-98%+ recognition
+  figures. These are vendor marketing claims, not independently reproduced
+  measurements, and therefore are acceptance-input hypotheses only. [OFFICIAL
+  VENDOR CLAIM: voiceos.com/blog]
 
 ### Other 2025-2026 agentic browsers
 - A macOS assistant browser launched in 2025: in-page sidebar; agent mode
@@ -160,9 +175,9 @@ negative is impossible, so this is not the same as "absent"); "source complete
 | Workspaces / spaces | Spaces | profiles | n/a | Workspaces | Workspaces | workspaces | Workspaces v2 | tab groups | source complete (existing) |
 | Themes | per-Space | profiles | n/a | Mods | themes | themes | no | no | source complete (unbuilt) |
 | Per-site customization (CSS) | Boosts | not doc | not doc | Mods CSS | UI theming | not doc | no | no | source complete (Site Layers, unbuilt) |
-| Link preview | Peek | not doc | n/a | Glance | n/a | n/a | n/a | n/a | source complete (existing) |
+| Link preview | Peek | not doc | n/a | Glance | n/a | n/a | n/a | n/a | lifecycle source only (no WebContents host/UI) |
 | Split view | yes | yes | n/a | up to 4 | tiling | up to 4 | n/a | n/a | source complete (existing, 2-pane) |
-| Command palette / launcher | Command Bar | not doc | n/a | not doc | Quick Cmds | n/a | n/a | omnibox | partial (catalog; searchable launcher unbuilt) |
+| Command palette / launcher | Command Bar | not doc | n/a | not doc | Quick Cmds | n/a | n/a | omnibox | source connected (searchable launcher, unbuilt) |
 | Local models | no | not doc | no | no | no | not doc | not doc | Gemini Nano | source complete (interface; runtime unbuilt) |
 | Cloud model choice / BYOK | no | not doc | tiers | no | no | subscription | not doc | no | source complete (interface; unbuilt) |
 | Cost visibility per task | no | no | no | no | no | no | no | no | source complete (receipts, unbuilt) |
@@ -215,3 +230,40 @@ Do not state that Seoul is first or best on any of the above until these exist:
 - End-to-end fixture outcomes per `docs/quality/seoul-end-to-end-tests.md`.
 - Direct, current re-verification of each competitor claim at comparison time,
   since these products change monthly.
+
+## 6. Interaction decisions from the 2026-07-11 recheck
+
+These are Seoul product decisions derived from the verified behavior, not a
+request to copy competitor styling:
+
+1. **Preserve context.** A preview must close back to the exact prior context,
+   promote to a durable tab, or become a split without navigation reconstruction.
+   Arc Peek and Zen Glance both make those three exits understandable.
+2. **Reveal chrome by intent.** Focus mode hides chrome, but the relevant edge,
+   keyboard command, and current task state keep it recoverable. Hidden controls
+   may never become hover-only for keyboard or assistive-technology users.
+3. **Make project context durable.** A workspace owns its visual identity,
+   pinned/essential set, routing, and optional account isolation. Switching it
+   must feel like returning to a room, not filtering one global tab list.
+4. **Voice is an action loop, not a microphone icon.** The minimum loop is
+   press/listen -> understood intent -> visible draft/plan -> confirm/edit/cancel
+   -> execution -> verified receipt, with interruption available throughout.
+5. **Latency claims need percentile budgets.** Seoul will not adopt a vendor's
+   single marketing number. It needs measured p50/p95 first-partial, final
+   transcript, plan-visible, first-surface, and action-confirmed latency on the
+   8 GiB floor device and the target build host.
+6. **No domain router in UI or storage.** New information sources register typed
+   capabilities and semantic result roles. Library, Canvas, and voice never gain
+   enum cases or keyword branches for a business domain.
+
+Primary pages rechecked:
+
+- https://resources.arc.net/hc/en-us/articles/19228064149143-Spaces-Distinct-Browsing-Areas
+- https://resources.arc.net/hc/en-us/articles/19335302900887-Peek-Preview-Sites-From-Pinned-Tabs
+- https://resources.arc.net/hc/en-us/articles/19335393146775-Split-View-View-Multiple-Tabs-at-Once
+- https://docs.zen-browser.app/user-manual/compact-mode
+- https://docs.zen-browser.app/user-manual/glance
+- https://docs.zen-browser.app/user-manual/split-view
+- https://docs.zen-browser.app/user-manual/workspaces
+- https://www.voiceos.com/
+- https://www.voiceos.com/blog/send-emails-and-slack-messages-by-voice

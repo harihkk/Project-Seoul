@@ -13,7 +13,8 @@ The repository contains:
 
 1. The **tracked Seoul-owned native product source** (`native/seoul/browser/`):
    organization, projection, command, and shell layers, plus the product
-   subsystems - adaptive visual UI (`saui/`), voice (`voice/`), the tool
+   subsystems - adaptive visual UI (`saui/`), Library/Boards/Live Collections
+   (`library/`), exact-scope agent permissions (`policy/`), voice (`voice/`), the tool
    registry and general operator (`tools/`, `tasks/`), workflows (`workflows/`),
    Scenes (`scenes/`), themes (`themes/`), Site Layers (`site_layers/`), Context
    Threads (`context/`), hybrid intelligence (`intelligence/`), grounded data
