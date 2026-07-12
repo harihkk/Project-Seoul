@@ -4,39 +4,41 @@
 // Views side panel and binds the Mojo PageHandlerFactory. The data source is
 // packaged, in-process resources with a strict CSP: no remote scripts, no
 // eval, script-src 'self' only. This is Chromium-facing glue; it compiles only
-// on a capable host. The WebUIConfig is registered by the integration patch,
-// and a per-window SidePanelEntry (id kSeoulCanvas) shows it.
+// on a capable host. The integration patch registers the WebUIConfig and one
+// kSeoulCanvas SidePanelEntry per regular browser window; the native Shell
+// command launcher opens that exact window-bound entry.
 
 #ifndef SEOUL_BROWSER_CANVAS_SEOUL_CANVAS_UI_H_
 #define SEOUL_BROWSER_CANVAS_SEOUL_CANVAS_UI_H_
 
 #include <memory>
+#include <string_view>
 
+#include "chrome/browser/ui/webui/top_chrome/top_chrome_web_ui_controller.h"
+#include "chrome/browser/ui/webui/top_chrome/top_chrome_webui_config.h"
 #include "content/public/browser/web_ui_controller.h"
-#include "content/public/browser/webui_config.h"
 #include "mojo/public/cpp/bindings/pending_receiver.h"
 #include "seoul/browser/canvas/canvas.mojom.h"
-#include "ui/webui/mojo_web_ui_controller.h"
 
 namespace seoul {
 
 class SeoulCanvasPageHandler;
+class SeoulCanvasUI;
 
 inline constexpr char kSeoulCanvasHost[] = "seoul-canvas";
 
 // WebUIConfig so the WebUI system can construct the controller for the host.
-class SeoulCanvasUIConfig : public content::WebUIConfig {
+class SeoulCanvasUIConfig
+    : public DefaultTopChromeWebUIConfig<SeoulCanvasUI> {
  public:
   SeoulCanvasUIConfig();
   ~SeoulCanvasUIConfig() override;
 
-  std::unique_ptr<content::WebUIController> CreateWebUIController(
-      content::WebUI* web_ui,
-      const GURL& url) override;
+  // DefaultTopChromeWebUIConfig:
   bool IsWebUIEnabled(content::BrowserContext* browser_context) override;
 };
 
-class SeoulCanvasUI : public ui::MojoWebUIController,
+class SeoulCanvasUI : public TopChromeWebUIController,
                       public canvas::mojom::PageHandlerFactory {
  public:
   explicit SeoulCanvasUI(content::WebUI* web_ui);
@@ -52,6 +54,8 @@ class SeoulCanvasUI : public ui::MojoWebUIController,
   void CreatePageHandler(
       mojo::PendingRemote<canvas::mojom::Page> page,
       mojo::PendingReceiver<canvas::mojom::PageHandler> handler) override;
+
+  static constexpr std::string_view GetWebUIName() { return "SeoulCanvas"; }
 
  private:
   std::unique_ptr<SeoulCanvasPageHandler> page_handler_;

@@ -47,14 +47,9 @@ void SetUpDataSource(content::WebUIDataSource* source) {
 }  // namespace
 
 SeoulCanvasUIConfig::SeoulCanvasUIConfig()
-    : content::WebUIConfig(content::kChromeUIScheme, kSeoulCanvasHost) {}
+    : DefaultTopChromeWebUIConfig(content::kChromeUIScheme,
+                                  kSeoulCanvasHost) {}
 SeoulCanvasUIConfig::~SeoulCanvasUIConfig() = default;
-
-std::unique_ptr<content::WebUIController>
-SeoulCanvasUIConfig::CreateWebUIController(content::WebUI* web_ui,
-                                           const GURL& url) {
-  return std::make_unique<SeoulCanvasUI>(web_ui);
-}
 
 bool SeoulCanvasUIConfig::IsWebUIEnabled(
     content::BrowserContext* browser_context) {
@@ -64,7 +59,7 @@ bool SeoulCanvasUIConfig::IsWebUIEnabled(
 }
 
 SeoulCanvasUI::SeoulCanvasUI(content::WebUI* web_ui)
-    : ui::MojoWebUIController(web_ui) {
+    : TopChromeWebUIController(web_ui) {
   content::WebUIDataSource* source = content::WebUIDataSource::CreateAndAdd(
       web_ui->GetWebContents()->GetBrowserContext(), kSeoulCanvasHost);
   SetUpDataSource(source);
