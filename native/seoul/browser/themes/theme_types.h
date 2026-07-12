@@ -16,6 +16,7 @@
 namespace seoul {
 
 inline constexpr int kThemeSchemaVersion = 1;
+inline constexpr size_t kMaxThemes = 128;
 inline constexpr size_t kMaxThemeNameLength = 120;
 inline constexpr size_t kMaxCustomTokens = 64;
 inline constexpr size_t kMaxTokenNameLength = 64;
@@ -96,6 +97,8 @@ enum class ThemeError {
   kContrastTooLow,
   kUnsupportedSchema,
   kInvalidTypography,
+  kUnknownTheme,
+  kLimitExceeded,
 };
 
 const char* ThemeErrorToString(ThemeError error);

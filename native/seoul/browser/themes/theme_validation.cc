@@ -310,6 +310,10 @@ const char* ThemeErrorToString(ThemeError error) {
       return "unsupported_schema";
     case ThemeError::kInvalidTypography:
       return "invalid_typography";
+    case ThemeError::kUnknownTheme:
+      return "unknown_theme";
+    case ThemeError::kLimitExceeded:
+      return "limit_exceeded";
   }
   return "invalid_token";
 }

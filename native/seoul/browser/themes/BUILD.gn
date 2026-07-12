@@ -6,6 +6,8 @@ import("//testing/test.gni")
 
 source_set("themes_core") {
   sources = [
+    "theme_registry.cc",
+    "theme_registry.h",
     "theme_types.h",
     "theme_validation.cc",
     "theme_validation.h",
@@ -16,7 +18,10 @@ source_set("themes_core") {
 
 test("seoul_themes_unittests") {
   testonly = true
-  sources = [ "theme_validation_unittest.cc" ]
+  sources = [
+    "theme_registry_unittest.cc",
+    "theme_validation_unittest.cc",
+  ]
   deps = [
     ":themes_core",
     "//base",
