@@ -21,24 +21,30 @@
   "patches": [
     {
       "id": "seoul-native-core",
-      "description": "Wire Seoul organization, lifecycle, command, projection, shell, product-runtime, and canvas targets into //chrome/browser (deps + allow_circular_includes_from); register SeoulOrganizationServiceFactory and SeoulRuntimeServiceFactory once at profile-service init; register Seoul projection and shell against VerticalTabStripRegionView only AFTER RootTabCollectionNode::Init() and unregister them at the start of ResetTabStrip; expose a production GetSeoulRootNode() accessor (no testing-only accessor in production); forward collapse-state changes to the shell; register the SeoulCanvasUIConfig (chrome://seoul-canvas) in the WebUI config map and package its resources (resource_ids.spec range plus chrome/browser/resources pack dep); add the kSeoulCanvas side-panel entry id; and wire the Seoul in-process browser-test source_sets (commands, projection, shell) into the //chrome/test:browser_tests target so they build and run under the standard browser_tests binary.",
-      "rationale": "Chromium-facing Seoul glue includes //chrome/browser headers and must use the browser_public_dependencies circular-implementation pattern. A single patch avoids duplicate lifecycle linkage (organization already depends on lifecycle transitively) and keeps factory registration in one place.",
+      "description": "Wire Seoul organization, lifecycle, command, projection, shell, product-runtime, and canvas targets into //chrome/browser (deps + allow_circular_includes_from); register SeoulOrganizationServiceFactory and SeoulRuntimeServiceFactory once at profile-service init; register Seoul projection and shell against VerticalTabStripRegionView only AFTER RootTabCollectionNode::Init() and unregister them at the start of ResetTabStrip; expose a production GetSeoulRootNode() accessor (no testing-only accessor in production); forward collapse-state changes to the shell; register the SeoulCanvasUIConfig (chrome://seoul-canvas), package its resources, register one regular-profile kSeoulCanvas side-panel entry per window, and pass the browser binding to the Shell so its launcher opens that exact entry; add a localized, DLP-gated Preview Link command to the regular-profile link context menu and route its exact source WebContents to PreviewHostService; and wire the Seoul in-process browser-test source_sets into //chrome/test:browser_tests.",
+      "rationale": "Chromium-facing Seoul glue includes //chrome/browser headers and must use the browser_public_dependencies circular-implementation pattern. A single patch avoids duplicate lifecycle linkage (organization already depends on lifecycle transitively), keeps factory registration in one place, and adds Preview at Chromium's existing typed link-command seam instead of intercepting or guessing page gestures.",
       "baseRevision": "6a7b3dbec3b2ca25877c2553b5473b2f277ef644",
       "order": 1,
       "file": "0001-seoul-native-core.patch",
       "affectedPaths": [
+        "chrome/app/chrome_command_ids.h",
+        "chrome/app/generated_resources.grd",
         "chrome/browser/BUILD.gn",
         "chrome/browser/profiles/chrome_browser_main_extra_parts_profiles.cc",
         "chrome/browser/resources/BUILD.gn",
+        "chrome/browser/renderer_context_menu/render_view_context_menu.cc",
         "chrome/browser/ui/side_panel/side_panel_entry_id.h",
         "chrome/browser/ui/views/frame/vertical_tab_strip_region_view.cc",
         "chrome/browser/ui/views/frame/vertical_tab_strip_region_view.h",
+        "chrome/browser/ui/views/side_panel/BUILD.gn",
+        "chrome/browser/ui/views/side_panel/side_panel_helper.cc",
         "chrome/browser/ui/webui/chrome_web_ui_configs.cc",
         "chrome/test/BUILD.gn",
-        "tools/gritsettings/resource_ids.spec"
+        "tools/gritsettings/resource_ids.spec",
+        "tools/metrics/histograms/metadata/ui/enums.xml"
       ],
       "dependencies": [],
-      "sha256": "f7f804a487127fc40e419f3e62f76051c7da1148b42de0218d69794647abef48",
+      "sha256": "c2b500e3d15bdad5d798f7cb6b5f452b14ae337330c31bbac3e50d9cdab20811",
       "applyVerify": "materialize.sh apply; git -C $SEOUL_CHROMIUM_ROOT/src apply --check native/patches/chromium/0001-seoul-native-core.patch",
       "reverseVerify": "git -C $SEOUL_CHROMIUM_ROOT/src apply -R native/patches/chromium/0001-seoul-native-core.patch",
       "reviewable": true
