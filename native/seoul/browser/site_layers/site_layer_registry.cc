@@ -12,6 +12,8 @@ namespace seoul {
 
 namespace {
 
+constexpr int kSiteLayerRegistrySchemaVersion = 1;
+
 struct OriginPatternParts {
   bool wildcard = false;
   std::string host;
@@ -95,6 +97,39 @@ std::vector<const SiteLayer*> SiteLayerRegistry::List() const {
     result.push_back(&layer);
   }
   return result;
+}
+
+base::DictValue SiteLayerRegistry::TakePersistedState() const {
+  base::DictValue state;
+  state.Set("schema_version", kSiteLayerRegistrySchemaVersion);
+  base::ListValue layers;
+  for (const auto& [id, layer] : layers_) {
+    layers.Append(SiteLayerToValue(layer));
+  }
+  state.Set("site_layers", std::move(layers));
+  return state;
+}
+
+void SiteLayerRegistry::RestorePersistedState(const base::DictValue& state) {
+  if (state.FindInt("schema_version").value_or(0) !=
+      kSiteLayerRegistrySchemaVersion) {
+    return;
+  }
+  const base::ListValue* layers = state.FindList("site_layers");
+  if (!layers) {
+    return;
+  }
+  SiteLayerRegistry restored;
+  for (const base::Value& entry : *layers) {
+    if (restored.size() >= kMaxSiteLayers) {
+      break;
+    }
+    SiteLayerResult<SiteLayer> layer = SiteLayerFromValue(entry);
+    if (layer.has_value()) {
+      restored.Upsert(std::move(layer.value()));
+    }
+  }
+  layers_ = std::move(restored.layers_);
 }
 
 SiteLayerResult<std::string> SiteLayerRegistry::CompileForOrigin(

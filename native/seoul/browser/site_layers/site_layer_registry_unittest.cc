@@ -102,4 +102,26 @@ TEST(SiteLayerRegistryTest, InvalidPageOriginFailsClosed) {
             SiteLayerError::kInvalidOrigin);
 }
 
+TEST(SiteLayerRegistryTest, PersistenceRoundTripsAndSkipsInvalidEntries) {
+  SiteLayerRegistry registry;
+  ASSERT_TRUE(registry.Upsert(Layer("docs-clean", "*.example.com"))
+                  .has_value());
+  base::DictValue state = registry.TakePersistedState();
+  base::ListValue* layers = state.FindList("site_layers");
+  ASSERT_NE(layers, nullptr);
+  layers->Append(base::DictValue().Set("schema_version", 1));
+
+  SiteLayerRegistry restored;
+  restored.RestorePersistedState(state);
+  ASSERT_EQ(restored.size(), 1u);
+  ASSERT_NE(restored.Find("docs-clean"), nullptr);
+  EXPECT_EQ(restored.Find("docs-clean")->origin_pattern, "*.example.com");
+
+  base::DictValue wrong_schema;
+  wrong_schema.Set("schema_version", 99);
+  wrong_schema.Set("site_layers", base::ListValue());
+  restored.RestorePersistedState(wrong_schema);
+  EXPECT_EQ(restored.size(), 1u);
+}
+
 }  // namespace seoul

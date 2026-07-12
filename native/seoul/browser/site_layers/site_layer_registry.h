@@ -11,6 +11,7 @@
 #include <string>
 #include <vector>
 
+#include "base/values.h"
 #include "seoul/browser/site_layers/site_layer_compiler.h"
 
 namespace seoul {
@@ -28,6 +29,9 @@ class SiteLayerRegistry {
   bool Exists(const std::string& layer_id) const;
   std::vector<const SiteLayer*> List() const;  // id-ordered
   size_t size() const { return layers_.size(); }
+
+  base::DictValue TakePersistedState() const;
+  void RestorePersistedState(const base::DictValue& state);
 
   // Compiles all enabled layers matching `origin` and either no Scene scope or
   // exactly `scene_id`. `origin` is the page origin, e.g. "https://example.com".
