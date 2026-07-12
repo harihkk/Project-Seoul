@@ -1,0 +1,60 @@
+# Project Seoul Preview lifecycle.
+# Pure ephemeral state; the Chromium WebContents/Views host is a separate
+# source-connected layer.
+
+import("//testing/test.gni")
+
+source_set("preview_core") {
+  sources = [
+    "preview_manager.cc",
+    "preview_manager.h",
+    "preview_types.cc",
+    "preview_types.h",
+  ]
+
+  deps = [
+    "//base",
+    "//seoul/browser/lifecycle:lifecycle_core",
+    "//url",
+  ]
+}
+
+source_set("preview_chromium") {
+  sources = [
+    "preview_host_service.cc",
+    "preview_host_service.h",
+    "seoul_preview_web_view.cc",
+    "seoul_preview_web_view.h",
+  ]
+
+  public_deps = [ "//chrome/browser:browser_public_dependencies" ]
+  deps = [
+    ":preview_core",
+    "//base",
+    "//chrome/browser/profiles:profile",
+    "//chrome/browser/sessions",
+    "//chrome/browser/ui/browser_window",
+    "//chrome/browser/ui/tabs",
+    "//components/sessions",
+    "//components/sessions:session_id",
+    "//components/split_tabs",
+    "//content/public/browser",
+    "//seoul/browser/lifecycle:lifecycle_core",
+    "//ui/accessibility:ax_enums",
+    "//ui/base",
+    "//ui/gfx",
+    "//ui/views",
+    "//url",
+  ]
+}
+
+test("seoul_preview_unittests") {
+  testonly = true
+  sources = [ "preview_manager_unittest.cc" ]
+  deps = [
+    ":preview_core",
+    "//base",
+    "//base/test:test_support",
+    "//testing/gtest",
+  ]
+}
