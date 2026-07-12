@@ -45,9 +45,18 @@ class LifecycleCoordinator : public LifecycleEventSink {
   void SetPinHandlingSuppressor(
       base::RepeatingCallback<bool(LiveTabKey tab)> suppressor);
 
+  // Classifies one exact, imminent Chromium tab insertion before observers run.
+  // Preview promotion uses this to create a retained membership atomically;
+  // unknown or mismatched insertions keep the normal temporary default.
+  bool ExpectTabInsertion(LiveWindowKey window,
+                          LiveTabKey tab,
+                          TabRole role);
+  void CancelExpectedTabInsertion(LiveTabKey tab);
+
   static constexpr TabRole kNewTabRole = TabRole::kTemporary;
   static constexpr size_t kMaxPendingTransfers = 256;
   static constexpr size_t kMaxQueuedEvents = 128;
+  static constexpr size_t kMaxExpectedInsertions = 64;
 
   MutationOrigin current_origin() const { return current_origin_; }
   bool is_reconciling() const { return reconciling_; }
@@ -60,11 +69,18 @@ class LifecycleCoordinator : public LifecycleEventSink {
   size_t pending_transfer_count() const { return pending_transfers_.size(); }
   size_t queued_event_count() const { return pending_events_.size(); }
   size_t known_window_count() const { return known_windows_.size(); }
+  size_t expected_insertion_count() const {
+    return expected_insertions_.size();
+  }
 
  private:
   struct PendingTransfer {
     WorkspaceId workspace;
     int sequence = 0;
+  };
+  struct ExpectedInsertion {
+    LiveWindowKey window;
+    TabRole role = TabRole::kTemporary;
   };
 
   void ProcessEvent(const NormalizedEvent& event);
@@ -89,6 +105,7 @@ class LifecycleCoordinator : public LifecycleEventSink {
   SplitGroupId FindSplitByToken(const std::string& token) const;
   void EvictOldestTransferIfNeeded();
   void ExpireTransfersForWindow(const LiveWindowKey& window);
+  void ExpireExpectedInsertionsForWindow(const LiveWindowKey& window);
   void HandleQueueOverflow();
   bool ShouldAcceptEvent(const NormalizedEvent& event) const;
 
@@ -110,6 +127,7 @@ class LifecycleCoordinator : public LifecycleEventSink {
   std::deque<NormalizedEvent> pending_events_;
   std::set<LiveWindowKey> known_windows_;
   std::map<LiveTabKey, PendingTransfer> pending_transfers_;
+  std::map<LiveTabKey, ExpectedInsertion> expected_insertions_;
 };
 
 }  // namespace seoul

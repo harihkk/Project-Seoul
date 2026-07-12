@@ -263,6 +263,20 @@ void TabStripBridge::OnTabCloseCancelled(const tabs::TabInterface* tab) {
   EmitTabEvent(NormalizedEventType::kTabCloseCancelled, KeyForTab(tab), -1, 0);
 }
 
+void TabStripBridge::OnTabChangedAt(tabs::TabInterface* tab,
+                                    int index,
+                                    TabChangeType change_type) {
+  (void)tab;
+  (void)index;
+  if (change_type != TabChangeType::kAll) {
+    return;
+  }
+  // Navigation/title changes do not necessarily alter tab-strip structure,
+  // but the data-minimized live descriptor must not retain a stale origin or
+  // label. PublishSnapshot de-duplicates unchanged metadata.
+  PublishLiveSnapshot();
+}
+
 void TabStripBridge::OnTabPinnedStateChanged(tabs::TabInterface* tab,
                                              int index) {
   NormalizedEvent event;

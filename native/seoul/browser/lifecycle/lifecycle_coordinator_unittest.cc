@@ -117,6 +117,50 @@ TEST_F(LifecycleCoordinatorTest, NewTabAssignedToActiveWorkspace) {
   EXPECT_EQ(1u, MembershipCount());
 }
 
+TEST_F(LifecycleCoordinatorTest,
+       ExpectedInsertionUsesExactWindowTabAndRetainedRole) {
+  coordinator_.OnNormalizedEvent(WindowDiscovered(1));
+  EXPECT_TRUE(coordinator_.ExpectTabInsertion(
+      LiveWindowKey::FromSessionId(1), LiveTabKey::FromSessionId(10),
+      TabRole::kRetained));
+  EXPECT_EQ(coordinator_.expected_insertion_count(), 1u);
+  coordinator_.OnNormalizedEvent(TabInserted(1, 10));
+  ASSERT_NE(MembershipForTab(10), nullptr);
+  EXPECT_EQ(MembershipForTab(10)->role, TabRole::kRetained);
+  EXPECT_EQ(coordinator_.expected_insertion_count(), 0u);
+}
+
+TEST_F(LifecycleCoordinatorTest,
+       MismatchedWindowConsumesExpectationAndUsesSafeDefault) {
+  coordinator_.OnNormalizedEvent(WindowDiscovered(1));
+  coordinator_.OnNormalizedEvent(WindowDiscovered(2));
+  ASSERT_TRUE(coordinator_.ExpectTabInsertion(
+      LiveWindowKey::FromSessionId(1), LiveTabKey::FromSessionId(10),
+      TabRole::kRetained));
+  coordinator_.OnNormalizedEvent(TabInserted(2, 10));
+  ASSERT_NE(MembershipForTab(10), nullptr);
+  EXPECT_EQ(MembershipForTab(10)->role, TabRole::kTemporary);
+  EXPECT_EQ(coordinator_.expected_insertion_count(), 0u);
+}
+
+TEST_F(LifecycleCoordinatorTest, ExpectedInsertionIsBoundedAndCancellable) {
+  const LiveWindowKey window = LiveWindowKey::FromSessionId(1);
+  EXPECT_FALSE(coordinator_.ExpectTabInsertion(
+      window, LiveTabKey::FromSessionId(1), TabRole::kPinned));
+  for (size_t i = 0; i < LifecycleCoordinator::kMaxExpectedInsertions; ++i) {
+    EXPECT_TRUE(coordinator_.ExpectTabInsertion(
+        window, LiveTabKey::FromSessionId(static_cast<int>(i) + 10),
+        TabRole::kRetained));
+  }
+  EXPECT_FALSE(coordinator_.ExpectTabInsertion(
+      window, LiveTabKey::FromSessionId(1000), TabRole::kRetained));
+  coordinator_.CancelExpectedTabInsertion(LiveTabKey::FromSessionId(10));
+  EXPECT_EQ(coordinator_.expected_insertion_count(),
+            LifecycleCoordinator::kMaxExpectedInsertions - 1);
+  coordinator_.OnNormalizedEvent(WindowDestroyed(1));
+  EXPECT_EQ(coordinator_.expected_insertion_count(), 0u);
+}
+
 TEST_F(LifecycleCoordinatorTest, DuplicateInsertionCreatesNoSecondMembership) {
   coordinator_.OnNormalizedEvent(WindowDiscovered(1));
   coordinator_.OnNormalizedEvent(TabInserted(1, 10));

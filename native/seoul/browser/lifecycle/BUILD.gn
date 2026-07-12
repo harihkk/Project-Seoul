@@ -50,11 +50,12 @@ source_set("lifecycle") {
     "//chrome/browser/ui/browser_window",
     "//chrome/browser/ui/tabs",
     "//components/sessions:session_id",
-    "//components/sessions/content",
+    "//components/sessions",
     "//components/split_tabs",
     "//components/tabs/public",
     "//content/public/browser",
     "//seoul/browser/organization:organization_model",
+    "//url",
   ]
 }
 

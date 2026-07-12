@@ -2,13 +2,22 @@
 
 #include "seoul/browser/lifecycle/live_window_state.h"
 
+#include "base/strings/utf_string_conversions.h"
 #include "chrome/browser/ui/tabs/tab_strip_model.h"
 #include "components/tab_groups/tab_group_id.h"
 #include "components/tabs/public/split_tab_data.h"
 #include "components/tabs/public/tab_interface.h"
+#include "content/public/browser/web_contents.h"
 #include "seoul/browser/lifecycle/tab_strip_bridge.h"
+#include "url/origin.h"
 
 namespace seoul {
+
+namespace {
+
+constexpr size_t kMaxLiveTabTitleLength = 256;
+
+}  // namespace
 
 LiveWindowStateProvider::LiveWindowStateProvider() = default;
 LiveWindowStateProvider::~LiveWindowStateProvider() = default;
@@ -53,6 +62,18 @@ LiveWindowSnapshot LiveWindowStateProvider::BuildSnapshot(
     }
     LiveTabDescriptor descriptor;
     descriptor.tab = TabStripBridge::KeyForTab(tab);
+    if (content::WebContents* contents = tab->GetContents()) {
+      std::u16string title = contents->GetTitle();
+      if (title.size() > kMaxLiveTabTitleLength) {
+        title.resize(kMaxLiveTabTitleLength);
+      }
+      descriptor.title = base::UTF16ToUTF8(title);
+      const url::Origin origin =
+          url::Origin::Create(contents->GetLastCommittedURL());
+      if (!origin.opaque() && origin.GetURL().SchemeIsHTTPOrHTTPS()) {
+        descriptor.origin = origin.Serialize();
+      }
+    }
     descriptor.strip_order = index;
     descriptor.chromium_pinned = model->IsTabPinned(index);
     descriptor.is_active = model->active_index() == index;

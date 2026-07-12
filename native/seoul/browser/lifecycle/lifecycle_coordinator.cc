@@ -42,6 +42,24 @@ void LifecycleCoordinator::SetPinHandlingSuppressor(
   pin_handling_suppressor_ = std::move(suppressor);
 }
 
+bool LifecycleCoordinator::ExpectTabInsertion(LiveWindowKey window,
+                                              LiveTabKey tab,
+                                              TabRole role) {
+  if (shutting_down_ || reconciling_ || !window.is_valid() || !tab.is_valid() ||
+      role == TabRole::kPinned ||
+      expected_insertions_.size() >= kMaxExpectedInsertions ||
+      expected_insertions_.contains(tab) ||
+      model_->FindMembershipIdByTabKey(tab.value()).is_valid()) {
+    return false;
+  }
+  expected_insertions_.emplace(tab, ExpectedInsertion{window, role});
+  return true;
+}
+
+void LifecycleCoordinator::CancelExpectedTabInsertion(LiveTabKey tab) {
+  expected_insertions_.erase(tab);
+}
+
 bool LifecycleCoordinator::ShouldAcceptEvent(
     const NormalizedEvent& event) const {
   if (shutting_down_ && event.type != NormalizedEventType::kShutdownBegan) {
@@ -59,6 +77,7 @@ void LifecycleCoordinator::HandleQueueOverflow() {
   queue_overflow_ = true;
   reconciliation_required_ = true;
   pending_events_.clear();
+  expected_insertions_.clear();
   if (reconciliation_request_callback_) {
     reconciliation_request_callback_.Run();
   }
@@ -147,6 +166,7 @@ void LifecycleCoordinator::ProcessEvent(const NormalizedEvent& event) {
     case NormalizedEventType::kReconciliationBegan:
       reconciling_ = true;
       pending_transfers_.clear();
+      expected_insertions_.clear();
       break;
     case NormalizedEventType::kReconciliationCompleted:
       HandleReconciliationCompleted(event);
@@ -154,6 +174,7 @@ void LifecycleCoordinator::ProcessEvent(const NormalizedEvent& event) {
     case NormalizedEventType::kShutdownBegan:
       shutting_down_ = true;
       pending_transfers_.clear();
+      expected_insertions_.clear();
       pending_events_.clear();
       break;
   }
@@ -200,6 +221,7 @@ void LifecycleCoordinator::HandleWindowGone(const NormalizedEvent& event) {
   }
   known_windows_.erase(event.window);
   ExpireTransfersForWindow(event.window);
+  ExpireExpectedInsertionsForWindow(event.window);
   model_->ForgetWindow(event.window.value());
 }
 
@@ -209,6 +231,14 @@ void LifecycleCoordinator::HandleTabInserted(const NormalizedEvent& event) {
   }
   const std::string tab_key = event.tab.value();
   const TabMembershipId existing = model_->FindMembershipIdByTabKey(tab_key);
+  TabRole insertion_role = kNewTabRole;
+  auto expected = expected_insertions_.find(event.tab);
+  if (expected != expected_insertions_.end()) {
+    if (expected->second.window == event.window) {
+      insertion_role = expected->second.role;
+    }
+    expected_insertions_.erase(expected);
+  }
 
   auto pending = pending_transfers_.find(event.tab);
   if (pending != pending_transfers_.end()) {
@@ -235,7 +265,7 @@ void LifecycleCoordinator::HandleTabInserted(const NormalizedEvent& event) {
     return;
   }
   const MutationResult<TabMembershipId> result =
-      model_->AddTabMembership(ws, tab_key, kNewTabRole);
+      model_->AddTabMembership(ws, tab_key, insertion_role);
   if (result.has_value() && event.order_index >= 0) {
     model_->ReorderTabMembership(result.value(), event.order_index);
   }
@@ -476,6 +506,14 @@ void LifecycleCoordinator::ExpireTransfersForWindow(
     const LiveWindowKey& window) {
   (void)window;
   pending_transfers_.clear();
+}
+
+void LifecycleCoordinator::ExpireExpectedInsertionsForWindow(
+    const LiveWindowKey& window) {
+  std::erase_if(expected_insertions_,
+                [&window](const auto& entry) {
+                  return entry.second.window == window;
+                });
 }
 
 }  // namespace seoul

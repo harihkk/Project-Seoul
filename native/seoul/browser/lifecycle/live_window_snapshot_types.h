@@ -14,6 +14,10 @@ namespace seoul {
 
 struct LiveTabDescriptor {
   LiveTabKey tab;
+  // Ephemeral, data-minimized presentation metadata. The title is bounded by
+  // the provider and the origin never includes a path, query, or fragment.
+  std::string title;
+  std::string origin;
   int strip_order = -1;
   bool chromium_pinned = false;
   std::string upstream_split_token;
