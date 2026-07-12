@@ -43,6 +43,8 @@ source_set("shell_chromium") {
     "views/seoul_shell_header_view.h",
     "views/seoul_shell_region_host.cc",
     "views/seoul_shell_region_host.h",
+    "views/seoul_split_chooser_view.cc",
+    "views/seoul_split_chooser_view.h",
     "views/seoul_workspace_menu.cc",
     "views/seoul_workspace_menu.h",
     "views/seoul_workspace_name_dialog.cc",
@@ -57,7 +59,9 @@ source_set("shell_chromium") {
   deps = [
     "//base",
     "//chrome/browser/ui/views/tabs/vertical",
+    "//chrome/browser/ui/side_panel",
     "//components/constrained_window",
+    "//components/sessions:session_id",
     "//components/vector_icons",
     "//seoul/browser/commands:command_core",
     "//seoul/browser/lifecycle",

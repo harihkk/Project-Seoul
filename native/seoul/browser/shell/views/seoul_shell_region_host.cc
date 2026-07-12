@@ -49,7 +49,9 @@ void SeoulShellRegionHost::Attach(VerticalTabStripRegionView* region,
     }
   }
   if (bottom) {
-    region->ReorderChildView(footer_, region->GetIndexOf(bottom).value_or(0));
+    if (std::optional<size_t> bottom_index = region->GetIndexOf(bottom)) {
+      region->ReorderChildView(footer_, bottom_index.value());
+    }
   }
 }
 
