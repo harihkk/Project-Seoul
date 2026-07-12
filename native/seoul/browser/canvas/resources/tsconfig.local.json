@@ -1,0 +1,25 @@
+{
+  "compilerOptions": {
+    "target": "ES2022",
+    "module": "ESNext",
+    "moduleResolution": "Bundler",
+    "baseUrl": ".",
+    "ignoreDeprecations": "6.0",
+    "paths": {
+      "//resources/lit/v3_0/lit.rollup.js": ["lit_stub.d.ts"]
+    },
+    "lib": ["ES2022", "DOM"],
+    "strict": true,
+    "noEmit": true,
+    "skipLibCheck": true,
+    "useDefineForClassFields": true
+  },
+  "include": [
+    "canvas.html.ts",
+    "canvas.ts",
+    "canvas_types.ts",
+    "canvas_visualizations.ts",
+    "lit_stub.d.ts",
+    "typecheck.d.ts"
+  ]
+}

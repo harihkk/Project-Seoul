@@ -28,6 +28,7 @@ source_set("canvas") {
   deps = [
     "//base",
     "//chrome/browser/profiles:profile",
+    "//chrome/browser/ui/webui/top_chrome",
     "//chrome/browser/ui/webui:webui_util",
     "//content/public/browser",
     "//mojo/public/cpp/bindings",
@@ -35,7 +36,10 @@ source_set("canvas") {
     "//seoul/browser/product:product_core",
     "//seoul/browser/product/browser:product_chromium",
     "//seoul/browser/saui:saui_core",
+    "//seoul/browser/scenes:scenes_core",
+    "//seoul/browser/site_layers:site_layers_core",
     "//seoul/browser/tasks:tasks_core",
+    "//seoul/browser/themes:themes_core",
     "//services/network/public/mojom",
     "//ui/webui",
   ]

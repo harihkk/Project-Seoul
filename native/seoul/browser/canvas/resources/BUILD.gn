@@ -12,10 +12,16 @@ build_webui("build") {
 
   static_files = [
     "canvas.html",
-    "canvas.css",
   ]
 
-  ts_files = [ "canvas.ts" ]
+  ts_files = [
+    "canvas.html.ts",
+    "canvas.ts",
+    "canvas_types.ts",
+    "canvas_visualizations.ts",
+  ]
+
+  css_files = [ "canvas.css" ]
 
   # Generated Mojo TypeScript bindings for canvas.mojom.
   mojo_files_deps =
@@ -24,7 +30,10 @@ build_webui("build") {
     "$root_gen_dir/seoul/browser/canvas/canvas.mojom-webui.ts",
   ]
 
-  ts_deps = [ "//ui/webui/resources/mojo:build_ts" ]
+  ts_deps = [
+    "//third_party/lit/v3_0:build_ts",
+    "//ui/webui/resources/mojo:build_ts",
+  ]
 
   webui_context_type = "trusted"
 
