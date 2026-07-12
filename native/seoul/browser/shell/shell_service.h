@@ -13,6 +13,7 @@
 #include "seoul/browser/shell/shell_types.h"
 
 class Profile;
+class BrowserWindowInterface;
 class VerticalTabStripRegionView;
 
 namespace seoul {
@@ -43,9 +44,12 @@ class ShellService : public OrganizationModelObserver {
 
   ShellController* GetController(ShellWindowKey window);
   void RegisterVerticalRegion(ShellWindowKey window,
-                              VerticalTabStripRegionView* region);
+                              VerticalTabStripRegionView* region,
+                              BrowserWindowInterface* browser_window);
   void UnregisterVerticalRegion(ShellWindowKey window);
   void OnCollapseStateChanged(ShellWindowKey window, bool collapsed);
+  void UpdateTaskSummary(ShellWindowKey window, ShellTaskSummary summary);
+  void ClearTaskSummaries();
   void Shutdown();
 
   void OnOrganizationChanged(const OrganizationChange& change) override;
@@ -63,6 +67,7 @@ class ShellService : public OrganizationModelObserver {
   bool shutting_down_ = false;
   AcknowledgeRecoveryCallback acknowledge_recovery_;
   std::map<ShellWindowKey, std::unique_ptr<ShellController>> controllers_;
+  std::map<ShellWindowKey, ShellTaskSummary> task_summaries_;
   // One owned host per initialized vertical region (scoped to this service's
   // window bindings; replaces the former process-global host map). The host
   // destructor detaches the shell child views.
