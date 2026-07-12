@@ -71,8 +71,23 @@ interface PageHandler {
   ResumeTask(string task_id);
   CancelActiveTask(string task_id);
   ApproveStep(string task_id, string step_id, bool approved);
+  ProvideTaskInput(string task_id, string step_id, string input);
   ListTaskSurfaces(string task_id) => (array<string> surface_ids);
   SaveTaskAsWorkflow(string task_id, string name) => (string workflow_id);
+
+  // Library/Boards are profile-owned metadata services surfaced inside the
+  // same first-party Canvas shell. Snapshots contain bounded metadata only;
+  // capture bytes and credentials never cross this boundary.
+  GetLibrarySnapshot() => (string snapshot_json);
+  CreateBoard(string name) => (string snapshot_json);
+  SetBoardArchived(string board_id, bool archived) => (string snapshot_json);
+  DeleteBoard(string board_id) => (string snapshot_json);
+
+  // Studio is an inspectable projection of the profile runtime's appearance
+  // and reasoning catalogs. The first reachable surface is deliberately
+  // read-only: it exposes bounded configuration metadata, never credentials,
+  // local endpoints, page content, or raw provider errors.
+  GetStudioSnapshot() => (string snapshot_json);
 };
 
 // Implemented in the renderer. The browser calls these to drive the Canvas.
