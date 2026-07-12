@@ -9,6 +9,7 @@
 #include "seoul/browser/commands/command_executor.h"
 #include "seoul/browser/lifecycle/live_window_state.h"
 #include "seoul/browser/organization/organization_model.h"
+#include "seoul/browser/preview/preview_host_service.h"
 #include "url/gurl.h"
 
 namespace seoul {
@@ -203,6 +204,45 @@ void BrowserCommandExecutor::OnCommandCompleted(CommandId id,
   std::move(pending.callback).Run(std::move(outcome));
 }
 
+// --- PreviewOpenExecutor ----------------------------------------------------
+
+PreviewOpenExecutor::PreviewOpenExecutor(PreviewHostService* preview_host)
+    : preview_host_(preview_host) {}
+
+PreviewOpenExecutor::~PreviewOpenExecutor() = default;
+
+ToolId PreviewOpenExecutor::capability_id() const {
+  return ToolId::FromString("browser.preview.open");
+}
+
+void PreviewOpenExecutor::Execute(CapabilityRequest request,
+                                  CapabilityCallback callback) {
+  const std::string* url = request.args.FindString("url");
+  const std::string* tab = request.args.FindString("tab_key");
+  const GURL destination(url ? *url : std::string());
+  const LiveTabKey parent = tab ? LiveTabKey::Parse(*tab) : LiveTabKey();
+  if (!preview_host_ || !request.window.is_valid() || !parent.is_valid() ||
+      !destination.is_valid() || !destination.SchemeIsHTTPOrHTTPS()) {
+    std::move(callback).Run(
+        FailOutcome("An exact parent tab and valid http(s) URL are required."));
+    return;
+  }
+  PreviewResult<PreviewId> opened =
+      preview_host_->Open(request.window, parent, destination);
+  if (!opened.has_value()) {
+    std::move(callback).Run(
+        FailOutcome(std::string("Preview rejected: ") +
+                    PreviewErrorToString(opened.error())));
+    return;
+  }
+  CapabilityOutcome outcome;
+  outcome.step.status = StepStatus::kSucceeded;
+  outcome.step.observed_summary = "Opened an ephemeral link preview.";
+  outcome.step.verification.verified = true;
+  outcome.step.verification.method = "preview_host_postcondition";
+  std::move(callback).Run(std::move(outcome));
+}
+
 // --- EnumerateTabsExecutor --------------------------------------------------
 
 EnumerateTabsExecutor::EnumerateTabsExecutor(
@@ -296,16 +336,19 @@ void PageObserveExecutor::OnObserved(
       Field("handle", FieldPrimitive::kString, SemanticRole::kIdentifier),
       Field("role", FieldPrimitive::kString, SemanticRole::kCategory),
       Field("name", FieldPrimitive::kString, SemanticRole::kName),
-      Field("value", FieldPrimitive::kString, SemanticRole::kDescription),
-      Field("editable", FieldPrimitive::kBoolean, SemanticRole::kStatus)};
+      Field("editable", FieldPrimitive::kBoolean, SemanticRole::kStatus),
+      Field("agent_writable", FieldPrimitive::kBoolean, SemanticRole::kStatus),
+      Field("sensitivity", FieldPrimitive::kString,
+            SemanticRole::kCategory)};
   base::ListValue rows;
   for (const PageObservation::Element& element : observation->elements) {
     base::DictValue row;
     row.Set("handle", element.handle);
     row.Set("role", element.role);
     row.Set("name", element.name);
-    row.Set("value", element.value);
     row.Set("editable", element.editable);
+    row.Set("agent_writable", element.agent_writable);
+    row.Set("sensitivity", PageFieldSensitivityName(element.sensitivity));
     rows.Append(std::move(row));
   }
   result.data = base::Value(std::move(rows));
@@ -375,6 +418,11 @@ void PageActionExecutor::Execute(CapabilityRequest request,
     outcome.step.status = StepStatus::kFailed;
     outcome.step.observed_summary =
         "The element handle expired; re-observe the page first.";
+  } else if (status == PageActionStatus::kSensitiveField) {
+    outcome.step.status = StepStatus::kFailed;
+    outcome.step.observed_summary =
+        "Sensitive field values require browser autofill or direct user "
+        "takeover; no value was sent to the page.";
   } else {
     outcome.step.status = StepStatus::kFailed;
     outcome.step.observed_summary = "The page action could not be performed.";

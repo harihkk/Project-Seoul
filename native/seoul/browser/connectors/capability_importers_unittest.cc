@@ -308,6 +308,16 @@ TEST(GenericCapabilityCatalogTest, CatalogsRegisterAndCarryHonestRisk) {
   ASSERT_NE(observe, nullptr);
   EXPECT_EQ(observe->risk, RiskCategory::kReadOnly);
 
+  const ToolDescriptor* preview =
+      registry.Find(ToolId::FromString("browser.preview.open"));
+  ASSERT_NE(preview, nullptr);
+  EXPECT_FALSE(preview->requires_network);
+  EXPECT_EQ(preview->approval, ApprovalPolicy::kFirstUsePerScope);
+  EXPECT_EQ(preview->sensitivity, DataSensitivity::kPageContent);
+  ASSERT_EQ(preview->input_schema.fields.size(), 2u);
+  EXPECT_EQ(preview->input_schema.fields[0].name, "url");
+  EXPECT_EQ(preview->input_schema.fields[1].name, "tab_key");
+
   // Offline permission context: network capabilities are filtered out.
   ToolPermissionContext offline;
   offline.max_sensitivity = DataSensitivity::kPersonal;

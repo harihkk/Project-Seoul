@@ -48,28 +48,33 @@ source_set("product_chromium") {
     "//components/keyed_service/core",
     "//components/pref_registry",
     "//components/prefs",
-    "//components/sessions/content",
-    "//components/sessions/core",
+    "//components/sessions",
+    "//components/sessions:session_id",
     "//components/tabs/public",
     "//content/public/browser",
     "//net/traffic_annotation",
     "//seoul/browser/commands:command_chromium",
     "//seoul/browser/connectors:connectors_core",
+    "//seoul/browser/library:library_core",
     "//seoul/browser/lifecycle",
     "//seoul/browser/lifecycle:lifecycle_core",
     "//seoul/browser/organization",
     "//seoul/browser/organization:organization_model",
+    "//seoul/browser/policy:policy_core",
+    "//seoul/browser/preview:preview_core",
+    "//seoul/browser/preview:preview_chromium",
     "//seoul/browser/scenes:scenes_core",
     "//seoul/browser/semantic:semantic_core",
+    "//seoul/browser/shell:shell_chromium",
     "//seoul/browser/site_layers:site_layers_core",
     "//seoul/browser/tasks:tasks_core",
+    "//seoul/browser/themes:themes_core",
     "//seoul/browser/tools:tools_core",
     "//seoul/browser/voice:voice_core",
     "//services/network/public/cpp",
     "//ui/accessibility",
     "//url",
   ]
-
 }
 
 source_set("product_browser_tests") {
@@ -77,6 +82,7 @@ source_set("product_browser_tests") {
   sources = [ "seoul_runtime_browsertest.cc" ]
   deps = [
     ":product_chromium",
+    "//base/test:test_support",
     "//chrome/browser:browser_public_dependencies",
     "//chrome/test:test_support",
     "//content/public/browser",

@@ -13,6 +13,8 @@ source_set("product_core") {
     "capability_executor.h",
     "plan_json.cc",
     "plan_json.h",
+    "page_field_safety.cc",
+    "page_field_safety.h",
     "planner.cc",
     "planner.h",
     "provider_registry.cc",
@@ -39,7 +41,9 @@ source_set("product_core") {
     "//base",
     "//seoul/browser/context:context_core",
     "//seoul/browser/intelligence:intelligence_core",
+    "//seoul/browser/library:library_core",
     "//seoul/browser/lifecycle:lifecycle_core",
+    "//seoul/browser/policy:policy_core",
     "//seoul/browser/saui:saui_core",
     "//seoul/browser/semantic:semantic_core",
     "//seoul/browser/tasks:tasks_core",
@@ -54,6 +58,7 @@ test("seoul_product_unittests") {
   testonly = true
   sources = [
     "capability_executor_unittest.cc",
+    "page_field_safety_unittest.cc",
     "planner_unittest.cc",
     "product_e2e_unittest.cc",
     "provider_registry_unittest.cc",

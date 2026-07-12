@@ -80,6 +80,7 @@ std::vector<ToolDescriptor> BuildInformationCapabilities() {
   extract.input_schema.fields.push_back(RequiredString(
       "wanted_schema_json",
       "The semantic schema (fields and roles) the extraction must fill."));
+  extract.approval = ApprovalPolicy::kFirstUsePerScope;
   capabilities.push_back(std::move(extract));
 
   return capabilities;
@@ -105,6 +106,25 @@ std::vector<ToolDescriptor> BuildBrowserCapabilities() {
     retained.description = "Keep the tab out of temporary auto-archive.";
     open.input_schema.fields.push_back(std::move(retained));
     capabilities.push_back(std::move(open));
+  }
+  {
+    ToolDescriptor preview =
+        Base("browser.preview.open", "Open link preview",
+             "Opens a URL in an ephemeral overlay bound to an exact parent "
+             "tab. It remains outside the tab strip until the user explicitly "
+             "promotes it to a tab or split.",
+             RiskCategory::kReversibleMutation,
+             DataSensitivity::kPageContent,
+             "window-bound Preview overlay exists outside the tab strip");
+    SchemaField url;
+    url.name = "url";
+    url.kind = SchemaFieldKind::kUrl;
+    url.required = true;
+    preview.input_schema.fields.push_back(std::move(url));
+    preview.input_schema.fields.push_back(
+        RequiredString("tab_key", "Exact parent tab for focus restoration."));
+    preview.approval = ApprovalPolicy::kFirstUsePerScope;
+    capabilities.push_back(std::move(preview));
   }
   {
     ToolDescriptor activate =
@@ -164,6 +184,7 @@ std::vector<ToolDescriptor> BuildBrowserCapabilities() {
         "stable handle usable by page.act.click and page.act.type.",
         RiskCategory::kReadOnly, DataSensitivity::kPageContent,
         "bounded page text");
+    observe.approval = ApprovalPolicy::kFirstUsePerScope;
     capabilities.push_back(std::move(observe));
   }
   {

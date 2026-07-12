@@ -26,6 +26,7 @@ namespace seoul {
 class CommandExecutor;
 class OrganizationModel;
 class LiveWindowStateProvider;
+class PreviewHostService;
 
 // Executes a single browser-mutating capability by submitting a typed
 // BrowserCommand and resolving when the lifecycle bridge confirms it.
@@ -75,6 +76,18 @@ class EnumerateTabsExecutor : public CapabilityExecutor {
  private:
   raw_ptr<OrganizationModel> model_;
   raw_ptr<LiveWindowStateProvider> live_state_;
+};
+
+class PreviewOpenExecutor : public CapabilityExecutor {
+ public:
+  explicit PreviewOpenExecutor(PreviewHostService* preview_host);
+  ~PreviewOpenExecutor() override;
+
+  ToolId capability_id() const override;
+  void Execute(CapabilityRequest request, CapabilityCallback callback) override;
+
+ private:
+  raw_ptr<PreviewHostService> preview_host_;
 };
 
 // Observes the active tab of the request window through the page agent and

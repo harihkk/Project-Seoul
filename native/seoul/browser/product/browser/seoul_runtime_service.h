@@ -26,15 +26,20 @@
 #include <map>
 #include <memory>
 #include <optional>
+#include <set>
 #include <string>
 #include <vector>
 
 #include "base/callback_list.h"
 #include "base/memory/raw_ptr.h"
+#include "base/scoped_observation.h"
 #include "base/unguessable_token.h"
 #include "components/keyed_service/core/keyed_service.h"
 #include "seoul/browser/lifecycle/lifecycle_identity.h"
+#include "seoul/browser/lifecycle/live_window_state.h"
+#include "seoul/browser/policy/agent_permission_service.h"
 #include "seoul/browser/product/capability_executor.h"
+#include "seoul/browser/product/browser/page_agent.h"
 #include "seoul/browser/product/planner.h"
 #include "seoul/browser/product/provider_registry.h"
 #include "seoul/browser/product/realtime_voice_agent.h"
@@ -44,6 +49,7 @@
 #include "seoul/browser/product/thread_service.h"
 #include "seoul/browser/product/voice_runtime_controller.h"
 #include "seoul/browser/product/workflow_service.h"
+#include "seoul/browser/preview/preview_manager.h"
 #include "seoul/browser/runtime/seoul_runtime.h"
 #include "seoul/browser/tools/tool_registry.h"
 
@@ -64,11 +70,16 @@ namespace seoul {
 class SeoulOrganizationService;
 class CredentialStore;
 class HttpTransport;
-class PageAgent;
+class SceneRegistry;
 class SiteLayerRegistry;
+class ThemeRegistry;
+class LibraryService;
+class PersistenceScheduler;
+class PreviewHostService;
 
-// Single dict pref holding the bounded product state (pinned surfaces,
-// threads, workflows, provider settings). Secrets are excluded by construction.
+// Single dict pref holding the bounded product state (pinned surfaces, Library,
+// threads, workflows, Scenes, Themes, Site Layers, provider settings). Secrets are
+// excluded by construction.
 inline constexpr char kProductRuntimePref[] = "seoul.product.v1";
 
 using WindowRuntimeBindingToken = base::UnguessableToken;
@@ -80,7 +91,9 @@ struct WindowRuntimeBinding {
   bool is_valid() const { return !token.is_empty() && window.is_valid(); }
 };
 
-class SeoulRuntimeService : public KeyedService {
+class SeoulRuntimeService : public KeyedService,
+                            public LiveWindowStateObserver,
+                            public TaskServiceObserver {
  public:
   // `organization` must be the same profile's organization service (the
   // factory guarantees it via DependsOn). `web_contents_resolver` maps a
@@ -104,10 +117,18 @@ class SeoulRuntimeService : public KeyedService {
     return task_surface_bridge_.get();
   }
   ProviderRegistry* providers() { return provider_registry_.get(); }
+  PreviewManager* previews() { return preview_manager_.get(); }
+  PreviewHostService* preview_host() { return preview_host_service_.get(); }
   ToolRegistry& capabilities() { return runtime_.capabilities(); }
+  SceneRegistry* scenes() { return &runtime_.scenes(); }
+  ThemeRegistry* themes() { return themes_.get(); }
   PageAgent* page_agent() { return page_agent_.get(); }
   SiteLayerRegistry* site_layers() { return site_layers_.get(); }
+  LibraryService* library() { return library_service_.get(); }
   VoiceRuntimeController* voice() { return voice_controller_.get(); }
+  AgentPermissionService* agent_permissions() {
+    return agent_permissions_.get();
+  }
 
   // The permission context for a user-initiated turn in `window`, built from
   // provider availability and the connected connector providers.
@@ -153,10 +174,26 @@ class SeoulRuntimeService : public KeyedService {
   void Shutdown() override;
 
  private:
+  // LiveWindowStateObserver. Revocation follows the browser lifecycle rather
+  // than any particular Canvas document or surface binding.
+  void OnLiveWindowSnapshotChanged(
+      const LiveWindowSnapshot& snapshot) override;
+  void OnLiveWindowRemoved(LiveWindowKey window) override;
+  // TaskServiceObserver: publishes only bounded state counts into the native
+  // shell. Detailed goals, prompts, receipts, and results stay in TaskService.
+  void OnTaskUpdated(const TaskId& task_id) override;
+  void OnTaskFinished(const TaskId& task_id) override;
+  void PublishShellTaskSummary(const LiveWindowKey& window);
+
   void RegisterBuiltinExecutors();
+  AgentPermissionRequest ResolveAgentPermissionRequest(
+      const LiveWindowKey& window,
+      const ToolDescriptor& descriptor,
+      const base::DictValue& args) const;
   void OnWindowBindingClosed(WindowRuntimeBindingToken token,
                              BrowserWindowInterface* browser);
-  void PersistState();
+  bool PersistState();
+  void SchedulePersist();
   void LoadState();
 
   struct WindowBindingRecord {
@@ -168,6 +205,7 @@ class SeoulRuntimeService : public KeyedService {
   raw_ptr<Profile> profile_;
   raw_ptr<PrefService> prefs_;
   raw_ptr<SeoulOrganizationService> organization_;
+  WebContentsResolver web_contents_resolver_;
 
   // Chromium-facing transports and agent (owned).
   std::unique_ptr<HttpTransport> cloud_transport_;
@@ -176,7 +214,10 @@ class SeoulRuntimeService : public KeyedService {
   std::unique_ptr<PageAgent> page_agent_;
 
   // Runtime-owned appearance catalogs that Scene resolvers reference.
+  std::unique_ptr<ThemeRegistry> themes_;
   std::unique_ptr<SiteLayerRegistry> site_layers_;
+  std::unique_ptr<LibraryService> library_service_;
+  std::unique_ptr<PersistenceScheduler> persistence_scheduler_;
 
   // The pure runtime composition (capability graph, connectors, scenes,
   // routing policy) - this is what instantiates SeoulRuntime.
@@ -185,8 +226,11 @@ class SeoulRuntimeService : public KeyedService {
   // Product services (owned; pure product_core).
   CapabilityExecutorRegistry executors_;
   std::unique_ptr<ProviderRegistry> provider_registry_;
+  std::unique_ptr<PreviewManager> preview_manager_;
+  std::unique_ptr<PreviewHostService> preview_host_service_;
   std::unique_ptr<RealtimeVoiceAgent> realtime_voice_agent_;
   std::unique_ptr<Planner> planner_;
+  std::unique_ptr<AgentPermissionService> agent_permissions_;
   std::unique_ptr<TaskService> task_service_;
   std::unique_ptr<SpeechToTextProvider> speech_to_text_;
   std::unique_ptr<TextToSpeechProvider> text_to_speech_;
@@ -200,6 +244,9 @@ class SeoulRuntimeService : public KeyedService {
   std::unique_ptr<WorkflowService> workflow_service_;
 
   std::map<WindowRuntimeBindingToken, WindowBindingRecord> window_bindings_;
+  std::map<LiveWindowKey, std::set<LiveTabKey>> live_tabs_by_window_;
+  base::ScopedObservation<LiveWindowStateProvider, LiveWindowStateObserver>
+      live_window_observation_{this};
   bool shutting_down_ = false;
 };
 
