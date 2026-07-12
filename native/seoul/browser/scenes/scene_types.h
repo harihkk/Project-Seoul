@@ -20,8 +20,10 @@ inline constexpr int kSceneSchemaVersion = 1;
 inline constexpr size_t kMaxScenes = 100;
 inline constexpr size_t kMaxSceneNameLength = 120;
 inline constexpr size_t kMaxSceneSiteLayers = 64;
+inline constexpr size_t kMaxSceneRoutingRules = 64;
 inline constexpr size_t kMaxSceneWorkflowShortcuts = 32;
 inline constexpr size_t kMaxSceneContextTools = 64;
+inline constexpr size_t kMaxSceneReferenceLength = 128;
 
 // Tab lifecycle policy defaults a Scene applies (bounds live in the
 // organization model; a Scene only chooses within them).

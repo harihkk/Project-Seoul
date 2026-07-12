@@ -2,12 +2,17 @@
 
 #include "seoul/browser/scenes/scene_registry.h"
 
+#include <optional>
 #include <set>
 #include <utility>
+
+#include "seoul/browser/tools/tool_descriptor_wire.h"
 
 namespace seoul {
 
 namespace {
+
+constexpr int kSceneRegistrySchemaVersion = 1;
 
 bool ValidSlug(const std::string& slug, size_t max_length) {
   if (slug.empty() || slug.size() > max_length) {
@@ -36,6 +41,121 @@ bool HasDuplicates(const std::vector<T>& values) {
   return false;
 }
 
+bool AllBoundedReferences(const std::vector<std::string>& values) {
+  for (const std::string& value : values) {
+    if (value.empty() || value.size() > kMaxSceneReferenceLength) {
+      return false;
+    }
+  }
+  return true;
+}
+
+base::ListValue StringListToValue(const std::vector<std::string>& values) {
+  base::ListValue list;
+  for (const std::string& value : values) {
+    list.Append(value);
+  }
+  return list;
+}
+
+bool ReadStringList(const base::DictValue& value,
+                    const char* key,
+                    size_t maximum,
+                    std::vector<std::string>* output) {
+  const base::ListValue* list = value.FindList(key);
+  if (!list || list->size() > maximum) {
+    return false;
+  }
+  for (const base::Value& entry : *list) {
+    if (!entry.is_string() || entry.GetString().empty() ||
+        entry.GetString().size() > kMaxSceneReferenceLength) {
+      return false;
+    }
+    output->push_back(entry.GetString());
+  }
+  return true;
+}
+
+base::DictValue SceneToValue(const SceneDefinition& scene) {
+  base::DictValue value;
+  value.Set("schema_version", scene.schema_version);
+  value.Set("id", scene.id);
+  value.Set("name", scene.name);
+  value.Set("workspace_id", scene.workspace_id);
+  value.Set("theme_id", scene.theme_id);
+  value.Set("site_layer_ids", StringListToValue(scene.site_layer_ids));
+  value.Set("routing_rule_ids", StringListToValue(scene.routing_rule_ids));
+  value.Set("workflow_shortcut_ids",
+            StringListToValue(scene.workflow_shortcut_ids));
+  base::DictValue lifecycle;
+  lifecycle.Set("archive_temporary_tabs",
+                scene.lifecycle.archive_temporary_tabs);
+  lifecycle.Set("idle_archive_minutes", scene.lifecycle.idle_archive_minutes);
+  lifecycle.Set("restore_on_activation", scene.lifecycle.restore_on_activation);
+  value.Set("lifecycle", std::move(lifecycle));
+  base::DictValue assistant;
+  assistant.Set("allow_network", scene.assistant.allow_network);
+  assistant.Set("allow_cloud_models", scene.assistant.allow_cloud_models);
+  assistant.Set("max_sensitivity",
+                DataSensitivityToWire(scene.assistant.max_sensitivity));
+  assistant.Set("default_connectors",
+                StringListToValue(scene.assistant.default_connectors));
+  value.Set("assistant", std::move(assistant));
+  value.Set("prefer_compact", scene.prefer_compact);
+  return value;
+}
+
+std::optional<SceneDefinition> SceneFromValue(const base::Value& entry) {
+  const base::DictValue* value = entry.GetIfDict();
+  if (!value ||
+      value->FindInt("schema_version").value_or(0) != kSceneSchemaVersion) {
+    return std::nullopt;
+  }
+  const std::string* id = value->FindString("id");
+  const std::string* name = value->FindString("name");
+  const std::string* workspace = value->FindString("workspace_id");
+  const std::string* theme = value->FindString("theme_id");
+  const base::DictValue* lifecycle = value->FindDict("lifecycle");
+  const base::DictValue* assistant = value->FindDict("assistant");
+  if (!id || !name || !workspace || !theme || !lifecycle || !assistant) {
+    return std::nullopt;
+  }
+  SceneDefinition scene;
+  scene.id = *id;
+  scene.name = *name;
+  scene.workspace_id = *workspace;
+  scene.theme_id = *theme;
+  if (!ReadStringList(*value, "site_layer_ids", kMaxSceneSiteLayers,
+                      &scene.site_layer_ids) ||
+      !ReadStringList(*value, "routing_rule_ids", kMaxSceneRoutingRules,
+                      &scene.routing_rule_ids) ||
+      !ReadStringList(*value, "workflow_shortcut_ids",
+                      kMaxSceneWorkflowShortcuts,
+                      &scene.workflow_shortcut_ids) ||
+      !ReadStringList(*assistant, "default_connectors", kMaxSceneContextTools,
+                      &scene.assistant.default_connectors)) {
+    return std::nullopt;
+  }
+  scene.lifecycle.archive_temporary_tabs =
+      lifecycle->FindBool("archive_temporary_tabs").value_or(true);
+  scene.lifecycle.idle_archive_minutes =
+      lifecycle->FindInt("idle_archive_minutes").value_or(0);
+  scene.lifecycle.restore_on_activation =
+      lifecycle->FindBool("restore_on_activation").value_or(true);
+  scene.assistant.allow_network =
+      assistant->FindBool("allow_network").value_or(false);
+  scene.assistant.allow_cloud_models =
+      assistant->FindBool("allow_cloud_models").value_or(false);
+  const std::string* sensitivity = assistant->FindString("max_sensitivity");
+  if (!sensitivity ||
+      !DataSensitivityFromWire(*sensitivity,
+                               &scene.assistant.max_sensitivity)) {
+    return std::nullopt;
+  }
+  scene.prefer_compact = value->FindBool("prefer_compact").value_or(false);
+  return scene;
+}
+
 }  // namespace
 
 SceneRegistry::SceneRegistry(SceneResolvers resolvers)
@@ -53,12 +173,23 @@ SceneStatusResult SceneRegistry::Validate(const SceneDefinition& scene) const {
   if (scene.name.empty() || scene.name.size() > kMaxSceneNameLength) {
     return base::unexpected(SceneError::kInvalidName);
   }
-  if (scene.workspace_id.empty()) {
+  if (scene.workspace_id.empty() ||
+      scene.workspace_id.size() > kMaxSceneReferenceLength) {
     return base::unexpected(SceneError::kMissingWorkspace);
   }
+  if (scene.theme_id.size() > kMaxSceneReferenceLength) {
+    return base::unexpected(SceneError::kTooManySceneItems);
+  }
   if (scene.site_layer_ids.size() > kMaxSceneSiteLayers ||
+      scene.routing_rule_ids.size() > kMaxSceneRoutingRules ||
       scene.workflow_shortcut_ids.size() > kMaxSceneWorkflowShortcuts ||
       scene.assistant.default_connectors.size() > kMaxSceneContextTools) {
+    return base::unexpected(SceneError::kTooManySceneItems);
+  }
+  if (!AllBoundedReferences(scene.site_layer_ids) ||
+      !AllBoundedReferences(scene.routing_rule_ids) ||
+      !AllBoundedReferences(scene.workflow_shortcut_ids) ||
+      !AllBoundedReferences(scene.assistant.default_connectors)) {
     return base::unexpected(SceneError::kTooManySceneItems);
   }
   if (HasDuplicates(scene.site_layer_ids) ||
@@ -119,6 +250,39 @@ std::vector<const SceneDefinition*> SceneRegistry::List() const {
     result.push_back(&scene);
   }
   return result;
+}
+
+base::DictValue SceneRegistry::TakePersistedState() const {
+  base::DictValue state;
+  state.Set("schema_version", kSceneRegistrySchemaVersion);
+  base::ListValue scenes;
+  for (const auto& [id, scene] : scenes_) {
+    scenes.Append(SceneToValue(scene));
+  }
+  state.Set("scenes", std::move(scenes));
+  return state;
+}
+
+void SceneRegistry::RestorePersistedState(const base::DictValue& state) {
+  if (state.FindInt("schema_version").value_or(0) !=
+      kSceneRegistrySchemaVersion) {
+    return;
+  }
+  const base::ListValue* scenes = state.FindList("scenes");
+  if (!scenes) {
+    return;
+  }
+  SceneRegistry restored(resolvers_);
+  for (const base::Value& entry : *scenes) {
+    if (restored.size() >= kMaxScenes) {
+      break;
+    }
+    std::optional<SceneDefinition> scene = SceneFromValue(entry);
+    if (scene.has_value()) {
+      restored.Upsert(std::move(scene.value()));
+    }
+  }
+  scenes_ = std::move(restored.scenes_);
 }
 
 SceneResult<std::vector<SceneActivationStep>>

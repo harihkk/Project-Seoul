@@ -153,5 +153,63 @@ TEST_F(SceneRegistryTest, ThemelessSceneOmitsThemeStep) {
   }
 }
 
+TEST_F(SceneRegistryTest, RejectsUnboundedReferences) {
+  SceneRegistry registry(Resolvers());
+  SceneDefinition scene = ResearchScene();
+  scene.routing_rule_ids.assign(kMaxSceneRoutingRules + 1, "rule");
+  EXPECT_EQ(registry.Upsert(scene).error(),
+            SceneError::kTooManySceneItems);
+
+  scene = ResearchScene();
+  scene.routing_rule_ids = {
+      std::string(kMaxSceneReferenceLength + 1, 'x')};
+  EXPECT_EQ(registry.Upsert(scene).error(),
+            SceneError::kTooManySceneItems);
+}
+
+TEST_F(SceneRegistryTest, PersistenceRoundTripsAndSkipsInvalidEntries) {
+  SceneRegistry registry(Resolvers());
+  SceneDefinition scene = ResearchScene();
+  scene.workflow_shortcut_ids = {"workflow-1"};
+  scene.lifecycle.archive_temporary_tabs = false;
+  scene.lifecycle.idle_archive_minutes = 30;
+  scene.lifecycle.restore_on_activation = false;
+  scene.assistant.allow_network = true;
+  scene.assistant.allow_cloud_models = true;
+  scene.assistant.max_sensitivity = DataSensitivity::kPersonal;
+  scene.assistant.default_connectors = {"connector-1"};
+  scene.prefer_compact = true;
+  ASSERT_TRUE(registry.Upsert(scene).has_value());
+
+  base::DictValue state = registry.TakePersistedState();
+  base::ListValue* scenes = state.FindList("scenes");
+  ASSERT_NE(scenes, nullptr);
+  scenes->Append(base::DictValue().Set("schema_version", 1));
+
+  SceneRegistry restored(Resolvers());
+  restored.RestorePersistedState(state);
+  ASSERT_EQ(restored.size(), 1u);
+  const SceneDefinition* found = restored.Find("research");
+  ASSERT_NE(found, nullptr);
+  EXPECT_EQ(*found, scene);
+
+  base::DictValue wrong_schema;
+  wrong_schema.Set("schema_version", 99);
+  wrong_schema.Set("scenes", base::ListValue());
+  restored.RestorePersistedState(wrong_schema);
+  EXPECT_EQ(restored.size(), 1u);
+}
+
+TEST_F(SceneRegistryTest, RestoreRejectsReferencesRemovedSinceSave) {
+  SceneRegistry registry(Resolvers());
+  ASSERT_TRUE(registry.Upsert(ResearchScene()).has_value());
+  base::DictValue state = registry.TakePersistedState();
+  themes_.erase("theme-focus");
+
+  SceneRegistry restored(Resolvers());
+  restored.RestorePersistedState(state);
+  EXPECT_EQ(restored.size(), 0u);
+}
+
 }  // namespace
 }  // namespace seoul

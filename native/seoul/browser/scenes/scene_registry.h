@@ -13,6 +13,7 @@
 #include <vector>
 
 #include "base/functional/callback.h"
+#include "base/values.h"
 #include "seoul/browser/scenes/scene_types.h"
 
 namespace seoul {
@@ -56,6 +57,9 @@ class SceneRegistry {
   const SceneDefinition* Find(const std::string& scene_id) const;
   std::vector<const SceneDefinition*> List() const;  // id-ordered
   size_t size() const { return scenes_.size(); }
+
+  base::DictValue TakePersistedState() const;
+  void RestorePersistedState(const base::DictValue& state);
 
   // Validates a Scene against the resolvers without storing it.
   SceneStatusResult Validate(const SceneDefinition& scene) const;
