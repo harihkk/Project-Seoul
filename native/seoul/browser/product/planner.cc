@@ -197,6 +197,7 @@ void Planner::EnforceApprovalPolicy(Plan& plan, const ToolRegistry& registry) {
       continue;  // ValidatePlan rejects the unknown tool
     }
     if (descriptor->approval == ApprovalPolicy::kAlwaysRequired ||
+        descriptor->approval == ApprovalPolicy::kFirstUsePerScope ||
         descriptor->risk == RiskCategory::kIrreversibleMutation ||
         descriptor->risk == RiskCategory::kExternalSideEffect) {
       step.requires_approval = true;

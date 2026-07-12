@@ -5,9 +5,38 @@
 #include <utility>
 
 #include "base/functional/bind.h"
+#include "base/json/json_writer.h"
 #include "seoul/browser/tasks/plan_validator.h"
 
 namespace seoul {
+
+namespace {
+
+constexpr size_t kMaxTaskInputBytes = 2048;
+constexpr size_t kMaxPlanningContextBytes = 16 * 1024;
+
+bool InputValueAllowed(const base::Value& value) {
+  return value.is_string() || value.is_bool() || value.is_int() ||
+         value.is_double();
+}
+
+bool ValidTaskInput(const base::DictValue& input, std::string* serialized) {
+  if (input.empty() || input.size() > 16) {
+    return false;
+  }
+  for (const auto [key, value] : input) {
+    if (key.empty() || key.size() > 80 || !InputValueAllowed(value)) {
+      return false;
+    }
+    if (value.is_string() && value.GetString().size() > kMaxTaskInputBytes) {
+      return false;
+    }
+  }
+  base::JSONWriter::Write(input, serialized);
+  return !serialized->empty() && serialized->size() <= kMaxTaskInputBytes;
+}
+
+}  // namespace
 
 TaskSnapshot::TaskSnapshot() = default;
 TaskSnapshot::TaskSnapshot(const TaskSnapshot&) = default;
@@ -22,11 +51,15 @@ TaskService::ActiveTask::~ActiveTask() = default;
 TaskService::TaskService(ToolRegistry* registry,
                          CapabilityExecutorRegistry* executors,
                          Planner* planner,
-                         base::RepeatingCallback<base::Time()> clock)
+                         base::RepeatingCallback<base::Time()> clock,
+                         AgentPermissionService* permissions,
+                         PermissionScopeResolver permission_scope_resolver)
     : registry_(registry),
       executors_(executors),
       planner_(planner),
-      clock_(std::move(clock)) {}
+      clock_(std::move(clock)),
+      permissions_(permissions),
+      permission_scope_resolver_(std::move(permission_scope_resolver)) {}
 
 TaskService::~TaskService() = default;
 
@@ -42,11 +75,15 @@ TaskId TaskService::StartTask(const std::string& goal,
   const TaskId task_id = TaskId::GenerateNew();
   auto task = std::make_unique<ActiveTask>();
   task->goal = goal;
+  task->planning_goal = goal;
   task->window = window;
   task->context = context;
   task->use_model = use_model;
   task->prefer_local = prefer_local;
   tasks_[task_id] = std::move(task);
+  // Planning may involve a provider round trip. Publish immediately so the
+  // Task Deck never appears idle while planning is already pending.
+  NotifyUpdated(task_id);
   planner_->BuildPlan(goal, context, use_model, prefer_local,
                       base::BindOnce(&TaskService::OnPlanned,
                                      weak_factory_.GetWeakPtr(), task_id));
@@ -67,6 +104,7 @@ TaskId TaskService::StartTaskWithPlan(const std::string& goal,
   const TaskId task_id = TaskId::GenerateNew();
   auto task = std::make_unique<ActiveTask>();
   task->goal = goal;
+  task->planning_goal = goal;
   task->window = window;
   task->context = context;
   task->plan_origin = origin;
@@ -122,6 +160,48 @@ void TaskService::OnPlanned(TaskId task_id, PlannerResult result) {
   Pump(task_id);
 }
 
+void TaskService::OnReplanned(TaskId task_id, PlannerResult result) {
+  ActiveTask* task = FindTask(task_id);
+  if (!task || shutting_down_) {
+    return;
+  }
+  if (!result.ok) {
+    const std::string failure =
+        result.failure.empty()
+            ? "The supplied input could not produce a safe plan."
+            : result.failure;
+    Plan failed_plan;
+    failed_plan.goal = task->goal;
+    PlanStep unavailable;
+    unavailable.id = "input_replanning";
+    unavailable.kind = PlanStepKind::kUserInput;
+    unavailable.prompt = failure;
+    failed_plan.steps.push_back(std::move(unavailable));
+    task->execution = std::make_unique<TaskExecution>(
+        task_id, std::move(failed_plan),
+        base::BindRepeating([](ToolRegistry* registry, const ToolId& id) {
+          return registry->Find(id);
+        }, registry_.get()),
+        clock_);
+    task->execution->Start();
+    task->pending_approval_step = "input_replanning";
+    task->pending_approval_prompt = failure;
+    task->pending_user_input = true;
+    NotifyUpdated(task_id);
+    return;
+  }
+  task->plan_origin = result.origin;
+  task->execution = std::make_unique<TaskExecution>(
+      task_id, std::move(result.plan),
+      base::BindRepeating([](ToolRegistry* registry, const ToolId& id) {
+        return registry->Find(id);
+      }, registry_.get()),
+      clock_);
+  task->execution->Start();
+  NotifyUpdated(task_id);
+  Pump(task_id);
+}
+
 void TaskService::Pump(const TaskId& task_id) {
   ActiveTask* task = FindTask(task_id);
   if (!task || !task->execution || shutting_down_) {
@@ -153,7 +233,31 @@ void TaskService::PumpOnce(const TaskId& task_id) {
     return;
   }
   while (true) {
-    const NextAction next = task->execution->Advance();
+    // Start() returns and records the first blocking action. TaskService does
+    // not consume that return value directly, so recover an already-recorded
+    // approval/input wait before asking Advance() for a new action. Without
+    // this, the pending step is skipped by Advance and the task can be
+    // misclassified as assumption-invalid.
+    NextAction next;
+    bool has_recorded_wait = false;
+    for (const PlanStep& step : task->execution->plan().steps) {
+      const StepStatus status = task->execution->step_status(step.id);
+      if (status == StepStatus::kAwaitingApproval) {
+        next.kind = NextAction::Kind::kAwaitApproval;
+        next.step_id = step.id;
+        has_recorded_wait = true;
+        break;
+      }
+      if (status == StepStatus::kAwaitingInput) {
+        next.kind = NextAction::Kind::kAwaitInput;
+        next.step_id = step.id;
+        has_recorded_wait = true;
+        break;
+      }
+    }
+    if (!has_recorded_wait) {
+      next = task->execution->Advance();
+    }
     switch (next.kind) {
       case NextAction::Kind::kRunStep: {
         if (!task->execution->BeginStep(next.step_id)) {
@@ -171,11 +275,49 @@ void TaskService::PumpOnce(const TaskId& task_id) {
             break;
           }
         }
+        if (step && step->kind == PlanStepKind::kToolCall && permissions_ &&
+            permission_scope_resolver_) {
+          const ToolDescriptor* descriptor = registry_->Find(step->tool);
+          if (descriptor) {
+            AgentPermissionRequest request = permission_scope_resolver_.Run(
+                task->window, *descriptor, step->args);
+            const AgentPermissionDecision decision =
+                permissions_->Evaluate(request);
+            if (decision.kind == AgentPermissionDecisionKind::kAllowed) {
+              task->execution->RecordApproval(next.step_id, true);
+              continue;
+            }
+            if (decision.kind == AgentPermissionDecisionKind::kDenied) {
+              // Convert a denied dynamic scope into a real failed receipt.
+              // Never silently skip and accidentally report task success.
+              // This branch is reached only for a step Advance() reported as
+              // awaiting approval, so RecordApproval always moves it to pending
+              // and BeginStep succeeds here unless a step guard defers it; a
+              // guard-deferred step is not stranded, since the next Advance()
+              // resolves the guard and re-drives the pump.
+              task->execution->RecordApproval(next.step_id, true);
+              if (task->execution->BeginStep(next.step_id)) {
+                StepOutcome outcome;
+                outcome.status = StepStatus::kFailed;
+                outcome.observed_summary =
+                    "Agent permission scope was invalid or unavailable.";
+                HandleDecision(task_id, task->execution->RecordStepOutcome(
+                                            next.step_id, outcome));
+              }
+              return;
+            }
+            task->pending_permission_request = std::move(request);
+          }
+        }
         task->pending_approval_step = next.step_id;
-        task->pending_approval_prompt =
-            step && !step->prompt.empty()
-                ? step->prompt
-                : std::string("Approve step ") + next.step_id + "?";
+        task->pending_user_input = false;
+        task->pending_approval_prompt = task->pending_permission_request
+                                            ? permissions_->Describe(
+                                                  *task->pending_permission_request)
+                                            : step && !step->prompt.empty()
+                                                  ? step->prompt
+                                                  : std::string("Approve step ") +
+                                                        next.step_id + "?";
         NotifyUpdated(task_id);
         for (TaskServiceObserver& observer : observers_) {
           observer.OnTaskNeedsApproval(task_id, next.step_id,
@@ -185,6 +327,7 @@ void TaskService::PumpOnce(const TaskId& task_id) {
       }
       case NextAction::Kind::kAwaitInput: {
         task->pending_approval_step = next.step_id;
+        task->pending_user_input = true;
         task->pending_approval_prompt = "This task needs more input.";
         NotifyUpdated(task_id);
         return;
@@ -375,25 +518,16 @@ void TaskService::Replan(const TaskId& task_id) {
   const std::vector<ActionReceipt>& receipts = task->execution->receipts();
   task->carried_receipts.insert(task->carried_receipts.end(), receipts.begin(),
                                 receipts.end());
-  // Refresh available state: the planner reads the live registry again.
-  PlannerResult replanned =
-      planner_->BuildDeterministic(task->goal, task->context);
-  if (!replanned.ok) {
-    task->execution->Cancel();
-    NotifyUpdated(task_id);
-    FinishNotify(task_id);
-    return;
-  }
-  task->plan_origin = replanned.origin;
-  task->execution = std::make_unique<TaskExecution>(
-      task_id, std::move(replanned.plan),
-      base::BindRepeating([](ToolRegistry* registry,
-                             const ToolId& id) { return registry->Find(id); },
-                          registry_.get()),
-      clock_);
-  task->execution->Start();
+  task->execution->Cancel();
+  task->execution.reset();
   NotifyUpdated(task_id);
-  Pump(task_id);
+  // Refresh the live registry through the same configured reasoning route as
+  // the original task. Replanning never silently downgrades a model-backed
+  // task to lexical deterministic matching.
+  planner_->BuildPlan(
+      task->planning_goal, task->context, task->use_model, task->prefer_local,
+      base::BindOnce(&TaskService::OnReplanned,
+                     weak_factory_.GetWeakPtr(), task_id));
 }
 
 bool TaskService::Approve(const TaskId& task_id,
@@ -405,9 +539,63 @@ bool TaskService::Approve(const TaskId& task_id,
   }
   task->pending_approval_step.clear();
   task->pending_approval_prompt.clear();
+  task->pending_user_input = false;
+  if (approved && task->pending_permission_request && permissions_) {
+    // High-risk/always-required requests intentionally refuse a reusable
+    // grant; this approval still applies to the current step exactly once.
+    permissions_->GrantFirstUse(*task->pending_permission_request);
+  }
+  task->pending_permission_request.reset();
   task->execution->RecordApproval(step_id, approved);
   NotifyUpdated(task_id);
   Pump(task_id);
+  return true;
+}
+
+bool TaskService::ProvideInput(const TaskId& task_id,
+                               const std::string& step_id,
+                               base::DictValue input) {
+  ActiveTask* task = FindTask(task_id);
+  if (!task || !task->execution ||
+      task->pending_approval_step != step_id) {
+    return false;
+  }
+  const PlanStep* pending = nullptr;
+  for (const PlanStep& step : task->execution->plan().steps) {
+    if (step.id == step_id) {
+      pending = &step;
+      break;
+    }
+  }
+  std::string serialized;
+  if (!pending || pending->kind != PlanStepKind::kUserInput ||
+      !ValidTaskInput(input, &serialized)) {
+    return false;
+  }
+  const std::string context =
+      task->planning_goal + "\n\nUser-provided input for the pending step " +
+      step_id + ": " + serialized;
+  if (context.size() > kMaxPlanningContextBytes ||
+      task->replans_used >= task->execution->plan().budgets.max_replans) {
+    return false;
+  }
+
+  task->execution->RecordUserInput(step_id, std::move(input));
+  const std::vector<ActionReceipt>& receipts = task->execution->receipts();
+  task->carried_receipts.insert(task->carried_receipts.end(), receipts.begin(),
+                                receipts.end());
+  task->execution->Cancel();
+  task->execution.reset();
+  task->planning_goal = context;
+  ++task->replans_used;
+  task->pending_approval_step.clear();
+  task->pending_approval_prompt.clear();
+  task->pending_user_input = false;
+  NotifyUpdated(task_id);
+  planner_->BuildPlan(
+      task->planning_goal, task->context, task->use_model, task->prefer_local,
+      base::BindOnce(&TaskService::OnReplanned,
+                     weak_factory_.GetWeakPtr(), task_id));
   return true;
 }
 
@@ -474,6 +662,29 @@ std::vector<TaskSnapshot> TaskService::Snapshots() const {
   return out;
 }
 
+std::vector<TaskStateSummary> TaskService::StateSummaries() const {
+  std::vector<TaskStateSummary> out;
+  out.reserve(tasks_.size());
+  for (const auto& [id, task] : tasks_) {
+    (void)id;
+    TaskStateSummary summary;
+    summary.window = task->window;
+    summary.state = EffectiveState(*task);
+    out.push_back(summary);
+  }
+  return out;
+}
+
+TaskState TaskService::EffectiveState(const ActiveTask& task) {
+  if (!task.execution) {
+    return TaskState::kPlanning;
+  }
+  if (!task.pending_approval_step.empty()) {
+    return TaskState::kAwaitingApproval;
+  }
+  return task.execution->state();
+}
+
 std::optional<TaskSnapshot> TaskService::Snapshot(const TaskId& task_id) const {
   const ActiveTask* task = FindTask(task_id);
   if (!task) {
@@ -485,12 +696,13 @@ std::optional<TaskSnapshot> TaskService::Snapshot(const TaskId& task_id) const {
   snapshot.window = task->window;
   snapshot.plan_origin = task->plan_origin;
   snapshot.replans_used = task->replans_used;
+  snapshot.state = EffectiveState(*task);
   snapshot.pending_approval_step = task->pending_approval_step;
   snapshot.pending_approval_prompt = task->pending_approval_prompt;
+  snapshot.pending_user_input = task->pending_user_input;
   snapshot.has_semantic_result = task->semantic.has_value();
   snapshot.receipts = task->carried_receipts;
   if (task->execution) {
-    snapshot.state = task->execution->state();
     snapshot.failure = task->execution->failure_reason();
     snapshot.usage = task->execution->usage();
     const std::vector<ActionReceipt>& receipts = task->execution->receipts();

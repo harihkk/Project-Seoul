@@ -33,6 +33,7 @@
 #include "base/timer/timer.h"
 #include "seoul/browser/product/capability_executor.h"
 #include "seoul/browser/product/planner.h"
+#include "seoul/browser/policy/agent_permission_service.h"
 #include "seoul/browser/tasks/task_execution.h"
 #include "seoul/browser/tools/tool_registry.h"
 
@@ -68,18 +69,34 @@ struct TaskSnapshot {
   BudgetUsage usage;
   std::string pending_approval_step;    // non-empty while awaiting approval
   std::string pending_approval_prompt;  // what to show the user
+  bool pending_user_input = false;
   bool has_semantic_result = false;
   LiveWindowKey window;
   int replans_used = 0;
 };
 
+// Lean status projection for always-visible chrome. It deliberately excludes
+// goals, prompts, receipts, semantic results, and usage so frequent shell
+// updates do not copy task payloads.
+struct TaskStateSummary {
+  LiveWindowKey window;
+  TaskState state = TaskState::kDraft;
+};
+
 class TaskService {
  public:
+  using PermissionScopeResolver = base::RepeatingCallback<AgentPermissionRequest(
+      const LiveWindowKey&,
+      const ToolDescriptor&,
+      const base::DictValue&)>;
+
   // All raw pointers must outlive this service (the runtime owns them all).
   TaskService(ToolRegistry* registry,
               CapabilityExecutorRegistry* executors,
               Planner* planner,
-              base::RepeatingCallback<base::Time()> clock);
+              base::RepeatingCallback<base::Time()> clock,
+              AgentPermissionService* permissions = nullptr,
+              PermissionScopeResolver permission_scope_resolver = {});
   TaskService(const TaskService&) = delete;
   TaskService& operator=(const TaskService&) = delete;
   ~TaskService();
@@ -106,12 +123,19 @@ class TaskService {
   bool Approve(const TaskId& task_id,
                const std::string& step_id,
                bool approved);
+  // Supplies bounded typed input for the exact pending kUserInput step, then
+  // replans with that user-owned context. Input is never guessed, silently
+  // discarded, or applied to a different step.
+  bool ProvideInput(const TaskId& task_id,
+                    const std::string& step_id,
+                    base::DictValue input);
 
   bool Pause(const TaskId& task_id);
   bool Resume(const TaskId& task_id);
   bool Cancel(const TaskId& task_id);
 
   std::vector<TaskSnapshot> Snapshots() const;
+  std::vector<TaskStateSummary> StateSummaries() const;
   std::optional<TaskSnapshot> Snapshot(const TaskId& task_id) const;
   // Present when the task produced user-facing data (last semantic outcome).
   const SemanticResult* FinalSemanticResult(const TaskId& task_id) const;
@@ -134,6 +158,7 @@ class TaskService {
     ~ActiveTask();
 
     std::string goal;
+    std::string planning_goal;
     LiveWindowKey window;
     ToolPermissionContext context;
     PlanOrigin plan_origin = PlanOrigin::kDeterministic;
@@ -142,6 +167,8 @@ class TaskService {
     std::optional<SemanticResult> semantic;
     std::string pending_approval_step;
     std::string pending_approval_prompt;
+    bool pending_user_input = false;
+    std::optional<AgentPermissionRequest> pending_permission_request;
     int replans_used = 0;
     int active_dispatch_count = 0;
     bool use_model = false;
@@ -158,7 +185,13 @@ class TaskService {
     std::map<std::string, std::unique_ptr<base::OneShotTimer>> step_timers;
   };
 
+  static TaskState EffectiveState(const ActiveTask& task);
+
   void OnPlanned(TaskId task_id, PlannerResult result);
+  // Installs a newly validated plan after either bounded failure recovery or
+  // explicit user input. A failed plan becomes a visible input request rather
+  // than an invented fallback action.
+  void OnReplanned(TaskId task_id, PlannerResult result);
   // Drives the task to its next blocking point (approval/input/in-progress) or
   // to completion, re-entrancy-safe. Dispatches every offered runnable step.
   void Pump(const TaskId& task_id);
@@ -180,6 +213,8 @@ class TaskService {
   raw_ptr<CapabilityExecutorRegistry> executors_;
   raw_ptr<Planner> planner_;
   base::RepeatingCallback<base::Time()> clock_;
+  raw_ptr<AgentPermissionService> permissions_ = nullptr;
+  PermissionScopeResolver permission_scope_resolver_;
   std::map<TaskId, std::unique_ptr<ActiveTask>> tasks_;
   base::ObserverList<TaskServiceObserver> observers_;
   bool shutting_down_ = false;

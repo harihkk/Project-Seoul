@@ -10,6 +10,7 @@
 #include "base/time/time.h"
 #include "seoul/browser/tools/tool_schema.h"
 #include "testing/gtest/include/gtest/gtest.h"
+#include "url/gurl.h"
 
 namespace seoul {
 namespace {
@@ -169,6 +170,45 @@ TEST_F(TaskServiceTest, RunsPlannedTaskThroughExecutorToCompletion) {
   EXPECT_EQ(observer_.finished(), 1);
 }
 
+TEST(TaskServicePlanningStateTest, PublishesWhileModelPlanningIsInFlight) {
+  ToolRegistry registry;
+  CapabilityExecutorRegistry executors;
+  base::OnceCallback<void(std::optional<base::DictValue>, PlanOrigin)>
+      pending_plan;
+  Planner planner(
+      registry,
+      base::BindLambdaForTesting(
+          [&pending_plan](
+              const std::string& prompt, bool prefer_local,
+              base::OnceCallback<void(std::optional<base::DictValue>,
+                                      PlanOrigin)> callback) {
+            (void)prompt;
+            (void)prefer_local;
+            pending_plan = std::move(callback);
+          }));
+  TaskService service(&registry, &executors, &planner,
+                      base::BindRepeating([] { return base::Time::UnixEpoch(); }));
+  RecordingObserver observer;
+  service.AddObserver(&observer);
+
+  const TaskId id = service.StartTask(
+      "research the request", LiveWindowKey::FromSessionId(3), AllowAll(),
+      /*use_model=*/true, /*prefer_local=*/true);
+  ASSERT_TRUE(id.is_valid());
+  ASSERT_TRUE(pending_plan);
+  const std::optional<TaskSnapshot> planning = service.Snapshot(id);
+  ASSERT_TRUE(planning.has_value());
+  EXPECT_EQ(planning->state, TaskState::kPlanning);
+  const std::vector<TaskStateSummary> lean = service.StateSummaries();
+  ASSERT_EQ(lean.size(), 1u);
+  EXPECT_EQ(lean[0].window, LiveWindowKey::FromSessionId(3));
+  EXPECT_EQ(lean[0].state, TaskState::kPlanning);
+  EXPECT_GE(observer.updates(), 1);
+
+  std::move(pending_plan).Run(std::nullopt, PlanOrigin::kLocalModel);
+  service.RemoveObserver(&observer);
+}
+
 TEST_F(TaskServiceTest, SynchronousMultiStepPlanDrivesOnceAndFinishesOnce) {
   ASSERT_TRUE(
       registry_.Register(Descriptor("info.read.inventory")).has_value());
@@ -239,6 +279,127 @@ TEST_F(TaskServiceTest, RiskyStepWaitsForApprovalAndRejectionSkipsIt) {
   snapshot = service_.Snapshot(id);
   ASSERT_TRUE(snapshot.has_value());
   EXPECT_EQ(snapshot->state, TaskState::kCompleted);
+}
+
+TEST_F(TaskServiceTest, UserInputIsBoundedAndReplannedIntoExecution) {
+  ASSERT_TRUE(
+      registry_.Register(Descriptor("info.read.inventory")).has_value());
+  auto executor = std::make_unique<ManualExecutor>("info.read.inventory",
+                                                   StepStatus::kSucceeded);
+  ManualExecutor* raw = executor.get();
+  ASSERT_TRUE(executors_.Register(std::move(executor)));
+
+  Plan plan;
+  plan.goal = "read the fixture inventory records";
+  PlanStep input_step;
+  input_step.id = "missing_query";
+  input_step.kind = PlanStepKind::kUserInput;
+  input_step.prompt = "Which records should Seoul read?";
+  plan.steps.push_back(std::move(input_step));
+  const TaskId id = service_.StartTaskWithPlan(
+      "read the fixture inventory records", std::move(plan),
+      PlanOrigin::kDeterministic, LiveWindowKey::FromSessionId(7), AllowAll());
+  ASSERT_TRUE(id.is_valid());
+  std::optional<TaskSnapshot> snapshot = service_.Snapshot(id);
+  ASSERT_TRUE(snapshot.has_value());
+  EXPECT_EQ(snapshot->state, TaskState::kAwaitingApproval);
+  EXPECT_TRUE(snapshot->pending_user_input);
+  EXPECT_EQ(snapshot->pending_approval_step, "missing_query");
+
+  base::DictValue input;
+  input.Set("text", "all");
+  EXPECT_FALSE(service_.ProvideInput(id, "wrong_step", input.Clone()));
+  ASSERT_TRUE(service_.ProvideInput(id, "missing_query", std::move(input)));
+  environment_.RunUntilIdle();
+  EXPECT_EQ(raw->executions(), 1);
+  snapshot = service_.Snapshot(id);
+  ASSERT_TRUE(snapshot.has_value());
+  EXPECT_EQ(snapshot->state, TaskState::kCompleted);
+  ASSERT_GE(snapshot->receipts.size(), 2u);
+  EXPECT_EQ(snapshot->receipts[0].observed_summary, "user input collected");
+}
+
+TEST(TaskServicePermissionTest, ExactGrantSuppressesOnlyMatchingFirstUsePrompt) {
+  base::test::TaskEnvironment environment{
+      base::test::TaskEnvironment::TimeSource::MOCK_TIME};
+  ToolRegistry registry;
+  CapabilityExecutorRegistry executors;
+  ToolDescriptor descriptor = Descriptor("page.observe.text");
+  descriptor.approval = ApprovalPolicy::kFirstUsePerScope;
+  descriptor.sensitivity = DataSensitivity::kPageContent;
+  ASSERT_TRUE(registry.Register(std::move(descriptor)).has_value());
+  auto executor = std::make_unique<ManualExecutor>("page.observe.text",
+                                                   StepStatus::kSucceeded);
+  ManualExecutor* raw = executor.get();
+  ASSERT_TRUE(executors.Register(std::move(executor)));
+  Planner planner(registry, ModelPlanRequester());
+  base::Time now = base::Time::UnixEpoch() + base::Days(1);
+  const auto clock = base::BindRepeating(
+      [](base::Time* now) { return *now; }, &now);
+  AgentPermissionService permissions(clock);
+  TaskService service(
+      &registry, &executors, &planner, clock, &permissions,
+      base::BindRepeating(
+          [](const LiveWindowKey& window, const ToolDescriptor& descriptor,
+             const base::DictValue& args) {
+            AgentPermissionRequest request;
+            request.capability = descriptor.id;
+            request.approval = descriptor.approval;
+            request.risk = descriptor.risk;
+            request.sensitivity = descriptor.sensitivity;
+            request.window = window;
+            request.tab = LiveTabKey::FromSessionId(2);
+            request.frame_scope = "main";
+            request.source_origin =
+                url::Origin::Create(GURL("https://scope.test/path"));
+            return request;
+          }));
+
+  auto plan = [] {
+    Plan value;
+    value.goal = "read the fixture inventory records";
+    PlanStep step;
+    step.id = "observe";
+    step.kind = PlanStepKind::kToolCall;
+    step.tool = ToolId::FromString("page.observe.text");
+    step.args.Set("query", "all");
+    step.requires_approval = true;
+    value.steps.push_back(std::move(step));
+    return value;
+  };
+
+  const LiveWindowKey first_window = LiveWindowKey::FromSessionId(7);
+  const TaskId first = service.StartTaskWithPlan(
+      "read", plan(), PlanOrigin::kDeterministic, first_window, AllowAll());
+  ASSERT_TRUE(first.is_valid());
+  std::optional<TaskSnapshot> snapshot = service.Snapshot(first);
+  ASSERT_TRUE(snapshot.has_value());
+  EXPECT_EQ(snapshot->state, TaskState::kAwaitingApproval);
+  EXPECT_NE(snapshot->pending_approval_prompt.find("https://scope.test"),
+            std::string::npos);
+  ASSERT_TRUE(service.Approve(first, snapshot->pending_approval_step, true));
+  environment.RunUntilIdle();
+  EXPECT_EQ(raw->executions(), 1);
+  EXPECT_EQ(permissions.grant_count(), 1u);
+
+  // The exact same window/tab/frame/origin grant auto-approves the next read.
+  const TaskId second = service.StartTaskWithPlan(
+      "read again", plan(), PlanOrigin::kDeterministic, first_window,
+      AllowAll());
+  ASSERT_TRUE(second.is_valid());
+  environment.RunUntilIdle();
+  EXPECT_EQ(raw->executions(), 2);
+  EXPECT_EQ(service.Snapshot(second)->state, TaskState::kCompleted);
+
+  // A different window is a different scope and must prompt again.
+  const TaskId third = service.StartTaskWithPlan(
+      "read elsewhere", plan(), PlanOrigin::kDeterministic,
+      LiveWindowKey::FromSessionId(8), AllowAll());
+  ASSERT_TRUE(third.is_valid());
+  snapshot = service.Snapshot(third);
+  ASSERT_TRUE(snapshot.has_value());
+  EXPECT_EQ(snapshot->state, TaskState::kAwaitingApproval);
+  EXPECT_EQ(raw->executions(), 2);
 }
 
 TEST_F(TaskServiceTest, TimedOutMutationIsUnknownOutcomeAndNeverReplayed) {
