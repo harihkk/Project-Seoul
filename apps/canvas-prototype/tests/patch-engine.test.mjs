@@ -23,7 +23,7 @@ const bundle = await esbuild.build({
 });
 const bundlePath = path.join(outDir, 'core.patch-test.mjs');
 writeFileSync(bundlePath, bundle.outputFiles[0].text, 'utf8');
-const { SurfaceStore, capabilities, compileInterface } = await import(pathToFileURL(bundlePath).href);
+const { SurfaceStore, buildSauiKeyMap, capabilities, compileInterface } = await import(pathToFileURL(bundlePath).href);
 
 function chartSurfaceStore() {
   const capability = capabilities().find((c) => c.descriptor.id === 'info.pipeline.latency');
@@ -279,8 +279,8 @@ test('set_state without a message clears the previous message (native parity)', 
   assert.equal(store.get(surfaceId).components[0].state_message, undefined);
 });
 
-test('an unprojectable semantic result degrades to an explained error artifact', () => {
-  const longId = 'a'.repeat(50); // valid semantic field id, beyond the SAUI key budget
+test('long and reserved semantic ids map collision-free into canonical SAUI keys', () => {
+  const longId = 'a'.repeat(50); // valid semantic id, beyond the SAUI key budget
   const compiled = compileInterface({
     schema: {
       schema_version: 1,
@@ -296,6 +296,15 @@ test('an unprojectable semantic result degrades to an explained error artifact',
     ],
     provenance: { source_name: 'held-out', retrieved_at_ms: 1767225600000, effective_at_ms: 1767225600000 },
   });
-  assert.equal(compiled.representation, 'error_state');
-  assert.deepEqual(compiled.reasons, ['saui_projection_unrepresentable']);
+  assert.equal(compiled.representation, 'bar_chart');
+  const rows = compiled.surface.data.rows;
+  assert.equal(rows.kind, 'table');
+  assert.equal(rows.columns[0].key.length <= 40, true);
+  assert.notEqual(rows.columns[0].key, longId);
+  assert.equal(compiled.surface.components[0].props.x_key, rows.columns[0].key);
+
+  const mapping = buildSauiKeyMap(['field_0', 'onload', longId]);
+  assert.equal(mapping.get('field_0'), 'field_0');
+  assert.deepEqual(new Set(mapping.values()).size, 3);
+  for (const key of mapping.values()) assert.match(key, /^[a-z][a-z0-9_]{0,39}$/);
 });

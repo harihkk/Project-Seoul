@@ -49,6 +49,37 @@ const LIST_SHAPES = new Set([
   'form_schema', 'action_set', 'code_structure',
 ]);
 
+function isValidSauiPropKey(key: string): boolean {
+  return key.length > 0 && key.length <= 40 && /^[a-z][a-z0-9_]*$/.test(key) &&
+    !key.startsWith('on') && !['html', 'script', 'srcdoc', 'innerhtml', 'style'].includes(key);
+}
+
+/** Collision-free semantic-id -> SAUI-key mapping, mirrored in native. */
+export function buildSauiKeyMap(ids: string[]): Map<string, string> {
+  const occupied = new Set(ids.filter(isValidSauiPropKey));
+  const result = new Map<string, string>();
+  let generatedIndex = 0;
+  for (const id of [...new Set(ids)].sort()) {
+    if (isValidSauiPropKey(id)) {
+      result.set(id, id);
+      continue;
+    }
+    let candidate: string;
+    do candidate = `field_${generatedIndex++}`; while (occupied.has(candidate));
+    occupied.add(candidate);
+    result.set(id, candidate);
+  }
+  return result;
+}
+
+function fieldKeyMap(schema: SemanticSchema): Map<string, string> {
+  return buildSauiKeyMap(fields(schema).map((field) => field.id));
+}
+
+function wireFieldKey(schema: SemanticSchema, id: string): string {
+  return fieldKeyMap(schema).get(id) ?? id;
+}
+
 function generateSurfaceId(): string {
   if (typeof crypto !== 'undefined' && 'randomUUID' in crypto) return crypto.randomUUID();
   let out = '';
@@ -82,9 +113,10 @@ function primitiveCell(value: unknown): string | number | boolean {
 }
 
 function rowsToTableEntry(schema: SemanticSchema, rows: Record<string, unknown>[], provenance: DataProvenance): DataEntry {
+  const keys = fieldKeyMap(schema);
   return {
     kind: 'table',
-    columns: fields(schema).map((f) => ({ key: f.id, label: f.label })),
+    columns: fields(schema).map((f) => ({ key: keys.get(f.id) ?? f.id, label: f.label })),
     rows: rows.map((r) => fields(schema).map((f) => primitiveCell(r[f.id]))),
     provenance,
   };
@@ -109,8 +141,11 @@ export function convertToEntries(result: SemanticResult, prefix = ''): Record<st
   if (shape === 'record' || shape === 'document' || shape === 'artifact' || shape === 'diff') {
     const record = asRecord(result);
     const fieldsDict: Record<string, unknown> = {};
+    const keys = fieldKeyMap(result.schema);
     for (const f of fields(result.schema)) {
-      if (record[f.id] !== undefined && record[f.id] !== null) fieldsDict[f.id] = primitiveCell(record[f.id]);
+      if (record[f.id] !== undefined && record[f.id] !== null) {
+        fieldsDict[keys.get(f.id) ?? f.id] = primitiveCell(record[f.id]);
+      }
     }
     entries[name('record')] = { kind: 'record', fields: fieldsDict, provenance };
     return entries;
@@ -118,10 +153,15 @@ export function convertToEntries(result: SemanticResult, prefix = ''): Record<st
   if (shape === 'graph') {
     const graph = asGraph(result);
     entries[name('nodes')] = rowsToTableEntry(result.schema, graph.nodes, provenance);
+    const edgeFields = result.schema.edge_fields ?? [];
+    const edgeKeys = buildSauiKeyMap(edgeFields.map((edge) => edge.id));
     entries[name('edges')] = {
       kind: 'table',
-      columns: (result.schema.edge_fields ?? []).map((f) => ({ key: f.id, label: f.label })),
-      rows: graph.edges.map((r) => (result.schema.edge_fields ?? []).map((f) => primitiveCell(r[f.id]))),
+      columns: edgeFields.map((f) => ({
+        key: edgeKeys.get(f.id) ?? f.id,
+        label: f.label,
+      })),
+      rows: graph.edges.map((r) => edgeFields.map((f) => primitiveCell(r[f.id]))),
       provenance,
     };
     return entries;
@@ -130,12 +170,13 @@ export function convertToEntries(result: SemanticResult, prefix = ''): Record<st
     const record = asRecord(result);
     (result.schema.parts ?? []).forEach((part, i) => {
       const partName = (result.schema.part_names ?? [])[i] ?? `part${i}`;
+      const partKey = `p${i}`;
       const partResult: SemanticResult = {
         schema: part,
         data: record[partName],
         provenance: result.provenance,
       };
-      Object.assign(entries, convertToEntries(partResult, `${partName}_`));
+      Object.assign(entries, convertToEntries(partResult, `${prefix}${partKey}_`));
     });
     return entries;
   }
@@ -149,7 +190,7 @@ export function convertToEntries(result: SemanticResult, prefix = ''): Record<st
           .filter((r) => typeof r[temporal.id] === 'number' && typeof r[m.id] === 'number')
           .map((r) => ({ t_ms: r[temporal.id] as number, y: r[m.id] as number }));
         if (points.length > 0) {
-          entries[name(`series_${m.id}`)] = {
+          entries[name(`series_${wireFieldKey(result.schema, m.id)}`)] = {
             kind: 'series',
             points,
             x_unit: 'ms since epoch',
@@ -209,14 +250,14 @@ function chartNode(id: string, type: ComponentType, result: SemanticResult, pref
       x_label: temporal?.label ?? 'x',
       y_label: measures[0]?.label ?? 'value',
       units: measures[0]?.unit ?? '',
-      x_key: temporal?.id ?? '',
+      x_key: temporal ? wireFieldKey(result.schema, temporal.id) : '',
       x_kind: temporal ? 'timestamp' : 'number',
-      columns: measures.map((m) => ({ key: m.id, label: m.label, unit: m.unit ?? '' })),
+      columns: measures.map((m) => ({ key: wireFieldKey(result.schema, m.id), label: m.label, unit: m.unit ?? '' })),
       // Bars are measured from zero (a truncated bar axis misleads); the
       // catalog requires the prop, matching the native compiler.
       ...(type === 'bar_chart' || type === 'stacked_bar_chart' ? { baseline_zero: true } : {}),
     },
-    bindings: { data: singleSeries ? `${prefix}series_${measures[0].id}` : `${prefix}rows` },
+    bindings: { data: singleSeries ? `${prefix}series_${wireFieldKey(result.schema, measures[0].id)}` : `${prefix}rows` },
     accessible_name: `${type.replace(/_/g, ' ')} of ${measures.map((m) => m.label).join(', ')}`,
   };
 }
@@ -234,15 +275,20 @@ function tableNode(id: string, prefix: string, schema?: SemanticSchema): Compone
 // Presentation metadata carried on props: data entries are generic (no
 // roles), so components declare which columns mean what.
 function displayColumns(schema: SemanticSchema): { key: string; label: string; unit: string; role: string }[] {
-  return fields(schema).map((f) => ({ key: f.id, label: f.label, unit: f.unit ?? '', role: f.role ?? 'none' }));
+  return fields(schema).map((f) => ({ key: wireFieldKey(schema, f.id), label: f.label, unit: f.unit ?? '', role: f.role ?? 'none' }));
 }
 
 function keyByRole(schema: SemanticSchema, ...roles: string[]): string | undefined {
   for (const role of roles) {
     const f = fieldByRole(schema, role);
-    if (f) return f.id;
+    if (f) return wireFieldKey(schema, f.id);
   }
   return undefined;
+}
+
+function firstFieldKey(schema: SemanticSchema): string {
+  const first = fields(schema)[0];
+  return first ? wireFieldKey(schema, first.id) : '';
 }
 
 function nodeForRepresentation(rep: ComponentType, result: SemanticResult, id: string, prefix: string): ComponentNode {
@@ -258,7 +304,7 @@ function nodeForRepresentation(rep: ComponentType, result: SemanticResult, id: s
     case 'scatter_chart':
       return chartNode(id, rep, result, prefix);
     case 'comparison_matrix':
-      return { id, type: 'comparison_matrix', props: { id_key: keyByRole(result.schema, 'identifier', 'name') ?? fields(result.schema)[0]?.id ?? '', columns: displayColumns(result.schema) }, bindings: { data: `${prefix}rows` }, accessible_name: 'comparison matrix' };
+      return { id, type: 'comparison_matrix', props: { id_key: keyByRole(result.schema, 'identifier', 'name') ?? (fields(result.schema)[0] ? wireFieldKey(result.schema, fields(result.schema)[0]!.id) : ''), columns: displayColumns(result.schema) }, bindings: { data: `${prefix}rows` }, accessible_name: 'comparison matrix' };
     case 'network_graph':
       return { id, type: 'network_graph', props: { title: '' }, bindings: { data: `${prefix}nodes`, edges: `${prefix}edges` }, accessible_name: 'network graph' };
     default:
@@ -319,7 +365,7 @@ function pickForShape(result: SemanticResult, intent: InterfaceIntent, id: strin
       if (category && chartEligible(result) && asRows(result).length <= 40) {
         reasons.push('categorical_measure_bar_chart');
         const node = chartNode(id, 'bar_chart', result, prefix);
-        node.props = { ...node.props, x_key: category.id, x_label: category.label, x_kind: 'category' };
+        node.props = { ...node.props, x_key: wireFieldKey(schema, category.id), x_label: category.label, x_kind: 'category' };
         return { node, reasons };
       }
       reasons.push('collection_table');
@@ -329,11 +375,11 @@ function pickForShape(result: SemanticResult, intent: InterfaceIntent, id: strin
     case 'event_stream':
     case 'status_stream':
       reasons.push('intervals_timeline');
-      return { node: { id, type: 'timeline', props: { when_key: keyByRole(schema, 'interval_start', 'timestamp') ?? '', end_key: keyByRole(schema, 'interval_end') ?? '', what_key: keyByRole(schema, 'name', 'identifier') ?? fields(schema)[0]?.id ?? '', columns: displayColumns(schema) }, bindings: { data: `${prefix}rows` }, accessible_name: 'timeline' }, reasons };
+      return { node: { id, type: 'timeline', props: { when_key: keyByRole(schema, 'interval_start', 'timestamp') ?? '', end_key: keyByRole(schema, 'interval_end') ?? '', what_key: keyByRole(schema, 'name', 'identifier') ?? firstFieldKey(schema), columns: displayColumns(schema) }, bindings: { data: `${prefix}rows` }, accessible_name: 'timeline' }, reasons };
     case 'hierarchy':
     case 'code_structure':
       reasons.push(shape === 'hierarchy' ? 'hierarchy_tree' : 'code_structure_tree');
-      return { node: { id, type: 'tree', props: { id_key: keyByRole(schema, 'identifier') ?? fields(schema)[0]?.id ?? '', name_key: keyByRole(schema, 'name', 'identifier') ?? fields(schema)[0]?.id ?? '', parent_key: keyByRole(schema, 'parent_reference') ?? '' }, bindings: { data: `${prefix}rows` }, accessible_name: 'tree' }, reasons };
+      return { node: { id, type: 'tree', props: { id_key: keyByRole(schema, 'identifier') ?? firstFieldKey(schema), name_key: keyByRole(schema, 'name', 'identifier') ?? firstFieldKey(schema), parent_key: keyByRole(schema, 'parent_reference') ?? '' }, bindings: { data: `${prefix}rows` }, accessible_name: 'tree' }, reasons };
     case 'graph':
       reasons.push('graph_network');
       return { node: nodeForRepresentation('network_graph', result, id, prefix), reasons };
@@ -371,7 +417,7 @@ function pickForShape(result: SemanticResult, intent: InterfaceIntent, id: strin
       return { node: { id, type: 'schema_form', props: { inert: true, columns: displayColumns(schema) }, bindings: { data: `${prefix}rows` }, accessible_name: 'form preview (inert)' }, reasons };
     case 'action_set':
       reasons.push('action_set_buttons');
-      return { node: { id, type: 'list', props: { as_actions: true, label_key: keyByRole(schema, 'name', 'identifier') ?? fields(schema)[0]?.id ?? '', summary_key: keyByRole(schema, 'description') ?? '' }, bindings: { data: `${prefix}rows` }, accessible_name: 'available actions (synthetic, inert)' }, reasons };
+      return { node: { id, type: 'list', props: { as_actions: true, label_key: keyByRole(schema, 'name', 'identifier') ?? firstFieldKey(schema), summary_key: keyByRole(schema, 'description') ?? '' }, bindings: { data: `${prefix}rows` }, accessible_name: 'available actions (synthetic, inert)' }, reasons };
     case 'diff': {
       // Native semantics: the unified diff travels as the component's `diff`
       // prop (code-length budget), not a record binding.
@@ -396,8 +442,9 @@ function pickForShape(result: SemanticResult, intent: InterfaceIntent, id: strin
       reasons.push('composite_sections');
       const children: ComponentNode[] = (schema.parts ?? []).map((part, i) => {
         const partName = (schema.part_names ?? [])[i] ?? `part${i}`;
+        const partKey = `p${i}`;
         const partResult: SemanticResult = { schema: part, data: asRecord(result)[partName], provenance: result.provenance };
-        const child = pickForShape(partResult, {}, `part-${partName}`, `${partName}_`);
+        const child = pickForShape(partResult, {}, `part-${partKey}`, `${prefix}${partKey}_`);
         reasons.push(...child.reasons.map((r) => `${partName}:${r}`));
         return child.node;
       });
