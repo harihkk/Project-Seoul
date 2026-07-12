@@ -1,0 +1,27 @@
+# Project Seoul agent permission policy.
+
+import("//testing/test.gni")
+
+source_set("policy_core") {
+  sources = [
+    "agent_permission_service.cc",
+    "agent_permission_service.h",
+  ]
+  deps = [
+    "//base",
+    "//seoul/browser/lifecycle:lifecycle_core",
+    "//seoul/browser/tools:tools_core",
+    "//url",
+  ]
+}
+
+test("seoul_policy_unittests") {
+  testonly = true
+  sources = [ "agent_permission_service_unittest.cc" ]
+  deps = [
+    ":policy_core",
+    "//base/test:test_support",
+    "//testing/gtest",
+    "//url",
+  ]
+}
