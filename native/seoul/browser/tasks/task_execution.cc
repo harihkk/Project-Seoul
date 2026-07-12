@@ -577,6 +577,16 @@ std::unique_ptr<TaskExecution> TaskExecution::RestoreFromCheckpoint(
         parsed == StepStatus::kRunning ? StepStatus::kOutcomeUnknown : parsed;
     step_state.retries = entry->FindInt("retries").value_or(0);
     step_state.approved = entry->FindBool("approved").value_or(false);
+    const PlanStep* step = execution->FindStep(id);
+    if (step && step->kind == PlanStepKind::kToolCall &&
+        step->requires_approval && step_state.approved &&
+        step_state.status == StepStatus::kPending) {
+      // Permission grants are intentionally session-memory only. A recovered
+      // pending action must resolve its current tab/origin scope and ask again
+      // instead of inheriting stale approval from a checkpoint.
+      step_state.approved = false;
+      step_state.status = StepStatus::kAwaitingApproval;
+    }
   }
   if (const base::DictValue* loops = checkpoint.FindDict("loops")) {
     for (const auto [group, iterations] : *loops) {

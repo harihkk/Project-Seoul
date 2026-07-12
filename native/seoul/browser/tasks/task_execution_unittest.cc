@@ -217,6 +217,28 @@ TEST_F(TaskExecutionTest, ApprovedStepRunsAfterApproval) {
   EXPECT_EQ(execution->state(), TaskState::kCompleted);
 }
 
+TEST_F(TaskExecutionTest, CheckpointDoesNotPersistPendingToolApproval) {
+  Plan plan;
+  PlanStep submit = ToolStep("submit", "page.form.submit");
+  submit.requires_approval = true;
+  plan.steps.push_back(submit);
+  const TaskId task_id = TaskId::GenerateNew();
+  TaskExecution execution(task_id, plan, Resolver(), Clock());
+
+  ASSERT_EQ(execution.Start().kind, NextAction::Kind::kAwaitApproval);
+  ASSERT_EQ(execution.RecordApproval("submit", true).kind,
+            NextAction::Kind::kRunStep);
+  ASSERT_EQ(execution.step_status("submit"), StepStatus::kPending);
+
+  auto restored = TaskExecution::RestoreFromCheckpoint(
+      task_id, plan, Resolver(), Clock(), execution.Checkpoint());
+  ASSERT_NE(restored, nullptr);
+  EXPECT_EQ(restored->step_status("submit"),
+            StepStatus::kAwaitingApproval);
+  EXPECT_EQ(restored->RecordApproval("submit", true).kind,
+            NextAction::Kind::kRunStep);
+}
+
 TEST_F(TaskExecutionTest, GuardsSkipStepsWhoseDependencyFailed) {
   Plan plan;
   plan.budgets.max_retries_per_step = 0;

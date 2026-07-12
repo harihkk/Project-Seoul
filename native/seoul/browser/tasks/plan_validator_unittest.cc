@@ -105,7 +105,7 @@ TEST_F(PlanValidatorTest, RejectsInvalidArgsAndDuplicateIds) {
   EXPECT_EQ(result.error().error, PlanError::kDuplicateStepId);
 }
 
-TEST_F(PlanValidatorTest, IrreversibleStepsNeedAnApprovalPath) {
+TEST_F(PlanValidatorTest, IrreversibleStepsNeedExactStepApproval) {
   Plan plan;
   plan.steps.push_back(ToolStep("fill", "page.observe.text"));
   plan.steps.push_back(ToolStep("submit", "page.form.submit"));
@@ -114,18 +114,22 @@ TEST_F(PlanValidatorTest, IrreversibleStepsNeedAnApprovalPath) {
   EXPECT_EQ(result.error().error, PlanError::kMissingApprovalGate);
   EXPECT_EQ(result.error().step_id, "submit");
 
-  // Either a per-step approval flag...
+  // The per-step flag binds execution-time consent to the exact live scope.
   plan.steps[1].requires_approval = true;
   EXPECT_TRUE(ValidatePlan(plan, registry_, context_).has_value());
 
-  // ...or a preceding approval gate satisfies the requirement.
+  // A generic preceding gate is a useful workflow boundary, but cannot
+  // substitute for exact capability/tab/origin approval.
   plan.steps[1].requires_approval = false;
   PlanStep gate;
   gate.id = "confirm";
   gate.kind = PlanStepKind::kApprovalGate;
   gate.prompt = "Submit the application?";
   plan.steps.insert(plan.steps.begin() + 1, gate);
-  EXPECT_TRUE(ValidatePlan(plan, registry_, context_).has_value());
+  result = ValidatePlan(plan, registry_, context_);
+  ASSERT_FALSE(result.has_value());
+  EXPECT_EQ(result.error().error, PlanError::kMissingApprovalGate);
+  EXPECT_EQ(result.error().step_id, "submit");
 }
 
 TEST_F(PlanValidatorTest, ParallelGroupsMustBeReadOnly) {

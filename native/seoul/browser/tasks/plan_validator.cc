@@ -70,6 +70,7 @@ bool ValidStepId(const std::string& id) {
 // approval-required tools, irreversible mutations, and external side effects.
 bool NeedsApproval(const ToolDescriptor& descriptor) {
   return descriptor.approval == ApprovalPolicy::kAlwaysRequired ||
+         descriptor.approval == ApprovalPolicy::kFirstUsePerScope ||
          descriptor.risk == RiskCategory::kIrreversibleMutation ||
          descriptor.risk == RiskCategory::kExternalSideEffect;
 }
@@ -95,7 +96,6 @@ PlanValidationResult ValidatePlan(const Plan& plan,
 
   std::set<std::string> seen_ids;
   std::set<std::string> earlier_ids;
-  bool approval_gate_open = false;  // an unconsumed earlier kApprovalGate
 
   for (const PlanStep& step : plan.steps) {
     if (!ValidStepId(step.id)) {
@@ -130,9 +130,6 @@ PlanValidationResult ValidatePlan(const Plan& plan,
         if (step.prompt.empty()) {
           return Violation(PlanError::kMissingPrompt, step.id);
         }
-        if (step.kind == PlanStepKind::kApprovalGate) {
-          approval_gate_open = true;
-        }
         break;
       }
       case PlanStepKind::kToolCall: {
@@ -160,17 +157,13 @@ PlanValidationResult ValidatePlan(const Plan& plan,
           return Violation(PlanError::kParallelMutation, step.id);
         }
         if (NeedsApproval(*descriptor)) {
-          // The step must either carry its own approval flag or follow an
-          // approval gate that has not yet been consumed by another risky
-          // step.
-          if (step.requires_approval) {
-            break;
+          // Approval belongs to the exact capability step whose live scope is
+          // resolved at execution. A generic earlier approval gate cannot
+          // substitute: it is not bound to the tab, origin, destination, or
+          // connector service and would bypass AgentPermissionService.
+          if (!step.requires_approval) {
+            return Violation(PlanError::kMissingApprovalGate, step.id);
           }
-          if (approval_gate_open) {
-            approval_gate_open = false;
-            break;
-          }
-          return Violation(PlanError::kMissingApprovalGate, step.id);
         }
         break;
       }
