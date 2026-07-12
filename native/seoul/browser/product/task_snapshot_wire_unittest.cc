@@ -30,7 +30,7 @@ base::Value ReadFixture(const std::string& relative) {
 TEST(TaskSnapshotWireTest, FixturesParseAndRoundTrip) {
   for (const char* name :
        {"task/completed-fixture.json", "task/awaiting-approval.json",
-        "task/failed.json"}) {
+        "task/awaiting-input.json", "task/failed.json"}) {
     SCOPED_TRACE(name);
     auto snapshot = ParseTaskSnapshot(ReadFixture(name));
     ASSERT_TRUE(snapshot.has_value()) << snapshot.error();

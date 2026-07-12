@@ -255,6 +255,9 @@ base::DictValue TaskSnapshotToValue(const TaskSnapshot& snapshot) {
   if (!snapshot.pending_approval_step.empty()) {
     dict.Set("pending_approval_step", snapshot.pending_approval_step);
     dict.Set("pending_approval_prompt", snapshot.pending_approval_prompt);
+    if (snapshot.pending_user_input) {
+      dict.Set("pending_user_input", true);
+    }
   }
   dict.Set("has_semantic_result", snapshot.has_semantic_result);
   if (snapshot.window.is_valid()) {
@@ -341,6 +344,8 @@ base::expected<TaskSnapshot, std::string> ParseTaskSnapshot(
           dict->FindString("pending_approval_prompt")) {
     snapshot.pending_approval_prompt = *prompt;
   }
+  snapshot.pending_user_input =
+      dict->FindBool("pending_user_input").value_or(false);
   snapshot.has_semantic_result =
       dict->FindBool("has_semantic_result").value_or(false);
   if (const std::string* window = dict->FindString("window")) {
