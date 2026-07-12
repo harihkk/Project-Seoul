@@ -74,6 +74,8 @@ enum class ShellError {
 enum class ShellUtilityAction {
   kNewTemporaryTab,
   kCommandLauncher,
+  kOpenCanvas,
+  kOpenTaskDeck,
   kCreateSplit,
   kReconcile,
   kAcknowledgeRecovery,
@@ -88,6 +90,8 @@ struct ShellEssentialItem {
   bool has_live_tab = false;
   bool live_in_current_window = false;
   bool is_active = false;
+  LiveTabKey live_tab;
+  LiveWindowKey live_window;
 
   friend bool operator==(const ShellEssentialItem&,
                          const ShellEssentialItem&) = default;
@@ -135,6 +139,28 @@ struct ShellActionEnablement {
                          const ShellActionEnablement&) = default;
 };
 
+struct ShellSplitCandidate {
+  LiveTabKey tab;
+  std::string title;
+  std::string origin;
+
+  friend bool operator==(const ShellSplitCandidate&,
+                         const ShellSplitCandidate&) = default;
+};
+
+struct ShellTaskSummary {
+  int total = 0;
+  int active = 0;
+  int waiting_for_user = 0;
+  int paused = 0;
+  int failed = 0;
+
+  bool has_attention() const { return waiting_for_user > 0 || paused > 0; }
+
+  friend bool operator==(const ShellTaskSummary&,
+                         const ShellTaskSummary&) = default;
+};
+
 struct ShellSnapshot {
   ShellWindowKey window;
   ShellMode mode = ShellMode::kExpanded;
@@ -145,6 +171,7 @@ struct ShellSnapshot {
   std::vector<ShellPinnedItem> pinned_items;
   std::vector<ShellSectionInfo> sections;
   std::vector<ShellActionEnablement> actions;
+  ShellTaskSummary tasks;
   bool show_empty_workspace = false;
   bool show_status_banner = false;
   std::string status_message;

@@ -3,17 +3,16 @@
 #include "seoul/browser/shell/shell_view_model.h"
 
 #include <algorithm>
+#include <string>
+#include <utility>
+
+#include "url/gurl.h"
+#include "url/origin.h"
 
 namespace seoul {
 namespace {
 
-ShellItemState EssentialState(const OrganizationModel& model,
-                              const EssentialRecord& essential,
-                              ShellWindowKey window,
-                              const WindowProjection& projection) {
-  (void)model;
-  (void)window;
-  (void)projection;
+ShellItemState EssentialState(const EssentialRecord& essential) {
   if (essential.root_url.empty()) {
     return ShellItemState::kUnavailable;
   }
@@ -33,6 +32,68 @@ void AddAction(ShellSnapshot* snapshot,
 
 }  // namespace
 
+std::vector<ShellSplitCandidate> ShellViewModel::BuildSplitCandidates(
+    const WindowProjection& projection,
+    const LiveWindowSnapshot& live) {
+  std::vector<ShellSplitCandidate> candidates;
+  if (!projection.active_tab.is_valid()) {
+    return candidates;
+  }
+  for (const LiveTabDescriptor& descriptor : live.tabs) {
+    if (descriptor.tab == projection.active_tab &&
+        !descriptor.upstream_split_token.empty()) {
+      return candidates;
+    }
+  }
+  for (const ProjectedTab& projected : projection.tabs) {
+    if (!projected.tab.is_valid() || projected.tab == projection.active_tab) {
+      continue;
+    }
+    ShellSplitCandidate candidate;
+    candidate.tab = projected.tab;
+    bool found_live = false;
+    for (const LiveTabDescriptor& descriptor : live.tabs) {
+      if (descriptor.tab != projected.tab) {
+        continue;
+      }
+      found_live = true;
+      if (!descriptor.upstream_split_token.empty()) {
+        candidate.tab = LiveTabKey();
+      } else {
+        candidate.title = descriptor.title;
+        candidate.origin = descriptor.origin;
+      }
+      break;
+    }
+    if (found_live && candidate.tab.is_valid()) {
+      candidates.push_back(std::move(candidate));
+    }
+  }
+  return candidates;
+}
+
+std::string ShellViewModel::TaskButtonLabel(const ShellTaskSummary& tasks,
+                                            ShellMode mode) {
+  if (mode == ShellMode::kCollapsed) {
+    if (tasks.has_attention()) {
+      return "!";
+    }
+    return tasks.active > 0 ? std::to_string(tasks.active) : "○";
+  }
+  return tasks.total > 0 ? "Tasks " + std::to_string(tasks.total) : "Tasks";
+}
+
+std::string ShellViewModel::TaskAccessibleName(
+    const ShellTaskSummary& tasks) {
+  if (tasks.total == 0) {
+    return "Task Deck, no tasks";
+  }
+  return "Task Deck: " + std::to_string(tasks.active) + " active, " +
+         std::to_string(tasks.waiting_for_user) + " waiting for you, " +
+         std::to_string(tasks.paused) + " paused, " +
+         std::to_string(tasks.failed) + " failed";
+}
+
 ShellSnapshot ShellViewModel::Build(const OrganizationModel& model,
                                     const ShellBuildContext& context,
                                     const WindowProjection& projection,
@@ -43,6 +104,7 @@ ShellSnapshot ShellViewModel::Build(const OrganizationModel& model,
   snapshot.mode = context.mode;
   snapshot.revision = revision;
   snapshot.switch_phase = context.switch_phase;
+  snapshot.tasks = context.tasks;
 
   const WorkspaceId active =
       model.ActiveWorkspaceForWindow(context.window.value());
@@ -64,6 +126,9 @@ ShellSnapshot ShellViewModel::Build(const OrganizationModel& model,
     snapshot.show_status_banner = true;
     snapshot.status_message = "Recovery required.";
     AddAction(&snapshot, ShellUtilityAction::kAcknowledgeRecovery, true, "");
+    AddAction(&snapshot, ShellUtilityAction::kCommandLauncher, true, "");
+    AddAction(&snapshot, ShellUtilityAction::kOpenCanvas, true, "");
+    AddAction(&snapshot, ShellUtilityAction::kOpenTaskDeck, true, "");
     AddAction(&snapshot, ShellUtilityAction::kNewTemporaryTab, false,
               "Recovery required.");
     AddAction(&snapshot, ShellUtilityAction::kCreateSplit, false,
@@ -99,7 +164,34 @@ ShellSnapshot ShellViewModel::Build(const OrganizationModel& model,
     item.name = essential.name;
     item.icon = essential.icon;
     item.root_url = essential.root_url;
-    item.state = EssentialState(model, essential, context.window, projection);
+    item.state = EssentialState(essential);
+    const GURL essential_url(essential.root_url);
+    const url::Origin essential_origin = url::Origin::Create(essential_url);
+    if (!essential_origin.opaque() &&
+        essential_origin.GetURL().SchemeIsHTTPOrHTTPS()) {
+      const std::string serialized = essential_origin.Serialize();
+      auto associate = [&](const LiveWindowSnapshot& candidate_window,
+                           bool is_current_window) {
+        for (const LiveTabDescriptor& descriptor : candidate_window.tabs) {
+          if (descriptor.tab.is_valid() && descriptor.origin == serialized) {
+            item.has_live_tab = true;
+            item.live_in_current_window = is_current_window;
+            item.live_tab = descriptor.tab;
+            item.live_window = candidate_window.window;
+            item.is_active = descriptor.tab == candidate_window.active_tab;
+            return true;
+          }
+        }
+        return false;
+      };
+      if (!associate(live, true)) {
+        for (const LiveWindowSnapshot& other : context.other_live_windows) {
+          if (associate(other, false)) {
+            break;
+          }
+        }
+      }
+    }
     snapshot.essentials.push_back(std::move(item));
   }
 
@@ -154,28 +246,11 @@ ShellSnapshot ShellViewModel::Build(const OrganizationModel& model,
   AddAction(&snapshot, ShellUtilityAction::kNewTemporaryTab, mutations_ok,
             mutations_ok ? "" : "Reconciliation required.");
   AddAction(&snapshot, ShellUtilityAction::kCommandLauncher, true, "");
+  AddAction(&snapshot, ShellUtilityAction::kOpenCanvas, true, "");
+  AddAction(&snapshot, ShellUtilityAction::kOpenTaskDeck, true, "");
 
-  bool split_ok = false;
-  if (mutations_ok && projection.active_tab.is_valid()) {
-    LiveTabKey partner;
-    for (const ProjectedTab& tab : projection.tabs) {
-      if (tab.tab != projection.active_tab) {
-        partner = tab.tab;
-        break;
-      }
-    }
-    if (partner.is_valid()) {
-      bool active_in_split = false;
-      for (const LiveTabDescriptor& descriptor : live.tabs) {
-        if (descriptor.tab == projection.active_tab &&
-            !descriptor.upstream_split_token.empty()) {
-          active_in_split = true;
-          break;
-        }
-      }
-      split_ok = !active_in_split;
-    }
-  }
+  const bool split_ok =
+      mutations_ok && !BuildSplitCandidates(projection, live).empty();
   AddAction(&snapshot, ShellUtilityAction::kCreateSplit,
             split_ok && mutations_ok,
             split_ok ? "" : "Select another tab to split with.");

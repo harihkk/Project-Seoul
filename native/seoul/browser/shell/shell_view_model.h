@@ -16,10 +16,18 @@ struct ShellBuildContext {
   bool recovery_required = false;
   bool lifecycle_degraded = false;
   WorkspaceSwitchPhase switch_phase = WorkspaceSwitchPhase::kIdle;
+  ShellTaskSummary tasks;
+  std::vector<LiveWindowSnapshot> other_live_windows;
 };
 
 class ShellViewModel {
  public:
+  static std::vector<ShellSplitCandidate> BuildSplitCandidates(
+      const WindowProjection& projection,
+      const LiveWindowSnapshot& live);
+  static std::string TaskButtonLabel(const ShellTaskSummary& tasks,
+                                     ShellMode mode);
+  static std::string TaskAccessibleName(const ShellTaskSummary& tasks);
   static ShellSnapshot Build(const OrganizationModel& model,
                              const ShellBuildContext& context,
                              const WindowProjection& projection,
