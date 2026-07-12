@@ -1,0 +1,27 @@
+# Project Seoul Library, Boards, and Live Collections.
+
+import("//testing/test.gni")
+
+source_set("library_core") {
+  sources = [
+    "library_service.cc",
+    "library_service.h",
+    "library_types.h",
+  ]
+  deps = [
+    "//base",
+    "//seoul/browser/tools:tools_core",
+    "//url",
+  ]
+}
+
+test("seoul_library_unittests") {
+  testonly = true
+  sources = [ "library_service_unittest.cc" ]
+  deps = [
+    ":library_core",
+    "//base",
+    "//base/test:test_support",
+    "//testing/gtest",
+  ]
+}
