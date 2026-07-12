@@ -26,6 +26,14 @@ struct SauiDataConversion {
   size_t truncated_rows = 0;
 };
 
+// Builds a collision-free mapping from semantic identifiers into SAUI prop
+// keys. Already-safe keys remain unchanged. Longer or reserved identifiers
+// receive deterministic field_N keys assigned by lexical order, never hashes;
+// every mapping is therefore bounded, reproducible, and collision-free for the
+// complete schema.
+std::map<std::string, std::string> BuildSauiKeyMap(
+    const std::vector<std::string>& semantic_ids);
+
 // Converts a validated semantic result. `hidden_field_ids` drops those fields
 // from emitted tables/records (user-directed "hide that column");
 // `keep_entity_ids`, when non-empty, keeps only rows whose identifier-role

@@ -6,12 +6,51 @@
 #include <set>
 #include <utility>
 
+#include "seoul/browser/saui/saui_document.h"
 #include "seoul/browser/saui/saui_limits.h"
 #include "seoul/browser/semantic/semantic_inspection.h"
 
 namespace seoul {
 
+std::map<std::string, std::string> BuildSauiKeyMap(
+    const std::vector<std::string>& semantic_ids) {
+  std::map<std::string, std::string> result;
+  std::set<std::string> occupied;
+  for (const std::string& id : semantic_ids) {
+    if (IsValidPropKey(id)) {
+      occupied.insert(id);
+    }
+  }
+  std::vector<std::string> sorted = semantic_ids;
+  std::sort(sorted.begin(), sorted.end());
+  sorted.erase(std::unique(sorted.begin(), sorted.end()), sorted.end());
+  size_t generated_index = 0;
+  for (const std::string& id : sorted) {
+    if (IsValidPropKey(id)) {
+      result[id] = id;
+      continue;
+    }
+    std::string candidate;
+    do {
+      candidate = "field_" + std::to_string(generated_index++);
+    } while (occupied.contains(candidate));
+    occupied.insert(candidate);
+    result[id] = std::move(candidate);
+  }
+  return result;
+}
+
 namespace {
+
+std::map<std::string, std::string> FieldKeyMap(
+    const std::vector<FieldSpec>& fields) {
+  std::vector<std::string> ids;
+  ids.reserve(fields.size());
+  for (const FieldSpec& field : fields) {
+    ids.push_back(field.id);
+  }
+  return BuildSauiKeyMap(ids);
+}
 
 DataProvenance ProvenanceFor(const SemanticResult& result) {
   return result.provenance.base;
@@ -45,6 +84,7 @@ DataEntry TableFromRows(const SemanticResult& result,
                         size_t* truncated_rows) {
   DataEntry entry;
   entry.kind = DataEntryKind::kTable;
+  const std::map<std::string, std::string> keys = FieldKeyMap(fields);
   for (const FieldSpec& field : fields) {
     if (FieldHidden(hidden, field.id)) {
       continue;
@@ -53,7 +93,7 @@ DataEntry TableFromRows(const SemanticResult& result,
     if (!field.unit.empty()) {
       label += " (" + field.unit + ")";
     }
-    entry.table.columns.push_back({field.id, label});
+    entry.table.columns.push_back({keys.at(field.id), label});
   }
   const FieldSpec* identifier = nullptr;
   for (const FieldSpec& field : fields) {
@@ -94,12 +134,13 @@ DataEntry RecordFromDict(const SemanticResult& result,
                          const base::DictValue& dict) {
   DataEntry entry;
   entry.kind = DataEntryKind::kRecord;
+  const std::map<std::string, std::string> keys = FieldKeyMap(fields);
   for (const FieldSpec& field : fields) {
     if (FieldHidden(hidden, field.id)) {
       continue;
     }
     if (const base::Value* value = dict.Find(field.id)) {
-      entry.record.Set(field.id, value->Clone());
+      entry.record.Set(keys.at(field.id), value->Clone());
     }
   }
   const DataProvenance provenance = ProvenanceFor(result);
@@ -119,6 +160,8 @@ void EmitSeriesEntries(const SemanticResult& result,
     return;
   }
   size_t emitted = 0;
+  const std::map<std::string, std::string> keys =
+      FieldKeyMap(result.schema.fields);
   for (const FieldSpec* measure : MeasureFields(result.schema)) {
     if (measure->primitive != FieldPrimitive::kNumber &&
         measure->primitive != FieldPrimitive::kInteger) {
@@ -155,7 +198,7 @@ void EmitSeriesEntries(const SemanticResult& result,
       entry.has_provenance = true;
       entry.provenance = provenance;
     }
-    (*entries)["series_" + measure->id] = std::move(entry);
+    (*entries)["series_" + keys.at(measure->id)] = std::move(entry);
   }
 }
 
@@ -224,9 +267,12 @@ void ConvertInto(const SemanticResult& result,
         part.schema = schema.parts[i];
         part.data = part_data->Clone();
         part.provenance = result.provenance;
+        // Ordinal path segments are bounded and collision-free even when
+        // semantic part names use their full 64-character allowance. Human
+        // names remain in titles; wire identifiers are structural only.
+        const std::string segment = "p" + std::to_string(i);
         const std::string part_prefix =
-            prefix.empty() ? schema.part_names[i]
-                           : prefix + "_" + schema.part_names[i];
+            prefix.empty() ? segment : prefix + "_" + segment;
         ConvertInto(part, part_prefix, hidden, keep_ids, out);
       }
       return;

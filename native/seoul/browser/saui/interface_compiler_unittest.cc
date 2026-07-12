@@ -10,9 +10,12 @@
 #include "seoul/browser/saui/interface_compiler.h"
 
 #include <algorithm>
+#include <set>
 
 #include "base/test/values_test_util.h"
 #include "seoul/browser/saui/saui_catalog.h"
+#include "seoul/browser/saui/saui_document.h"
+#include "seoul/browser/saui/semantic_to_saui.h"
 #include "seoul/browser/saui/saui_validator.h"
 #include "seoul/browser/semantic/semantic_validation.h"
 #include "testing/gtest/include/gtest/gtest.h"
@@ -423,6 +426,66 @@ TEST(InterfaceCompilerTest, InvalidSemanticResultIsRejectedUpFront) {
   broken.data.GetIfList()->front().GetDict().Set("uninvited", 3);
   auto compiled = CompileInterface(broken, InterfaceIntent());
   EXPECT_FALSE(compiled.has_value());
+}
+
+TEST(InterfaceCompilerTest, SemanticIdsMapCollisionFreeIntoSauiKeys) {
+  const std::string long_id(50, 'a');
+  const auto keys = BuildSauiKeyMap({"field_0", "onload", long_id});
+  ASSERT_EQ(keys.size(), 3u);
+  EXPECT_EQ(keys.at("field_0"), "field_0");
+  std::set<std::string> unique;
+  for (const auto& [semantic_id, wire_key] : keys) {
+    EXPECT_TRUE(IsValidPropKey(wire_key));
+    unique.insert(wire_key);
+  }
+  EXPECT_EQ(unique.size(), keys.size());
+
+  SemanticResult result;
+  result.schema.shape = SemanticShape::kTable;
+  result.schema.fields = {
+      Field(long_id, FieldPrimitive::kString, SemanticRole::kDimension,
+            false),
+      Field("n", FieldPrimitive::kNumber, SemanticRole::kMeasure, false)};
+  base::ListValue rows;
+  for (int i = 0; i < 2; ++i) {
+    base::DictValue row;
+    row.Set(long_id, i == 0 ? "a" : "b");
+    row.Set("n", i + 1.0);
+    rows.Append(std::move(row));
+  }
+  result.data = base::Value(std::move(rows));
+  SetFixtureProvenance(&result);
+
+  auto compiled = CompileInterface(result, InterfaceIntent());
+  ASSERT_TRUE(compiled.has_value());
+  ASSERT_TRUE(ValidateSurface(compiled->surface).has_value());
+  const DataEntry& table = compiled->surface.data.at("rows");
+  ASSERT_EQ(table.table.columns.size(), 2u);
+  EXPECT_EQ(table.table.columns[0].key, keys.at(long_id));
+}
+
+TEST(InterfaceCompilerTest, LongCompositePartNamesUseBoundedOrdinalPaths) {
+  SemanticResult composite;
+  composite.schema.shape = SemanticShape::kComposite;
+  SemanticSchema scalar;
+  scalar.shape = SemanticShape::kScalar;
+  scalar.fields = {
+      Field("value", FieldPrimitive::kNumber, SemanticRole::kMeasure)};
+  const std::string first_name(64, 'a');
+  const std::string second_name(64, 'b');
+  composite.schema.part_names = {first_name, second_name};
+  composite.schema.parts = {scalar, scalar};
+  base::DictValue data;
+  data.Set(first_name, 1.0);
+  data.Set(second_name, 2.0);
+  composite.data = base::Value(std::move(data));
+  SetFixtureProvenance(&composite);
+
+  auto compiled = CompileInterface(composite, InterfaceIntent());
+  ASSERT_TRUE(compiled.has_value());
+  EXPECT_TRUE(compiled->surface.data.contains("p0_value"));
+  EXPECT_TRUE(compiled->surface.data.contains("p1_value"));
+  EXPECT_TRUE(ValidateSurface(compiled->surface).has_value());
 }
 
 }  // namespace

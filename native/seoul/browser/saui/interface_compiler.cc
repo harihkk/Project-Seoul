@@ -47,6 +47,16 @@ ComponentNode BoundComponent(const std::string& id,
   return node;
 }
 
+void PrefixComponentTree(ComponentNode* node, const std::string& prefix) {
+  node->id = prefix + "-" + node->id;
+  for (auto& [slot, entry_name] : node->bindings) {
+    entry_name = prefix + "_" + entry_name;
+  }
+  for (ComponentNode& child : node->children) {
+    PrefixComponentTree(&child, prefix);
+  }
+}
+
 void SetChartProps(ComponentNode* node,
                    const std::string& title,
                    const std::string& x_label,
@@ -339,7 +349,19 @@ CompileResult CompileInterface(const SemanticResult& result,
                                          : ComponentType::kSortableTable,
             "rows", "Result table");
         if (!intent.group_by_field_id.empty()) {
-          table.props.Set("group_by", intent.group_by_field_id);
+          std::vector<std::string> field_ids;
+          field_ids.reserve(schema.fields.size());
+          for (const FieldSpec& field : schema.fields) {
+            field_ids.push_back(field.id);
+          }
+          const auto key_map = BuildSauiKeyMap(field_ids);
+          const auto key = key_map.find(intent.group_by_field_id);
+          if (key != key_map.end()) {
+            table.props.Set("group_by", key->second);
+          }
+          // A group_by that names a field with no mapped key is dropped rather
+          // than emitted raw: the renderer groups only by a declared column
+          // key, so an unmapped id could never match one.
         }
         add(std::move(table));
         return;
@@ -576,27 +598,18 @@ CompileResult CompileInterface(const SemanticResult& result,
             continue;
           }
           // Re-prefix the part's components and data into this surface.
+          const std::string part_key = "p" + std::to_string(i);
           for (auto& [entry_name, entry] :
                part_compiled->surface.data) {
-            surface.data[schema.part_names[i] + "_" + entry_name] =
+            surface.data[part_key + "_" + entry_name] =
                 std::move(entry);
           }
           ComponentNode part_root = std::move(
               part_compiled->surface.components[0]);
           // Rewrite ids/bindings with the part prefix to stay unique.
-          part_root.id = "part-" + schema.part_names[i];
+          part_root.id = "part-" + part_key;
           for (ComponentNode& child : part_root.children) {
-            child.id = schema.part_names[i] + "-" + child.id;
-            for (auto& [slot, entry_name] : child.bindings) {
-              entry_name = schema.part_names[i] + "_" + entry_name;
-            }
-            for (ComponentNode& grandchild : child.children) {
-              grandchild.id =
-                  schema.part_names[i] + "-" + grandchild.id;
-              for (auto& [slot, entry_name] : grandchild.bindings) {
-                entry_name = schema.part_names[i] + "_" + entry_name;
-              }
-            }
+            PrefixComponentTree(&child, part_key);
           }
           add(std::move(part_root));
         }
