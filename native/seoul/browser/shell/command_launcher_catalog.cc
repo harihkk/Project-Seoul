@@ -3,6 +3,7 @@
 #include "seoul/browser/shell/command_launcher_catalog.h"
 
 #include <algorithm>
+#include <cctype>
 
 namespace seoul {
 namespace {
@@ -27,10 +28,15 @@ bool MatchesQuery(const CommandLauncherEntry& entry, std::string_view query) {
   }
   std::string lower_query(query);
   std::transform(lower_query.begin(), lower_query.end(), lower_query.begin(),
-                 ::tolower);
+                 [](unsigned char c) {
+                   return static_cast<char>(std::tolower(c));
+                 });
   auto contains = [&](const std::string& value) {
     std::string lower = value;
-    std::transform(lower.begin(), lower.end(), lower.begin(), ::tolower);
+    std::transform(lower.begin(), lower.end(), lower.begin(),
+                   [](unsigned char c) {
+                     return static_cast<char>(std::tolower(c));
+                   });
     return lower.find(lower_query) != std::string::npos;
   };
   if (contains(entry.label) || contains(entry.id)) {
@@ -61,6 +67,10 @@ std::vector<CommandLauncherEntry> CommandLauncherCatalog::BuildEntries(
       action_enabled(ShellUtilityAction::kNewTemporaryTab);
   const ShellActionEnablement split =
       action_enabled(ShellUtilityAction::kCreateSplit);
+  const ShellActionEnablement canvas =
+      action_enabled(ShellUtilityAction::kOpenCanvas);
+  const ShellActionEnablement tasks =
+      action_enabled(ShellUtilityAction::kOpenTaskDeck);
   const ShellActionEnablement reconcile =
       action_enabled(ShellUtilityAction::kReconcile);
 
@@ -72,8 +82,14 @@ std::vector<CommandLauncherEntry> CommandLauncherCatalog::BuildEntries(
   entries.push_back(MakeEntry("create_split", "Create Split", {"split", "pane"},
                               split.enabled, split.disabled_reason));
   entries.back().action = ShellUtilityAction::kCreateSplit;
-  entries.push_back(MakeEntry("command_launcher", "Command Launcher",
-                              {"command", "palette"}, true, ""));
+  entries.push_back(MakeEntry("open_canvas", "Open Seoul Canvas",
+                              {"canvas", "assistant", "voice", "tasks"},
+                              canvas.enabled, canvas.disabled_reason));
+  entries.back().action = ShellUtilityAction::kOpenCanvas;
+  entries.push_back(MakeEntry("open_task_deck", "Open Task Deck",
+                              {"tasks", "progress", "receipts", "automation"},
+                              tasks.enabled, tasks.disabled_reason));
+  entries.back().action = ShellUtilityAction::kOpenTaskDeck;
   entries.push_back(MakeEntry("reconcile", "Run Reconciliation",
                               {"reconcile", "recovery", "degraded"},
                               reconcile.enabled, reconcile.disabled_reason));

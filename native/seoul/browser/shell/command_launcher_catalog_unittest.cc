@@ -23,5 +23,29 @@ TEST(CommandLauncherCatalogTest, UnknownQueryReturnsEmpty) {
   EXPECT_TRUE(filtered.empty());
 }
 
+TEST(CommandLauncherCatalogTest, EveryEntryIsExecutableAndSearchable) {
+  ShellSnapshot snapshot;
+  for (ShellUtilityAction action : {
+           ShellUtilityAction::kNewTemporaryTab,
+           ShellUtilityAction::kCreateSplit,
+           ShellUtilityAction::kOpenCanvas,
+           ShellUtilityAction::kOpenTaskDeck,
+           ShellUtilityAction::kReconcile,
+       }) {
+    ShellActionEnablement enabled;
+    enabled.action = action;
+    enabled.enabled = true;
+    snapshot.actions.push_back(enabled);
+  }
+  const auto entries = CommandLauncherCatalog::BuildEntries(snapshot);
+  ASSERT_EQ(entries.size(), 5u);
+  for (const CommandLauncherEntry& entry : entries) {
+    EXPECT_NE(entry.action, ShellUtilityAction::kCommandLauncher);
+    const auto found = CommandLauncherCatalog::Filter(entries, entry.label);
+    ASSERT_FALSE(found.empty());
+    EXPECT_EQ(found.front().id, entry.id);
+  }
+}
+
 }  // namespace
 }  // namespace seoul
