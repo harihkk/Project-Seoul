@@ -334,9 +334,11 @@ export interface TaskSnapshot {
   "plan_origin"?: "deterministic" | "local" | "cloud";
   "receipts"?: Array<ActionReceipt>;
   "usage"?: BudgetUsage;
-  /** Non-empty while awaiting approval. */
+  /** Non-empty while awaiting approval or typed user input. */
   "pending_approval_step"?: string;
   "pending_approval_prompt"?: string;
+  /** True when the pending interaction requires typed user input rather than approval. */
+  "pending_user_input"?: boolean;
   "has_semantic_result"?: boolean;
   /** LiveWindowKey wire form ("w-<session_id>"). Absent when the task is not window-bound. */
   "window"?: string;

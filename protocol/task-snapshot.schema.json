@@ -69,11 +69,15 @@
     "pending_approval_step": {
       "type": "string",
       "maxLength": 64,
-      "description": "Non-empty while awaiting approval."
+      "description": "Non-empty while awaiting approval or typed user input."
     },
     "pending_approval_prompt": {
       "type": "string",
       "maxLength": 1024
+    },
+    "pending_user_input": {
+      "type": "boolean",
+      "description": "True when the pending interaction requires typed user input rather than approval."
     },
     "has_semantic_result": {
       "type": "boolean"

@@ -1,0 +1,21 @@
+{
+  "schema_version": 1,
+  "id": "2a5c9e71-7d13-4e9b-9c42-6a89f2c3d104",
+  "goal": "open the requested reference in this window",
+  "state": "awaiting_approval",
+  "failure": "none",
+  "plan_origin": "local",
+  "usage": {
+    "steps_executed": 0,
+    "model_calls": 1,
+    "navigations": 0,
+    "cloud_cost_microdollars": 0,
+    "replans_used": 0
+  },
+  "pending_approval_step": "missing-reference",
+  "pending_approval_prompt": "Which reference should Seoul open?",
+  "pending_user_input": true,
+  "has_semantic_result": false,
+  "window": "w-1",
+  "replans_used": 0
+}

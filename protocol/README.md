@@ -29,13 +29,13 @@ structural limits, consumed by the Design Lab's patch engine so both sides
 enforce identical rules from identical data. Both generated files are
 drift-gated by `scripts/check-protocol.mjs`.
 
-KNOWN CROSS-LAYER GAP (tracked in the readiness report): semantic field ids
-may be up to 64 chars and 128 fields, but SAUI keys they project into
-(table-column keys <= 40, entry identifiers <= 64 including the `series_`
-prefix) are tighter, so a schema-valid semantic result can be unprojectable.
-Both compilers share this; the Lab degrades to an explained error artifact,
-and bounded key derivation is a named blocker for the compiler work on the
-build host.
+Semantic field ids may be up to 64 chars while SAUI prop/table keys are capped
+at 40. Both compilers use the same collision-free derivation: already-safe keys
+remain unchanged; longer or reserved keys receive deterministic schema-local
+`field_N` names in lexical order. Composite entry names use bounded ordinal
+paths (`p0_...`) and series names use the derived field key, so every valid
+semantic schema is representable without truncation or probabilistic hashes.
+Human labels and the underlying semantic document retain the original ids.
 
 ## Versioning
 
