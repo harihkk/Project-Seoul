@@ -1,10 +1,11 @@
 #!/usr/bin/env bash
-# Host-side C++ syntax gate for Seoul-owned source. Parses every given .cc (or
-# a default set of protocol-critical files) with Apple clang against the REAL
+# Host-side C++ syntax gate for Seoul-owned source. Parses every given source
+# (or every tracked and untracked Seoul .cc by default) with Apple clang against the REAL
 # pinned checkout headers (-fsyntax-only; no build, no gn). Generated buildflag
 # headers do not exist without `gn gen`, so they are stubbed on the fly and
-# every BUILDFLAG_INTERNAL_* the parse encounters is defined to 0 - a
-# conservative, no-op configuration. This is NOT compilation and proves no
+# every BUILDFLAG_INTERNAL_* the parse encounters is defined to a conservative
+# no-op value, except target facts that must match the compiler itself (for
+# example, whether pointers are 64-bit). This is NOT compilation and proves no
 # codegen or linking; it catches include, name, type, and template errors in
 # Seoul code a plain read cannot, on hosts the build gate refuses.
 #
@@ -23,7 +24,9 @@ fi
 STUB_DIR="${TMPDIR:-/tmp}/seoul-syntax-stubs"
 FLAGS_FILE="$STUB_DIR/flags.rsp"
 mkdir -p "$STUB_DIR"
-[ -f "$FLAGS_FILE" ] || : > "$FLAGS_FILE"
+# Buildflag discovery is deterministic per invocation. Never inherit flags
+# learned by an older checkout or a host with a different architecture.
+: > "$FLAGS_FILE"
 
 # Seoul headers must resolve to THIS repository (the object under test), not
 # to the materialized copy in the checkout.
@@ -36,7 +39,8 @@ if [ "$#" -gt 0 ]; then
 else
   FILES=()
   while IFS= read -r f; do FILES+=("$f"); done < <(
-    cd "$SEOUL_REPO_ROOT" && git ls-files 'native/seoul/**/*.cc' | grep -v '/shell/views/'
+    cd "$SEOUL_REPO_ROOT" && \
+      git ls-files --cached --others --exclude-standard 'native/seoul/**/*.cc'
   )
 fi
 
@@ -100,7 +104,9 @@ check_file() {
       SKIP_REASON="$missing"
       return 2
     fi
-    # 2. Undefined buildflag macro -> define it as 0 (or a PA_ variant).
+    # 2. Undefined buildflag macro -> define it as a conservative value. Most
+    #    optional features are off. Architecture facts must agree with clang's
+    #    target or Chromium's headers intentionally reject the configuration.
     local flag
     flag="$(printf '%s\n' "$out" | sed -n "s/.*function-like macro '\([A-Za-z0-9_]*\)' is not defined.*/\1/p" | head -1)"
     if [ -n "$flag" ]; then
@@ -108,7 +114,12 @@ check_file() {
         printf '%s\n' "$out" | head -30
         die "flag ${flag} already stubbed; real error in $file"
       fi
-      printf -- '-D%s()=0\n' "$flag" >> "$FLAGS_FILE"
+      flag_value=0
+      if [ "$flag" = "PA_BUILDFLAG_INTERNAL_HAS_64_BIT_POINTERS" ] &&
+         [ "$(getconf LONG_BIT)" = "64" ]; then
+        flag_value=1
+      fi
+      printf -- '-D%s()=%s\n' "$flag" "$flag_value" >> "$FLAGS_FILE"
       continue
     fi
     # 3. A perfetto dependency means the include graph reached gn-generated

@@ -1,6 +1,6 @@
 #!/usr/bin/env node
-// Repository-boundary guard. Fails if Project Seoul tracks anything that must stay
-// out of the repo: the external Chromium checkout or its source, Chromium build
+// Repository-boundary guard. Fails if Project Seoul tracks or has a non-ignored
+// untracked file that must stay out of the repo: the external Chromium checkout or its source, Chromium build
 // output, browser profiles, secrets/keys, or generated audit evidence.
 // The harness's own source (apps/browser-harness/...) and Seoul-owned native
 // source (native/seoul/...) are repository-owned and allowed.
@@ -11,18 +11,21 @@ import { fileURLToPath } from 'node:url';
 
 const repoRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 
-let tracked = [];
+let repositoryFiles = [];
 try {
-  tracked = execSync('git ls-files', { cwd: repoRoot, encoding: 'utf8' })
+  repositoryFiles = execSync(
+    'git ls-files --cached --others --exclude-standard',
+    { cwd: repoRoot, encoding: 'utf8' },
+  )
     .split('\n')
     .map((s) => s.trim())
     .filter(Boolean);
 } catch (e) {
-  console.error('repo-boundary: cannot list tracked files: ' + e.message);
+  console.error('repo-boundary: cannot list repository files: ' + e.message);
   process.exit(2);
 }
 
-// Each rule: a regex over the tracked path and a human reason.
+// Each rule: a regex over the repository-visible path and a human reason.
 const DENY = [
   [/^seoul-chromium\//, 'external Chromium checkout leaked into the repo'],
   [/(^|\/)depot_tools\//, 'depot_tools must not be tracked'],
@@ -40,7 +43,7 @@ const DENY = [
 const ALLOW = [/(^|\/)\.env\.example$/];
 
 const violations = [];
-for (const f of tracked) {
+for (const f of repositoryFiles) {
   if (ALLOW.some((re) => re.test(f))) continue;
   for (const [re, reason] of DENY) {
     if (re.test(f)) violations.push(`${f}  (${reason})`);
@@ -52,4 +55,7 @@ if (violations.length) {
   for (const v of violations) console.error('  - ' + v);
   process.exit(1);
 }
-console.log(`repo-boundary: OK (${tracked.length} tracked files, no Chromium source/build/profile/secret/evidence)`);
+console.log(
+  `repo-boundary: OK (${repositoryFiles.length} tracked/untracked files, ` +
+    'no Chromium source/build/profile/secret/evidence)',
+);

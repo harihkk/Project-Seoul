@@ -40,6 +40,11 @@ const routingPatterns = [
 const websitePattern =
   /https?:\/\/(www\.)?(amazon|google|facebook|booking|expedia|yahoo)\./i;
 
+// Live Collection core is an adapter host, not a catalog of built-in business
+// domains. Adapters register typed capabilities outside the Library module.
+const libraryDomainPattern =
+  /\b(?:LiveCollectionKind|kGitHubPullRequests|kRss|kCalendar)\b|github_pull_requests/i;
+
 const excludedFile =
   /(_unittest\.cc|_browsertest\.cc|_test\.cc|fake_[a-z_]+\.(cc|h|mm))$/;
 const excludedDir = /\/(examples?|fixtures?|test_support)\//;
@@ -90,6 +95,13 @@ for (const file of walk(coreRoot)) {
     if (websitePattern.test(line)) {
       console.error(
         `${rel}:${index + 1}: hardcoded consumer-website reference in core`,
+      );
+      violations++;
+    }
+    if (rel.startsWith('native/seoul/browser/library/') &&
+        libraryDomainPattern.test(line)) {
+      console.error(
+        `${rel}:${index + 1}: provider-specific Live Collection branch in core`,
       );
       violations++;
     }
