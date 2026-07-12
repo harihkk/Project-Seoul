@@ -7,11 +7,15 @@
 #include "base/json/json_reader.h"
 #include "base/json/json_writer.h"
 #include "chrome/browser/ui/browser_window/public/browser_window_interface.h"
+#include "seoul/browser/library/library_service.h"
 #include "seoul/browser/product/browser/seoul_runtime_service.h"
 #include "seoul/browser/product/browser/seoul_runtime_service_factory.h"
 #include "seoul/browser/product/task_snapshot_wire.h"
 #include "seoul/browser/product/task_surface_bridge.h"
 #include "seoul/browser/product/workflow_service.h"
+#include "seoul/browser/scenes/scene_registry.h"
+#include "seoul/browser/site_layers/site_layer_registry.h"
+#include "seoul/browser/themes/theme_registry.h"
 
 namespace seoul {
 
@@ -21,6 +25,7 @@ namespace {
 constexpr size_t kMaxEventValueBytes = 64 * 1024;
 // Bound on a conversational turn accepted from the renderer.
 constexpr size_t kMaxTurnBytes = 8 * 1024;
+constexpr size_t kMaxTaskInputBytes = 2 * 1024;
 
 std::string WriteJson(base::DictValue value) {
   std::string json;
@@ -341,6 +346,21 @@ void SeoulCanvasPageHandler::ApproveStep(const std::string& task_id,
   }
 }
 
+void SeoulCanvasPageHandler::ProvideTaskInput(const std::string& task_id,
+                                              const std::string& step_id,
+                                              const std::string& input) {
+  if (input.empty() || input.size() > kMaxTaskInputBytes ||
+      !BoundTask(task_id).has_value()) {
+    return;
+  }
+  base::DictValue typed_input;
+  typed_input.Set("text", input);
+  if (!runtime_->tasks()->ProvideInput(TaskId::FromString(task_id), step_id,
+                                       std::move(typed_input))) {
+    PushStatus("task_input_rejected");
+  }
+}
+
 void SeoulCanvasPageHandler::ListTaskSurfaces(
     const std::string& task_id,
     ListTaskSurfacesCallback callback) {
@@ -368,6 +388,170 @@ void SeoulCanvasPageHandler::SaveTaskAsWorkflow(
     }
   }
   std::move(callback).Run(std::move(workflow_id));
+}
+
+std::string SeoulCanvasPageHandler::LibrarySnapshotJson() const {
+  if (!runtime_ || !runtime_->library()) {
+    return ErrorJson("library_unavailable");
+  }
+  if (!ResolveBoundWindow().has_value()) {
+    return ErrorJson("window_unbound");
+  }
+  return WriteJson(runtime_->library()->TakePersistedState());
+}
+
+void SeoulCanvasPageHandler::GetLibrarySnapshot(
+    GetLibrarySnapshotCallback callback) {
+  std::move(callback).Run(LibrarySnapshotJson());
+}
+
+void SeoulCanvasPageHandler::CreateBoard(const std::string& name,
+                                         CreateBoardCallback callback) {
+  if (!runtime_ || !runtime_->library()) {
+    std::move(callback).Run(ErrorJson("library_unavailable"));
+    return;
+  }
+  if (!ResolveBoundWindow().has_value()) {
+    std::move(callback).Run(ErrorJson("window_unbound"));
+    return;
+  }
+  const LibraryResult<BoardId> result = runtime_->library()->CreateBoard(name);
+  if (!result.has_value()) {
+    std::move(callback).Run(ErrorJson(LibraryErrorToString(result.error())));
+    return;
+  }
+  std::move(callback).Run(LibrarySnapshotJson());
+}
+
+void SeoulCanvasPageHandler::SetBoardArchived(
+    const std::string& board_id,
+    bool archived,
+    SetBoardArchivedCallback callback) {
+  if (!runtime_ || !runtime_->library()) {
+    std::move(callback).Run(ErrorJson("library_unavailable"));
+    return;
+  }
+  if (!ResolveBoundWindow().has_value()) {
+    std::move(callback).Run(ErrorJson("window_unbound"));
+    return;
+  }
+  const LibraryStatusResult result = runtime_->library()->SetBoardArchived(
+      BoardId::FromString(board_id), archived);
+  if (!result.has_value()) {
+    std::move(callback).Run(ErrorJson(LibraryErrorToString(result.error())));
+    return;
+  }
+  std::move(callback).Run(LibrarySnapshotJson());
+}
+
+void SeoulCanvasPageHandler::DeleteBoard(const std::string& board_id,
+                                         DeleteBoardCallback callback) {
+  if (!runtime_ || !runtime_->library()) {
+    std::move(callback).Run(ErrorJson("library_unavailable"));
+    return;
+  }
+  if (!ResolveBoundWindow().has_value()) {
+    std::move(callback).Run(ErrorJson("window_unbound"));
+    return;
+  }
+  const LibraryStatusResult result =
+      runtime_->library()->DeleteBoard(BoardId::FromString(board_id));
+  if (!result.has_value()) {
+    std::move(callback).Run(ErrorJson(LibraryErrorToString(result.error())));
+    return;
+  }
+  std::move(callback).Run(LibrarySnapshotJson());
+}
+
+std::string SeoulCanvasPageHandler::StudioSnapshotJson() const {
+  if (!runtime_ || !runtime_->providers() || !runtime_->scenes() ||
+      !runtime_->themes() || !runtime_->site_layers()) {
+    return ErrorJson("studio_unavailable");
+  }
+  if (!ResolveBoundWindow().has_value()) {
+    return ErrorJson("window_unbound");
+  }
+
+  const ProviderStateSnapshot providers = runtime_->providers()->Snapshot();
+  base::DictValue local;
+  local.Set("configured", providers.local_configured);
+  local.Set("healthy", providers.local_healthy);
+  local.Set("model_configured", !providers.local_model.empty());
+  local.Set("discovered_model_count",
+            static_cast<int>(providers.local_models_discovered.size()));
+  base::DictValue cloud;
+  cloud.Set("configured", providers.cloud_configured);
+  cloud.Set("enabled", providers.cloud_enabled);
+  cloud.Set("available", runtime_->providers()->cloud_available());
+  cloud.Set("model_configured", !providers.cloud_model.empty());
+
+  base::DictValue provider_routes;
+  provider_routes.Set("local", std::move(local));
+  provider_routes.Set("cloud", std::move(cloud));
+
+  base::ListValue scenes;
+  for (const SceneDefinition* scene : runtime_->scenes()->List()) {
+    base::DictValue item;
+    item.Set("id", scene->id);
+    item.Set("name", scene->name);
+    item.Set("workspace_id", scene->workspace_id);
+    item.Set("theme_id", scene->theme_id);
+    item.Set("site_layer_count",
+             static_cast<int>(scene->site_layer_ids.size()));
+    item.Set("prefer_compact", scene->prefer_compact);
+    scenes.Append(std::move(item));
+  }
+
+  base::ListValue site_layers;
+  for (const SiteLayer* layer : runtime_->site_layers()->List()) {
+    base::DictValue item;
+    item.Set("id", layer->id);
+    item.Set("name", layer->name);
+    item.Set("origin_pattern", layer->origin_pattern);
+    item.Set("scene_scope", layer->scene_scope);
+    item.Set("enabled", layer->enabled);
+    item.Set("adjustment_count",
+             static_cast<int>(layer->adjustments.size()));
+    site_layers.Append(std::move(item));
+  }
+
+  base::ListValue themes;
+  for (const Theme* theme : runtime_->themes()->List()) {
+    base::DictValue item;
+    item.Set("id", theme->id);
+    item.Set("name", theme->name);
+    switch (theme->scheme) {
+      case ColorScheme::kLight:
+        item.Set("scheme", "light");
+        break;
+      case ColorScheme::kDark:
+        item.Set("scheme", "dark");
+        break;
+      case ColorScheme::kSystem:
+        item.Set("scheme", "system");
+        break;
+    }
+    item.Set("background", ColorToHex(theme->colors.background));
+    item.Set("surface", ColorToHex(theme->colors.surface));
+    item.Set("accent", ColorToHex(theme->colors.accent));
+    item.Set("corner_radius_px", theme->corner_radius_px);
+    item.Set("reduced_motion", theme->motion.reduced_motion);
+    item.Set("reduced_transparency", theme->motion.reduced_transparency);
+    themes.Append(std::move(item));
+  }
+
+  base::DictValue snapshot;
+  snapshot.Set("schema_version", 1);
+  snapshot.Set("providers", std::move(provider_routes));
+  snapshot.Set("scenes", std::move(scenes));
+  snapshot.Set("themes", std::move(themes));
+  snapshot.Set("site_layers", std::move(site_layers));
+  return WriteJson(std::move(snapshot));
+}
+
+void SeoulCanvasPageHandler::GetStudioSnapshot(
+    GetStudioSnapshotCallback callback) {
+  std::move(callback).Run(StudioSnapshotJson());
 }
 
 void SeoulCanvasPageHandler::OnSurfaceUpdated(const SurfaceId& id,

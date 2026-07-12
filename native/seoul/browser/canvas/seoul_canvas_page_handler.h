@@ -75,11 +75,23 @@ class SeoulCanvasPageHandler : public canvas::mojom::PageHandler,
   void ApproveStep(const std::string& task_id,
                    const std::string& step_id,
                    bool approved) override;
+  void ProvideTaskInput(const std::string& task_id,
+                        const std::string& step_id,
+                        const std::string& input) override;
   void ListTaskSurfaces(const std::string& task_id,
                         ListTaskSurfacesCallback callback) override;
   void SaveTaskAsWorkflow(const std::string& task_id,
                           const std::string& name,
                           SaveTaskAsWorkflowCallback callback) override;
+  void GetLibrarySnapshot(GetLibrarySnapshotCallback callback) override;
+  void CreateBoard(const std::string& name,
+                   CreateBoardCallback callback) override;
+  void SetBoardArchived(const std::string& board_id,
+                        bool archived,
+                        SetBoardArchivedCallback callback) override;
+  void DeleteBoard(const std::string& board_id,
+                   DeleteBoardCallback callback) override;
+  void GetStudioSnapshot(GetStudioSnapshotCallback callback) override;
 
   // SurfaceServiceObserver:
   void OnSurfaceUpdated(const SurfaceId& id,
@@ -112,6 +124,8 @@ class SeoulCanvasPageHandler : public canvas::mojom::PageHandler,
   void PushStatus(const std::string& detail);
   std::optional<LiveWindowKey> ResolveBoundWindow() const;
   TaskId StartBoundGoal(const std::string& goal);
+  std::string LibrarySnapshotJson() const;
+  std::string StudioSnapshotJson() const;
 
   mojo::Receiver<canvas::mojom::PageHandler> receiver_;
   mojo::Remote<canvas::mojom::Page> page_;
