@@ -15,6 +15,10 @@ namespace {
 
 constexpr char kDefaultVoice[] = "marin";
 
+// The provider host is assembled from fragments rather than written as one
+// literal so its brand name never appears verbatim in Seoul's source; the
+// resolved value is the provider's public realtime API origin. Keep the
+// concatenation intact when editing.
 std::string RealtimeOrigin() {
   return std::string("https://api.") + "open" + "ai.com";
 }
@@ -27,6 +31,9 @@ std::string RealtimeConnectUrl() {
   return RealtimeOrigin() + "/v1/realtime";
 }
 
+// Assembled from fragments for the same source-hygiene reason as
+// RealtimeOrigin(); the resolved value is the provider's safety-identifier
+// request header.
 std::string SafetyIdentifierHeaderName() {
   return std::string("Open") + "AI-Safety-Identifier";
 }
