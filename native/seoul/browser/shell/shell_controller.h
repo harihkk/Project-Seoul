@@ -4,6 +4,7 @@
 #define SEOUL_BROWSER_SHELL_SHELL_CONTROLLER_H_
 
 #include <optional>
+#include <vector>
 
 #include "base/memory/raw_ptr.h"
 #include "base/observer_list.h"
@@ -46,6 +47,7 @@ class ShellController : public OrganizationModelObserver,
   const ShellSnapshot& snapshot() const { return snapshot_; }
   OrganizationModel* model() { return model_; }
   void SetCollapsed(bool collapsed);
+  void SetTaskSummary(ShellTaskSummary summary);
   void Shutdown();
 
   void AddObserver(ShellObserver* observer);
@@ -53,12 +55,23 @@ class ShellController : public OrganizationModelObserver,
 
   ShellResult<WorkspaceId> SwitchWorkspace(WorkspaceId target);
   ShellStatusResult OpenNewTemporaryTab();
+  std::vector<ShellSplitCandidate> SplitCandidates() const;
+  ShellStatusResult CreateSplitWithPartner(LiveTabKey partner);
+  // Convenience for non-UI callers. It succeeds only when exactly one valid
+  // partner exists; it never chooses the first of several candidates.
   ShellStatusResult CreateSplitFromActive();
+  ShellStatusResult OpenCanvas();
   ShellStatusResult RunReconciliation();
   ShellStatusResult AcknowledgeRecovery();
+  // Typed utility dispatch shared by native controls and the command
+  // launcher. Unknown/inapplicable actions fail closed; no string-id chain.
+  ShellStatusResult RunUtilityAction(ShellUtilityAction action);
 
   void SetAcknowledgeRecoveryCallback(
       base::RepeatingCallback<MutationStatus()> callback);
+  void SetOpenCanvasCallback(base::RepeatingCallback<bool()> callback);
+  void SetFocusWindowCallback(
+      base::RepeatingCallback<bool(LiveWindowKey)> callback);
   ShellStatusResult OpenEssential(const EssentialId& id);
   ShellStatusResult DispatchModelCommand(BrowserCommand command);
 
@@ -87,6 +100,7 @@ class ShellController : public OrganizationModelObserver,
   raw_ptr<LifecycleCoordinator> lifecycle_;
   bool recovery_required_ = false;
   bool collapsed_ = false;
+  ShellTaskSummary task_summary_;
   bool shutting_down_ = false;
   bool initialized_ = false;  // first snapshot established + published
   // Directly observed workspace-switch transaction state (not inferred).
@@ -96,6 +110,8 @@ class ShellController : public OrganizationModelObserver,
   ShellSnapshot snapshot_;
   uint64_t revision_ = 0;
   base::RepeatingCallback<MutationStatus()> acknowledge_recovery_callback_;
+  base::RepeatingCallback<bool()> open_canvas_callback_;
+  base::RepeatingCallback<bool(LiveWindowKey)> focus_window_callback_;
   base::ObserverList<ShellObserver> observers_;
 };
 

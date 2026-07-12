@@ -97,6 +97,14 @@ void ShellController::SetCollapsed(bool collapsed) {
   Recompute(true);
 }
 
+void ShellController::SetTaskSummary(ShellTaskSummary summary) {
+  if (task_summary_ == summary) {
+    return;
+  }
+  task_summary_ = summary;
+  Recompute(true);
+}
+
 bool ShellController::SnapshotsEqual(const ShellSnapshot& a,
                                      const ShellSnapshot& b) const {
   // Semantic equality: compares every user-visible and command-relevant field
@@ -105,7 +113,7 @@ bool ShellController::SnapshotsEqual(const ShellSnapshot& a,
   return a.window == b.window && a.mode == b.mode && a.status == b.status &&
          a.workspace == b.workspace && a.essentials == b.essentials &&
          a.pinned_items == b.pinned_items && a.sections == b.sections &&
-         a.actions == b.actions &&
+         a.actions == b.actions && a.tasks == b.tasks &&
          a.show_empty_workspace == b.show_empty_workspace &&
          a.show_status_banner == b.show_status_banner &&
          a.status_message == b.status_message &&
@@ -124,6 +132,7 @@ void ShellController::Recompute(bool publish) {
   // Use the directly observed switch phase (captures terminal failure phases
   // before the transaction resets), not an inferred snapshot of switcher state.
   context.switch_phase = observed_switch_phase_;
+  context.tasks = task_summary_;
 
   WindowProjection projection;
   if (projection_service_) {
@@ -136,6 +145,17 @@ void ShellController::Recompute(bool publish) {
   if (!live_.window.is_valid() && live_state_) {
     if (auto snap = live_state_->GetSnapshot(window_)) {
       live_ = *snap;
+    }
+  }
+  if (live_state_) {
+    for (const LiveWindowKey& candidate : live_state_->Windows()) {
+      if (candidate == window_) {
+        continue;
+      }
+      if (std::optional<LiveWindowSnapshot> snapshot =
+              live_state_->GetSnapshot(candidate)) {
+        context.other_live_windows.push_back(std::move(*snapshot));
+      }
     }
   }
 
@@ -180,17 +200,20 @@ void ShellController::OnOrganizationChanged(const OrganizationChange& change) {
 
 void ShellController::OnLiveWindowSnapshotChanged(
     const LiveWindowSnapshot& snapshot) {
-  if (snapshot.window != window_) {
-    return;
+  if (snapshot.window == window_) {
+    live_ = snapshot;
   }
-  live_ = snapshot;
+  // Other windows can gain/lose the origin backing an Essential, so every
+  // profile-local snapshot change may alter this window's Essential routing.
   Recompute(true);
 }
 
 void ShellController::OnLiveWindowRemoved(LiveWindowKey window) {
   if (window == window_) {
     Shutdown();
+    return;
   }
+  Recompute(true);
 }
 
 void ShellController::OnProjectionChanged(const ProjectionChange& change,
@@ -257,21 +280,37 @@ ShellStatusResult ShellController::OpenNewTemporaryTab() {
                             : ShellErr(ShellError::kCommandRejected);
 }
 
-ShellStatusResult ShellController::CreateSplitFromActive() {
+std::vector<ShellSplitCandidate> ShellController::SplitCandidates() const {
+  std::vector<ShellSplitCandidate> candidates;
+  if (shutting_down_ || !projection_service_) {
+    return candidates;
+  }
+  const WindowProjectionController* projection_controller =
+      projection_service_->GetController(window_);
+  if (!projection_controller) {
+    return candidates;
+  }
+  return ShellViewModel::BuildSplitCandidates(projection_controller->projection(),
+                                              live_);
+}
+
+ShellStatusResult ShellController::CreateSplitWithPartner(LiveTabKey partner) {
   if (shutting_down_ || !executor_ || !projection_service_) {
     return ShellErr(ShellError::kInvalidWindow);
   }
-  const WindowProjection& projection =
-      projection_service_->GetController(window_)->projection();
-  LiveTabKey active = projection.active_tab;
-  LiveTabKey partner;
-  for (const ProjectedTab& tab : projection.tabs) {
-    if (tab.tab != active) {
-      partner = tab.tab;
+  bool permitted_partner = false;
+  for (const ShellSplitCandidate& candidate : SplitCandidates()) {
+    if (candidate.tab == partner) {
+      permitted_partner = true;
       break;
     }
   }
-  if (!active.is_valid() || !partner.is_valid()) {
+  const WindowProjectionController* projection_controller =
+      projection_service_->GetController(window_);
+  const LiveTabKey active = projection_controller
+                                ? projection_controller->projection().active_tab
+                                : LiveTabKey();
+  if (!active.is_valid() || !partner.is_valid() || !permitted_partner) {
     return ShellErr(ShellError::kCommandRejected);
   }
   BrowserCommand command;
@@ -284,6 +323,22 @@ ShellStatusResult ShellController::CreateSplitFromActive() {
   Recompute(true);
   return result.has_value() ? ShellOk()
                             : ShellErr(ShellError::kCommandRejected);
+}
+
+ShellStatusResult ShellController::CreateSplitFromActive() {
+  const std::vector<ShellSplitCandidate> candidates = SplitCandidates();
+  if (candidates.size() != 1u) {
+    return ShellErr(ShellError::kCommandRejected);
+  }
+  return CreateSplitWithPartner(candidates.front().tab);
+}
+
+ShellStatusResult ShellController::OpenCanvas() {
+  if (shutting_down_ || !open_canvas_callback_ ||
+      !open_canvas_callback_.Run()) {
+    return ShellErr(ShellError::kCommandRejected);
+  }
+  return ShellOk();
 }
 
 ShellStatusResult ShellController::RunReconciliation() {
@@ -310,9 +365,43 @@ ShellStatusResult ShellController::AcknowledgeRecovery() {
   return ShellErr(ShellError::kMutationRejected);
 }
 
+ShellStatusResult ShellController::RunUtilityAction(
+    ShellUtilityAction action) {
+  switch (action) {
+    case ShellUtilityAction::kNewTemporaryTab:
+      return OpenNewTemporaryTab();
+    case ShellUtilityAction::kOpenCanvas:
+    case ShellUtilityAction::kOpenTaskDeck:
+      // Task Deck and Canvas share the single Canvas side-panel entry today, so
+      // both open it. They stay distinct actions so a later Task Deck deep link
+      // can diverge without reworking the launcher catalog.
+      return OpenCanvas();
+    case ShellUtilityAction::kCreateSplit:
+      return CreateSplitFromActive();
+    case ShellUtilityAction::kReconcile:
+      return RunReconciliation();
+    case ShellUtilityAction::kAcknowledgeRecovery:
+      return AcknowledgeRecovery();
+    case ShellUtilityAction::kCommandLauncher:
+      // Opening UI is owned by the bound Views control, not a model action.
+      return ShellErr(ShellError::kCommandRejected);
+  }
+  return ShellErr(ShellError::kCommandRejected);
+}
+
 void ShellController::SetAcknowledgeRecoveryCallback(
     base::RepeatingCallback<MutationStatus()> callback) {
   acknowledge_recovery_callback_ = std::move(callback);
+}
+
+void ShellController::SetOpenCanvasCallback(
+    base::RepeatingCallback<bool()> callback) {
+  open_canvas_callback_ = std::move(callback);
+}
+
+void ShellController::SetFocusWindowCallback(
+    base::RepeatingCallback<bool(LiveWindowKey)> callback) {
+  focus_window_callback_ = std::move(callback);
 }
 
 ShellStatusResult ShellController::OpenEssential(const EssentialId& id) {
@@ -323,15 +412,48 @@ ShellStatusResult ShellController::OpenEssential(const EssentialId& id) {
   if (!essential || essential->root_url.empty()) {
     return ShellErr(ShellError::kCommandRejected);
   }
+  const ShellEssentialItem* shell_item = nullptr;
+  for (const ShellEssentialItem& candidate : snapshot_.essentials) {
+    if (candidate.id == id) {
+      shell_item = &candidate;
+      break;
+    }
+  }
+  if (shell_item && shell_item->is_active &&
+      shell_item->live_in_current_window) {
+    return ShellOk();
+  }
   BrowserCommand command;
   command.id = CommandId::Next();
-  command.kind = CommandKind::kOpenRetainedTab;
   command.window = window_;
-  command.url = GURL(essential->root_url);
+  if (shell_item && shell_item->has_live_tab &&
+      shell_item->live_tab.is_valid() && shell_item->live_window.is_valid()) {
+    command.kind = CommandKind::kActivateTab;
+    command.window = shell_item->live_window;
+    command.tab = shell_item->live_tab;
+  } else {
+    command.kind = CommandKind::kOpenRetainedTab;
+    command.url = GURL(essential->root_url);
+  }
+  const bool focus_other_window =
+      shell_item && shell_item->has_live_tab &&
+      !shell_item->live_in_current_window;
+  const LiveWindowKey target_window =
+      shell_item ? shell_item->live_window : LiveWindowKey();
   auto result = executor_->Submit(std::move(command));
+  if (!result.has_value()) {
+    return ShellErr(ShellError::kCommandRejected);
+  }
+  // The activation already committed, so refresh the snapshot before reporting
+  // the outcome: even when the best-effort focus of another window fails below,
+  // the model must not keep a stale view of the tab that is now active.
   Recompute(true);
-  return result.has_value() ? ShellOk()
-                            : ShellErr(ShellError::kCommandRejected);
+  if (focus_other_window &&
+      (!focus_window_callback_ ||
+       !focus_window_callback_.Run(target_window))) {
+    return ShellErr(ShellError::kCommandRejected);
+  }
+  return ShellOk();
 }
 
 ShellStatusResult ShellController::DispatchModelCommand(
