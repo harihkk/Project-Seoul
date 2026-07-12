@@ -18,6 +18,7 @@
 #include "base/functional/callback.h"
 #include "base/memory/weak_ptr.h"
 #include "seoul/browser/lifecycle/lifecycle_identity.h"
+#include "seoul/browser/product/page_field_safety.h"
 #include "seoul/browser/semantic/semantic_types.h"
 
 namespace content {
@@ -46,10 +47,11 @@ struct PageObservation {
     std::string handle;  // opaque, generation-scoped
     std::string role;    // accessible role (button, textbox, link, ...)
     std::string name;    // accessible name
-    std::string value;   // current value for inputs
     bool enabled = true;
     bool focusable = false;
     bool editable = false;
+    bool agent_writable = false;
+    PageFieldSensitivity sensitivity = PageFieldSensitivity::kNone;
   };
   std::vector<Element> elements;
 };
@@ -78,6 +80,7 @@ enum class PageActionStatus {
   kExpiredHandle,  // navigation/replacement/new generation since capture
   kElementGone,    // handle valid but the node no longer exists
   kNotActionable,  // element not enabled/editable for this action
+  kSensitiveField, // password/payment/one-time-code requires user/autofill
   kActionFailed,
 };
 
@@ -115,6 +118,7 @@ class PageAgent {
     std::string role;
     bool editable = false;
     bool enabled = true;
+    PageFieldSensitivity sensitivity = PageFieldSensitivity::kNone;
   };
   struct TabGeneration {
     uint64_t generation = 0;

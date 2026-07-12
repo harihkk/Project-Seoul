@@ -56,6 +56,11 @@ bool RoleIsEditable(ax::mojom::Role role) {
          role == ax::mojom::Role::kSearchBox;
 }
 
+bool IsValueMutation(PageActionKind kind) {
+  return kind == PageActionKind::kType || kind == PageActionKind::kClear ||
+         kind == PageActionKind::kSelectOption;
+}
+
 const char* RoleName(ax::mojom::Role role) {
   return ui::ToString(role);
 }
@@ -91,6 +96,12 @@ void PageAgent::Observe(
   generation.handles.clear();
   const uint64_t expected_generation = generation.generation;
 
+  ui::AXMode snapshot_mode = ui::kAXModeWebContentsOnly;
+  // Password protection is an AX state, while payment and one-time-code
+  // semantics are standards-defined autocomplete tokens. Request HTML
+  // attributes for this bounded one-shot snapshot, then project only the
+  // reviewed fields below; raw attributes never enter PageObservation.
+  snapshot_mode.set_mode(ui::AXMode::kHTML, true);
   contents->RequestAXTreeSnapshot(
       base::BindOnce(
           [](base::WeakPtr<PageAgent> agent, LiveTabKey tab,
@@ -104,7 +115,7 @@ void PageAgent::Observe(
           },
           weak_factory_.GetWeakPtr(), tab, expected_generation,
           std::move(callback)),
-      ui::kAXModeWebContentsOnly, kMaxSnapshotNodes, kSnapshotTimeout,
+      snapshot_mode, kMaxSnapshotNodes, kSnapshotTimeout,
       content::WebContents::AXTreeSnapshotPolicy::kSameOriginDirectDescendants);
 }
 
@@ -163,19 +174,27 @@ void PageAgent::OnSnapshot(
     element.handle = handle;
     element.role = RoleName(node.role);
     element.name = name;
-    element.value = node.GetStringAttribute(ax::mojom::StringAttribute::kValue);
     element.enabled =
         node.GetRestriction() != ax::mojom::Restriction::kDisabled;
     element.focusable = node.HasState(ax::mojom::State::kFocusable);
     element.editable = RoleIsEditable(node.role);
-    observation.elements.push_back(std::move(element));
+    PageFieldSafetyDescriptor field;
+    field.protected_state = node.IsPasswordField();
+    field.input_type =
+        node.GetStringAttribute(ax::mojom::StringAttribute::kInputType);
+    field.autocomplete = node.GetHtmlAttribute("autocomplete");
+    element.sensitivity = ClassifyPageField(field);
+    element.agent_writable =
+        element.editable && AllowsModelValueMutation(element.sensitivity);
 
     NodeBinding binding;
     binding.ax_node_id = node.id;
     binding.role = element.role;
     binding.editable = element.editable;
     binding.enabled = element.enabled;
+    binding.sensitivity = element.sensitivity;
     generation.handles[handle] = std::move(binding);
+    observation.elements.push_back(std::move(element));
   }
 
   std::move(callback).Run(std::move(observation));
@@ -198,10 +217,14 @@ PageActionStatus PageAgent::PerformAction(const LiveTabKey& tab,
   }
   const NodeBinding& binding = handle_it->second;
 
-  if ((request.kind == PageActionKind::kType ||
-       request.kind == PageActionKind::kClear ||
-       request.kind == PageActionKind::kSelectOption) &&
-      !binding.editable) {
+  if (IsValueMutation(request.kind) &&
+      !AllowsModelValueMutation(binding.sensitivity)) {
+    // Browser autofill and direct user input remain available. The model path
+    // cannot supply, clear, or select a credential/payment/OTP value.
+    return PageActionStatus::kSensitiveField;
+  }
+
+  if (IsValueMutation(request.kind) && !binding.editable) {
     return PageActionStatus::kNotActionable;
   }
   if (!binding.enabled) {
