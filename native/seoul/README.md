@@ -3,7 +3,7 @@
 This directory is the single source of truth for Seoul-owned native code,
 resources, and configuration. Everything here is tracked in the Project Seoul git
 repository. The external Chromium checkout (`$SEOUL_CHROMIUM_ROOT`, default sibling
-`seoul-chromium`) is never the source of truth and is never tracked.
+`seoul-chromium.noindex`) is never the source of truth and is never tracked.
 
 ## The model
 

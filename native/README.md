@@ -9,8 +9,9 @@ source and no build output**.
 
 - **Chromium source and build output live OUTSIDE this repository.** They are
   checked out into an external root (`$SEOUL_CHROMIUM_ROOT`, default sibling
-  `../seoul-chromium`). Nothing under that root is tracked by Project Seoul git, and
-  it is never the source of truth.
+  `../seoul-chromium.noindex`; the `.noindex` suffix keeps Spotlight from
+  indexing the checkout). Nothing under that root is tracked by Project Seoul
+  git, and it is never the source of truth.
 - **`chromium.lock.json` pins the exact upstream source** - product version, full
   Chromium commit SHA, and the depot_tools commit SHA. Reproduced from this pin,
   never from a floating `main`.
@@ -46,8 +47,8 @@ source and no build output**.
 ## Configuration
 
 - `SEOUL_CHROMIUM_ROOT` - absolute path to the external checkout root (default
-  sibling `seoul-chromium`). Paths with spaces, or that resolve inside this repo,
-  are rejected.
+  sibling `seoul-chromium.noindex`, with a legacy `seoul-chromium` sibling still
+  honored). Paths with spaces, or that resolve inside this repo, are rejected.
 - `SEOUL_NINJA_JOBS` - explicit Ninja job count (validated positive integer). When
   unset, a conservative memory-aware default is used (about one job per 4 GiB of
   RAM, floored at 2). There is no unconditional hard-coded value.

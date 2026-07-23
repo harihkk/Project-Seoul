@@ -36,6 +36,7 @@ native/evidence/
 
 # Safety: never track an in-repo Chromium checkout or build output
 seoul-chromium/
+seoul-chromium.noindex/
 native/**/out/
 apps/voice-lab/runtime/
 apps/voice-lab/models/

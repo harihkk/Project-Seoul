@@ -74,9 +74,13 @@ if (
 
 // Pass 2: resolve Chromium includes against the pinned checkout.
 function resolveChromiumSrc() {
+  const sibling = ['seoul-chromium.noindex', 'seoul-chromium']
+    .map((name) => path.resolve(repoRoot, '..', name))
+    .find((p) => fs.existsSync(p));
   const root =
     process.env.SEOUL_CHROMIUM_ROOT ||
-    path.resolve(repoRoot, '..', 'seoul-chromium');
+    sibling ||
+    path.resolve(repoRoot, '..', 'seoul-chromium.noindex');
   return path.join(root, 'src');
 }
 

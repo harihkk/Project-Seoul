@@ -36,11 +36,19 @@ assert_safe_path() {
 }
 
 # Resolve the external checkout root. SEOUL_CHROMIUM_ROOT overrides; otherwise a
-# sibling of the Project Seoul repo named seoul-chromium. Never inside the repo.
+# sibling of the Project Seoul repo named seoul-chromium.noindex (the .noindex
+# suffix keeps Spotlight from indexing the checkout, so its bundled test apps
+# stay out of app search). A legacy sibling named seoul-chromium is honored when
+# the .noindex one is absent. Never inside the repo.
 resolve_root() {
   local root="${SEOUL_CHROMIUM_ROOT:-}"
   if [ -z "$root" ]; then
-    root="$(cd "$SEOUL_REPO_ROOT/.." && pwd)/seoul-chromium"
+    local siblings
+    siblings="$(cd "$SEOUL_REPO_ROOT/.." && pwd)"
+    root="$siblings/seoul-chromium.noindex"
+    if [ ! -d "$root" ] && [ -d "$siblings/seoul-chromium" ]; then
+      root="$siblings/seoul-chromium"
+    fi
   fi
   case "$root" in /*) : ;; *) root="$(pwd)/$root" ;; esac
   assert_safe_path "$root" "SEOUL_CHROMIUM_ROOT"

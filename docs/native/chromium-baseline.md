@@ -39,7 +39,7 @@ after checkout (see audits).
 
 ## Checkout (completed)
 
-- External checkout root: the sibling directory `seoul-chromium` next to the repo
+- External checkout root: the sibling directory `seoul-chromium.noindex` next to the repo
   (outside the Project Seoul repo; configurable via `SEOUL_CHROMIUM_ROOT`).
 - `depot_tools` cloned and pinned to the locked SHA (self-update disabled).
 - `src` fetched with `fetch --no-history`, checked out detached at the locked SHA,

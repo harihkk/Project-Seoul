@@ -13,9 +13,12 @@ import puppeteer from 'puppeteer';
 
 const here = path.dirname(fileURLToPath(import.meta.url));
 const repoRoot = path.resolve(here, '..', '..');
+const siblingRoot = ['seoul-chromium.noindex', 'seoul-chromium']
+  .map((name) => path.resolve(repoRoot, '..', name))
+  .find((p) => existsSync(p));
 const root = (process.env.SEOUL_CHROMIUM_ROOT || '').trim()
   ? path.resolve(process.env.SEOUL_CHROMIUM_ROOT)
-  : path.resolve(repoRoot, '..', 'seoul-chromium');
+  : (siblingRoot ?? path.resolve(repoRoot, '..', 'seoul-chromium.noindex'));
 const binary = (process.env.SEOUL_CHROMIUM_BINARY || '').trim()
   ? path.resolve(process.env.SEOUL_CHROMIUM_BINARY)
   : path.join(root, 'src', 'out', 'SeoulBaseline', 'Chromium.app', 'Contents', 'MacOS', 'Chromium');

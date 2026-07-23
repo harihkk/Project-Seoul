@@ -38,7 +38,7 @@ host where it did not.
 
 Each step maps to a repository script. Absolute paths assume the repo at
 `$SEOUL_REPO` and the checkout resolved by `native/scripts/common.sh`
-(`SEOUL_CHROMIUM_ROOT`, else the sibling `seoul-chromium`).
+(`SEOUL_CHROMIUM_ROOT`, else the sibling `seoul-chromium.noindex`).
 
 1. Host validation
    `native/scripts/build-host-check.sh`

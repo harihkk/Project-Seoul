@@ -68,7 +68,7 @@ ones and warns on the soft ones.
 | Filesystem | APFS | Internal NVMe / Thunderbolt NVMe | Chromium's ~450k small files stall on slow external (USB) volumes for both checkout and build. |
 | macOS | Compatible release | Current supported release | Required for a compatible SDK and toolchain. |
 | Toolchain | **Full Xcode** + macOS SDK | Latest compatible Xcode | Command Line Tools alone are insufficient; the gate fails if the active developer dir is CommandLineTools. |
-| Checkout path | No spaces, absolute, outside the repo | A short path like `/Users/<you>/seoul-chromium` | The Chromium build does not tolerate spaces in paths; `common.sh` rejects unsafe paths outright. |
+| Checkout path | No spaces, absolute, outside the repo | A short path like `/Users/<you>/seoul-chromium.noindex` | The Chromium build does not tolerate spaces in paths; `common.sh` rejects unsafe paths outright. |
 
 A USB SSD is acceptable for nothing on the critical path here - neither the checkout
 nor the build. Use internal NVMe or a Thunderbolt NVMe volume.
@@ -78,11 +78,11 @@ nor the build. Use internal NVMe or a Thunderbolt NVMe volume.
 `SEOUL_CHROMIUM_ROOT` is the absolute path to the **external** Chromium checkout
 root (depot_tools + `src` live under it). It must be outside the Project Seoul repo
 and contain no spaces. If unset, the scripts default to a sibling directory named
-`seoul-chromium` next to the repo. Set it explicitly on a new host so you know
+`seoul-chromium.noindex` next to the repo. Set it explicitly on a new host so you know
 exactly where tens of GiB will land:
 
 ```
-export SEOUL_CHROMIUM_ROOT="/Users/<you>/seoul-chromium"
+export SEOUL_CHROMIUM_ROOT="/Users/<you>/seoul-chromium.noindex"
 ```
 
 Do not export any credential, token, or signing identity. None is needed for an
@@ -136,7 +136,7 @@ This is the long stage. It downloads tens of GiB and runs dependency hooks. Expe
 it to take a long time even on fast storage and a fast link.
 
 ```
-export SEOUL_CHROMIUM_ROOT="/Users/<you>/seoul-chromium"
+export SEOUL_CHROMIUM_ROOT="/Users/<you>/seoul-chromium.noindex"
 native/scripts/fetch.sh
 native/scripts/sync.sh
 ```
@@ -537,17 +537,17 @@ no keychain references).
   "artifacts": [
     {
       "name": "chromium-binary",
-      "path": "/Users/<you>/seoul-chromium/src/out/SeoulBaseline/Chromium.app/Contents/MacOS/Chromium",
+      "path": "/Users/<you>/seoul-chromium.noindex/src/out/SeoulBaseline/Chromium.app/Contents/MacOS/Chromium",
       "sha256": "<shasum -a 256 of the binary>"
     },
     {
       "name": "args-gn",
-      "path": "/Users/<you>/seoul-chromium/src/out/SeoulBaseline/args.gn",
+      "path": "/Users/<you>/seoul-chromium.noindex/src/out/SeoulBaseline/args.gn",
       "sha256": "<shasum -a 256 of args.gn>"
     },
     {
       "name": "build-log",
-      "path": "/Users/<you>/seoul-chromium/.seoul-logs/build.log",
+      "path": "/Users/<you>/seoul-chromium.noindex/.seoul-logs/build.log",
       "sha256": "<shasum -a 256 of the log>"
     }
   ],
