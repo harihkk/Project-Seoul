@@ -12,8 +12,10 @@
 #include "content/public/browser/web_contents.h"
 #include "content/public/browser/web_ui.h"
 #include "content/public/browser/web_ui_data_source.h"
+#include "content/public/common/url_constants.h"
 #include "seoul/browser/canvas/seoul_canvas_page_handler.h"
 #include "seoul/grit/seoul_canvas_resources.h"
+#include "seoul/grit/seoul_canvas_resources_map.h"
 #include "services/network/public/mojom/content_security_policy.mojom.h"
 #include "ui/webui/webui_util.h"
 

@@ -9,8 +9,8 @@ import {CrLitElement, html, nothing} from '//resources/lit/v3_0/lit.rollup.js';
 import {
   ComponentEventKind,
   PageCallbackRouter,
-  PageHandler,
   PageHandlerFactory,
+  PageHandlerRemote,
 } from './canvas.mojom-webui.js';
 import {getCss} from './canvas.css.js';
 import {getHtml} from './canvas.html.js';
@@ -120,7 +120,7 @@ export class SeoulCanvasAppElement extends CrLitElement {
   protected accessor studioError_ = '';
   protected accessor studioBusy_ = false;
 
-  private pageHandler_: PageHandler|undefined;
+  private pageHandler_: PageHandlerRemote|undefined;
   private callbackRouter_ = new PageCallbackRouter();
   private initialized_ = false;
   private currentActions_ = new Set<string>();
@@ -141,9 +141,10 @@ export class SeoulCanvasAppElement extends CrLitElement {
     }
     this.initialized_ = true;
     this.installPageCallbacks_();
-    this.pageHandler_ = PageHandlerFactory.getRemote();
-    this.pageHandler_.createPageHandler(
-        this.callbackRouter_.$.bindNewPipeAndPassRemote());
+    this.pageHandler_ = new PageHandlerRemote();
+    PageHandlerFactory.getRemote().createPageHandler(
+        this.callbackRouter_.$.bindNewPipeAndPassRemote(),
+        this.pageHandler_.$.bindNewPipeAndPassReceiver());
     this.pageHandler_.requestInitialState();
     // Only prefetch the library when it is the initial view; switching to the
     // library or boards view refreshes it lazily on demand.

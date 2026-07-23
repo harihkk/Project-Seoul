@@ -43,10 +43,11 @@
         "third_party/lit/v3_0/BUILD.gn",
         "tools/gritsettings/resource_ids.spec",
         "tools/metrics/histograms/metadata/ui/enums.xml",
-        "ui/views/bubble/bubble_dialog_delegate_view.h"
+        "ui/views/bubble/bubble_dialog_delegate_view.h",
+        "ui/webui/resources/tools/build_webui.gni"
       ],
       "dependencies": [],
-      "sha256": "d454ee77101bc7987849b23e5297fe526347d8d0b87d9cb352ab76af1d5f492f",
+      "sha256": "0a24a8a969714abd9f231e83fb5d4a648bc5785fa4cc3b426d0bc71a11ec5e06",
       "applyVerify": "materialize.sh apply; git -C $SEOUL_CHROMIUM_ROOT/src apply --check native/patches/chromium/0001-seoul-native-core.patch",
       "reverseVerify": "git -C $SEOUL_CHROMIUM_ROOT/src apply -R native/patches/chromium/0001-seoul-native-core.patch",
       "reviewable": true

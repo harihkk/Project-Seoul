@@ -130,7 +130,7 @@ void SeoulCanvasPageHandler::NotifyComponentEvent(
 
   // The browser decides: resolve the event against the surface's declared
   // actions, then route the typed outcome. The renderer's report is advisory.
-  const SurfaceEventOutcome outcome =
+  SurfaceEventOutcome outcome =
       runtime_->surfaces()->HandleComponentEvent(typed);
   switch (outcome.kind) {
     case SurfaceEventOutcome::Kind::kRunCapability: {
