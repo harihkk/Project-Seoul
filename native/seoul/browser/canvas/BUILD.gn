@@ -33,6 +33,8 @@ source_set("canvas") {
     "//content/public/browser",
     "//mojo/public/cpp/bindings",
     "//seoul/browser/canvas/resources",
+    "//seoul/browser/library:library_core",
+    "//seoul/browser/lifecycle:lifecycle_core",
     "//seoul/browser/product:product_core",
     "//seoul/browser/product/browser:product_chromium",
     "//seoul/browser/saui:saui_core",

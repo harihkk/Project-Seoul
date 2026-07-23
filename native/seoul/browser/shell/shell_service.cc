@@ -7,8 +7,11 @@
 #include "chrome/browser/ui/browser_window/public/browser_window_features.h"
 #include "chrome/browser/ui/browser_window/public/browser_window_interface.h"
 #include "chrome/browser/ui/side_panel/side_panel_entry_id.h"
-#include "chrome/browser/ui/side_panel/side_panel_ui.h"
-#include "chrome/browser/ui/views/frame/vertical_tab_strip_region_view.h"
+// nogncheck: //chrome/browser/ui reaches this target through the side-panel
+// Canvas registration, so a declared dep would be a dependency cycle; the
+// symbols link through //chrome/browser like the other circular includes.
+#include "chrome/browser/ui/side_panel/side_panel_ui.h"  // nogncheck
+#include "chrome/browser/ui/views/frame/vertical_tab_strip_region_view.h"  // nogncheck
 #include "components/sessions/core/session_id.h"
 #include "seoul/browser/shell/shell_controller.h"
 #include "seoul/browser/shell/views/seoul_shell_region_host.h"

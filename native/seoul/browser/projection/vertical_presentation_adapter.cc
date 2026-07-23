@@ -4,7 +4,10 @@
 
 #include <functional>
 
-#include "chrome/browser/ui/views/frame/vertical_tab_strip_region_view.h"
+// nogncheck: //chrome/browser/ui reaches this target through the side-panel
+// Canvas registration, so a declared dep would be a dependency cycle; the
+// symbols link through //chrome/browser like the other circular includes.
+#include "chrome/browser/ui/views/frame/vertical_tab_strip_region_view.h"  // nogncheck
 #include "chrome/browser/ui/views/tabs/vertical/root_tab_collection_node.h"
 #include "chrome/browser/ui/views/tabs/vertical/tab_collection_node.h"
 #include "components/tabs/public/tab_interface.h"

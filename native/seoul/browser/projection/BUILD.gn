@@ -1,10 +1,12 @@
 # Project Seoul workspace projection engine V0.
 #
-# projection_core is the pure projection model (calculators, ordering, filter,
-# the workspace switcher, the window projection controller). projection_chromium
-# is the Chromium-facing layer: the presentation adapter AND ProjectionService,
-# which holds VerticalPresentationAdapter by value and returns views::View*, so
-# it depends on //ui/views and cannot live in the pure core.
+# projection_core is the projection model (calculators, ordering, filter, the
+# workspace switcher, the window projection controller). It touches no Chromium
+# UI API directly, but the workspace switcher observes the lifecycle bridge's
+# LiveWindowStateProvider, so it depends on //seoul/browser/lifecycle for that
+# interface. projection_chromium is the Chromium-facing layer: the presentation
+# adapter AND ProjectionService, which holds VerticalPresentationAdapter by
+# value and returns views::View*, so it depends on //ui/views.
 
 import("//testing/test.gni")
 
@@ -29,6 +31,7 @@ source_set("projection_core") {
   deps = [
     "//base",
     "//seoul/browser/commands:command_core",
+    "//seoul/browser/lifecycle",
     "//seoul/browser/lifecycle:lifecycle_core",
     "//seoul/browser/organization:organization_model",
     "//url",

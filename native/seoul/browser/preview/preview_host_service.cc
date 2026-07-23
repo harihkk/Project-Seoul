@@ -11,13 +11,19 @@
 #include "base/functional/bind.h"
 #include "chrome/browser/profiles/profile.h"
 #include "chrome/browser/sessions/session_tab_helper_factory.h"
-#include "chrome/browser/ui/browser.h"
+// nogncheck: //chrome/browser/ui reaches this target through the side-panel
+// Canvas registration, so a declared dep would be a dependency cycle; the
+// symbols link through //chrome/browser like the other circular includes.
+#include "chrome/browser/ui/browser.h"  // nogncheck
 #include "chrome/browser/ui/browser_window/public/browser_window_interface.h"
 #include "chrome/browser/ui/browser_window/public/profile_browser_collection.h"
 #include "chrome/browser/ui/tabs/split_tab_metrics.h"
 #include "chrome/browser/ui/tabs/tab_enums.h"
 #include "chrome/browser/ui/tabs/tab_strip_model.h"
-#include "chrome/browser/ui/views/frame/browser_view.h"
+// nogncheck: //chrome/browser/ui reaches this target through the side-panel
+// Canvas registration, so a declared dep would be a dependency cycle; the
+// symbols link through //chrome/browser like the other circular includes.
+#include "chrome/browser/ui/views/frame/browser_view.h"  // nogncheck
 #include "components/sessions/content/session_tab_helper.h"
 #include "components/sessions/core/session_id.h"
 #include "components/split_tabs/split_tab_visual_data.h"

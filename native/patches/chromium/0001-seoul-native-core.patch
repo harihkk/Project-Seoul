@@ -1,5 +1,41 @@
+diff --git a/chrome/app/chrome_command_ids.h b/chrome/app/chrome_command_ids.h
+index b36306e291..4c32a7eab3 100644
+--- a/chrome/app/chrome_command_ids.h
++++ b/chrome/app/chrome_command_ids.h
+@@ -362,6 +362,7 @@
+ #define IDC_CONTENT_CONTEXT_COPYLINKTEXT 50107
+ #define IDC_CONTENT_CONTEXT_OPENLINKINPROFILE 50108
+ #define IDC_CONTENT_CONTEXT_OPENLINKBOOKMARKAPP 50109
++#define IDC_CONTENT_CONTEXT_OPENLINKPREVIEW 50110
+ #define IDC_CONTENT_CONTEXT_OPENLINKSPLITVIEW 50111
+ // Image items.
+ #define IDC_CONTENT_CONTEXT_SAVEIMAGEAS 50120
+diff --git a/chrome/app/generated_resources.grd b/chrome/app/generated_resources.grd
+index b3263e1207..0fbc9fff94 100644
+--- a/chrome/app/generated_resources.grd
++++ b/chrome/app/generated_resources.grd
+@@ -666,6 +666,9 @@ are declared in tools/grit/grit_args.gni.
+           <message name="IDS_CONTENT_CONTEXT_OPENLINKNEWTAB" desc="The name of the Open Link in New Tab command in the content area context menu">
+             Open link in new &amp;tab
+           </message>
++          <message name="IDS_CONTENT_CONTEXT_OPENLINKPREVIEW" desc="The name of the command that opens a link in an ephemeral preview surface">
++            Preview link
++          </message>
+           <message name="IDS_CONTENT_CONTEXT_OPENLINKNEWWINDOW" desc="The name of the Open Link in New Window command in the content area context menu">
+             Open link in new &amp;window
+           </message>
+@@ -973,6 +976,9 @@ are declared in tools/grit/grit_args.gni.
+           <message name="IDS_CONTENT_CONTEXT_OPENLINKNEWTAB" desc="In Title Case: The name of the Open Link in New Tab command in the content area context menu">
+             Open Link in New &amp;Tab
+           </message>
++          <message name="IDS_CONTENT_CONTEXT_OPENLINKPREVIEW" desc="In Title Case: The name of the command that opens a link in an ephemeral preview surface">
++            Preview Link
++          </message>
+           <message name="IDS_CONTENT_CONTEXT_OPENLINKNEWWINDOW" desc="In Title Case: The name of the Open Link in New Window command in the content area context menu">
+             Open Link in New &amp;Window
+           </message>
 diff --git a/chrome/browser/BUILD.gn b/chrome/browser/BUILD.gn
-index 63c2601cfc..1cca1ac19c 100644
+index 63c2601cfc..9d6de31546 100644
 --- a/chrome/browser/BUILD.gn
 +++ b/chrome/browser/BUILD.gn
 @@ -295,6 +295,13 @@ static_library("browser") {
@@ -13,14 +49,18 @@ index 63c2601cfc..1cca1ac19c 100644
 +    "//seoul/browser/shell:shell_chromium",
 +    "//seoul/browser/product/browser:product_chromium",
 +    "//seoul/browser/canvas",
-
+ 
      "//chrome/browser/browsing_data:impl",
      "//chrome/browser/accessibility:impl",
-@@ -912,6 +919,9 @@ static_library("browser") {
+@@ -912,6 +919,13 @@ static_library("browser") {
      "//chrome/browser/profiles:profile_io_data",
      "//chrome/browser/profiles:profile_manager",
      "//chrome/browser/profiles:profile_manager_impl",
++    "//seoul/browser/lifecycle",
 +    "//seoul/browser/organization",
++    "//seoul/browser/commands:command_chromium",
++    "//seoul/browser/projection:projection_chromium",
++    "//seoul/browser/shell:shell_chromium",
 +    "//seoul/browser/product/browser:product_chromium",
 +    "//seoul/browser/canvas",
      "//chrome/browser/profiles:profile_util",
@@ -43,18 +83,117 @@ index 1aab47b6d0..9e6a4664d1 100644
  #include "chrome/browser/autocomplete/shortcuts_backend_factory.h"
  #include "chrome/browser/autofill/autocomplete_history_manager_factory.h"
 +#include "seoul/browser/product/browser/seoul_runtime_service_factory.h"
-
+ 
  #if BUILDFLAG(IS_WIN) || BUILDFLAG(IS_MAC) || BUILDFLAG(IS_LINUX) || \
      BUILDFLAG(IS_CHROMEOS)
 @@ -1514,6 +1516,8 @@ void ChromeBrowserMainExtraPartsProfiles::
-
+ 
    WebDataServiceFactory::GetInstance();
    webrtc_event_logging::WebRtcEventLogManagerKeyedServiceFactory::GetInstance();
 +  seoul::SeoulOrganizationServiceFactory::GetInstance();
 +  seoul::SeoulRuntimeServiceFactory::GetInstance();
  }
-
+ 
  void ChromeBrowserMainExtraPartsProfiles::PreProfileInit() {
+diff --git a/chrome/browser/renderer_context_menu/render_view_context_menu.cc b/chrome/browser/renderer_context_menu/render_view_context_menu.cc
+index 556579d8e4..27e224a671 100644
+--- a/chrome/browser/renderer_context_menu/render_view_context_menu.cc
++++ b/chrome/browser/renderer_context_menu/render_view_context_menu.cc
+@@ -232,6 +232,9 @@
+ #include "services/metrics/public/cpp/ukm_builders.h"
+ #include "services/metrics/public/cpp/ukm_recorder.h"
+ #include "services/service_manager/public/cpp/interface_provider.h"
++#include "seoul/browser/product/browser/seoul_runtime_service.h"
++#include "seoul/browser/product/browser/seoul_runtime_service_factory.h"
++#include "seoul/browser/preview/preview_host_service.h"
+ #include "third_party/blink/public/common/associated_interfaces/associated_interface_provider.h"
+ #include "third_party/blink/public/common/context_menu_data/context_menu_data.h"
+ #include "third_party/blink/public/common/context_menu_data/edit_flags.h"
+@@ -602,13 +605,14 @@ const std::map<int, int>& GetIdcToUmaMap(UmaEnumIdLookupType type) {
+        {IDC_CONTENT_CONTEXT_GLIC, 162},
+        {IDC_CONTENT_CONTEXT_VIDEO_FRAME, 163},
+        {IDC_CONTENT_CONTEXT_LISTEN_TO_THIS_PAGE, 164},
++       {IDC_CONTENT_CONTEXT_OPENLINKPREVIEW, 165},
+        // To add new items:
+        //   - Add one more line above this comment block, using the UMA value
+        //     from the line below this comment block.
+        //   - Increment the UMA value in that latter line.
+        //   - Add the new item to the RenderViewContextMenuItem enum in
+        //     tools/metrics/histograms/metadata/ui/enums.xml.
+-       {0, 165}});
++       {0, 166}});
+   // LINT.ThenChange(//tools/metrics/histograms/metadata/ui/enums.xml:RenderViewContextMenuItem)
+ 
+   // LINT.IfChange(ContextMenuOptionDesktop)
+@@ -647,13 +651,14 @@ const std::map<int, int>& GetIdcToUmaMap(UmaEnumIdLookupType type) {
+        {IDC_CONTENT_CONTEXT_SEARCHWEBFORNEWTAB, 29},
+        {IDC_CONTENT_CONTEXT_OPENLINKSPLITVIEW, 31},
+        {IDC_CONTENT_CONTEXT_GLICSHAREIMAGE, 32},
++       {IDC_CONTENT_CONTEXT_OPENLINKPREVIEW, 33},
+        // To add new items:
+        //   - Add one more line above this comment block, using the UMA value
+        //     from the line below this comment block.
+        //   - Increment the UMA value in that latter line.
+        //   - Add the new item to the ContextMenuOptionDesktop enum in
+        //     tools/metrics/histograms/metadata/enums.xml.
+-       {0, 32}});
++       {0, 34}});
+   // LINT.ThenChange(//tools/metrics/histograms/metadata/ui/enums.xml:ContextMenuOptionDesktop)
+ 
+   return *(type == UmaEnumIdLookupType::GeneralEnumId ? kGeneralMap
+@@ -716,6 +721,7 @@ int FindUMAEnumValueForCommand(int id, UmaEnumIdLookupType type) {
+ // Returns true if the command id is for opening a link.
+ bool IsCommandForOpenLink(int id) {
+   return id == IDC_CONTENT_CONTEXT_OPENLINKNEWTAB ||
++         id == IDC_CONTENT_CONTEXT_OPENLINKPREVIEW ||
+          id == IDC_CONTENT_CONTEXT_OPENLINKNEWWINDOW ||
+          id == IDC_CONTENT_CONTEXT_OPENLINKOFFTHERECORD ||
+          id == IDC_CONTENT_CONTEXT_OPENLINKSPLITVIEW ||
+@@ -1798,6 +1804,14 @@ void RenderViewContextMenu::AppendLinkItems() {
+                  : IDS_CONTENT_CONTEXT_OPENLINKNEWTAB);
+     }
+ 
++    Browser* const browser = GetBrowser();
++    if (show_open_in_new_tab && browser && browser->is_type_normal() &&
++        !GetProfile()->IsOffTheRecord() &&
++        params_.link_url.SchemeIsHTTPOrHTTPS()) {
++      menu_model_.AddItemWithStringId(IDC_CONTENT_CONTEXT_OPENLINKPREVIEW,
++                                      IDS_CONTENT_CONTEXT_OPENLINKPREVIEW);
++    }
++
+     if (show_open_in_new_window) {
+       menu_model_.AddItemWithStringId(IDC_CONTENT_CONTEXT_OPENLINKNEWWINDOW,
+                                       IDS_CONTENT_CONTEXT_OPENLINKNEWWINDOW);
+@@ -3005,6 +3019,13 @@ bool RenderViewContextMenu::IsCommandIdEnabled(int id) const {
+       return navigation_allowed && params_.link_url.is_valid() &&
+              IsOpenLinkAllowedByDlp(params_.link_url);
+ 
++    case IDC_CONTENT_CONTEXT_OPENLINKPREVIEW:
++      return navigation_allowed && GetBrowser() &&
++             GetBrowser()->is_type_normal() &&
++             !GetProfile()->IsOffTheRecord() &&
++             params_.link_url.SchemeIsHTTPOrHTTPS() &&
++             IsOpenLinkAllowedByDlp(params_.link_url);
++
+     case IDC_CONTENT_CONTEXT_OPENLINKSPLITVIEW:
+       return navigation_allowed && params_.link_url.is_valid() &&
+              params_.link_url.IsStandard() &&
+@@ -3321,6 +3342,15 @@ void RenderViewContextMenu::ExecuteCommand(int id, int event_flags) {
+           /*started_from_context_menu=*/true);
+       break;
+ 
++    case IDC_CONTENT_CONTEXT_OPENLINKPREVIEW:
++      if (seoul::SeoulRuntimeService* runtime =
++              seoul::SeoulRuntimeServiceFactory::GetForProfile(GetProfile())) {
++        if (seoul::PreviewHostService* preview = runtime->preview_host()) {
++          preview->OpenFromLink(source_web_contents_, params_.link_url);
++        }
++      }
++      break;
++
+     case IDC_CONTENT_CONTEXT_OPENLINKOFFTHERECORD:
+       // Pass along the |referring_url| so we can show it in browser UI. Note
+       // that this won't and shouldn't be sent via the referrer header.
 diff --git a/chrome/browser/resources/BUILD.gn b/chrome/browser/resources/BUILD.gn
 index b66098b14f..0584d50bea 100644
 --- a/chrome/browser/resources/BUILD.gn
@@ -80,7 +219,7 @@ index ac0e2c2d6a..7a32d68825 100644
    /* Extensions (nothing more should be added below here) */                  \
    V(kExtension, std::nullopt, "Extension")
 diff --git a/chrome/browser/ui/views/frame/vertical_tab_strip_region_view.cc b/chrome/browser/ui/views/frame/vertical_tab_strip_region_view.cc
-index 25ffbdf18e..9c1d25d7ca 100644
+index 25ffbdf18e..661a0325a5 100644
 --- a/chrome/browser/ui/views/frame/vertical_tab_strip_region_view.cc
 +++ b/chrome/browser/ui/views/frame/vertical_tab_strip_region_view.cc
 @@ -49,6 +49,12 @@
@@ -98,7 +237,7 @@ index 25ffbdf18e..9c1d25d7ca 100644
  #include "chrome/browser/ui/web_applications/app_browser_controller.h"
 @@ -292,6 +298,27 @@ VerticalTabStripRegionView::~VerticalTabStripRegionView() {
    hover_locks_.clear();
-
+ 
    if (root_node_) {
 +    if (browser_view_ && browser_view_->browser()) {
 +      Profile* profile = browser_view_->browser()->profile();
@@ -123,10 +262,10 @@ index 25ffbdf18e..9c1d25d7ca 100644
 +    }
      root_node_->SetController(nullptr);
    }
-
+ 
 @@ -505,6 +532,21 @@ void VerticalTabStripRegionView::Layout(PassKey) {
  }
-
+ 
  views::View* VerticalTabStripRegionView::GetDefaultFocusableChild() {
 +  if (browser_view_ && browser_view_->browser()) {
 +    Profile* profile = browser_view_->browser()->profile();
@@ -175,12 +314,12 @@ index 25ffbdf18e..9c1d25d7ca 100644
 +    }
 +  }
  }
-
+ 
  void VerticalTabStripRegionView::ResetTabStrip() {
 @@ -669,6 +735,27 @@ void VerticalTabStripRegionView::ResetTabStrip() {
      return;
    }
-
+ 
 +  // Unregister Seoul BEFORE the subscriptions, controller, root node and child
 +  // views are reset, so no adapter or host retains a resetting root node.
 +  if (browser_view_ && browser_view_->browser()) {
@@ -208,7 +347,7 @@ index 25ffbdf18e..9c1d25d7ca 100644
 @@ -1110,6 +1197,20 @@ void VerticalTabStripRegionView::OnCollapseStateChanged(
      tab_strip_view_->SetCollapsedState(collapsed);
    }
-
+ 
 +  if (browser_view_ && browser_view_->browser()) {
 +    Profile* profile = browser_view_->browser()->profile();
 +    if (seoul::SeoulOrganizationService* service =
@@ -244,64 +383,8 @@ index 70c78e23c0..b599558b39 100644
    void DisableTabStripEditingForTesting() override;
    gfx::Rect GetLinkDropBoundsForTesting(
        const BrowserRootView::DropIndex& drop_index,
-diff --git a/chrome/browser/ui/webui/chrome_web_ui_configs.cc b/chrome/browser/ui/webui/chrome_web_ui_configs.cc
-index 9daef52054..5e4ccc17f9 100644
---- a/chrome/browser/ui/webui/chrome_web_ui_configs.cc
-+++ b/chrome/browser/ui/webui/chrome_web_ui_configs.cc
-@@ -13,6 +13,7 @@
- #include "chrome/browser/ui/webui/about/about_ui.h"
- #include "chrome/browser/ui/webui/accessibility/accessibility_ui.h"
- #include "chrome/browser/ui/webui/accessibility_annotator_internals/accessibility_annotator_internals_ui.h"
-+#include "seoul/browser/canvas/seoul_canvas_ui.h"
- #include "chrome/browser/ui/webui/actor_internals/actor_internals_ui.h"
- #include "chrome/browser/ui/webui/autofill_and_password_manager_internals/autofill_internals_ui.h"
- #include "chrome/browser/ui/webui/autofill_and_password_manager_internals/password_manager_internals_ui.h"
-@@ -242,6 +243,7 @@ void RegisterChromeWebUIConfigs() {
- #endif  // BUILDFLAG(IS_CHROMEOS)
-
-   auto& map = content::WebUIConfigMap::GetInstance();
-+  map.AddWebUIConfig(std::make_unique<seoul::SeoulCanvasUIConfig>());
-   map.AddWebUIConfig(std::make_unique<AccessibilityUIConfig>());
-   map.AddWebUIConfig(
-       std::make_unique<AccessibilityAnnotatorInternalsUIConfig>());
-diff --git a/chrome/test/BUILD.gn b/chrome/test/BUILD.gn
-index 5a75b29519..631c51b80d 100644
---- a/chrome/test/BUILD.gn
-+++ b/chrome/test/BUILD.gn
-@@ -2596,6 +2596,10 @@ if (!is_android) {
-     defines = [ "HAS_OUT_OF_PROC_TEST_RUNNER" ]
-
-     deps = [
-+      "//seoul/browser/commands:command_browser_tests",
-+      "//seoul/browser/product/browser:product_browser_tests",
-+      "//seoul/browser/projection:projection_browser_tests",
-+      "//seoul/browser/shell:shell_browser_tests",
-       ":browser_tests_runner",
-       ":platform_browser_tests",
-       ":test_support",
-diff --git a/tools/gritsettings/resource_ids.spec b/tools/gritsettings/resource_ids.spec
-index 9d69921f81..6ea5983549 100644
---- a/tools/gritsettings/resource_ids.spec
-+++ b/tools/gritsettings/resource_ids.spec
-@@ -1737,8 +1737,16 @@
-   "third_party/search_engines_data/resources_internal/search_engine_descriptions_strings.grd": {
-     "messages": [10120],
-   },
-
-+  # Project Seoul first-party Canvas WebUI (//seoul/browser/canvas/resources).
-+  # Sits in the "everything else" section (not chrome/components/content/ios);
-+  # occupies the free range below the placeholder at 12000.
-+  "<(SHARED_INTERMEDIATE_DIR)/seoul/browser/canvas/resources/resources.grd": {
-+    "META": {"sizes": {"includes": [50],}},
-+    "includes": [10140],
-+  },
-+
-   "<(SHARED_INTERMEDIATE_DIR)/THIS_IS_A_PLACEHOLDER.grd": {
-     "META": {"sizes": {"includes": [800]}},
-     "includes": [12000],
-   },
 diff --git a/chrome/browser/ui/views/side_panel/BUILD.gn b/chrome/browser/ui/views/side_panel/BUILD.gn
-index e42e5d519d..194f886061 100644
+index a17f190873..5cb78625bd 100644
 --- a/chrome/browser/ui/views/side_panel/BUILD.gn
 +++ b/chrome/browser/ui/views/side_panel/BUILD.gn
 @@ -98,6 +98,7 @@ source_set("side_panel") {
@@ -313,26 +396,26 @@ index e42e5d519d..194f886061 100644
      "//chrome/app:generated_resources",
      "//chrome/app:generated_resources_grit",
 diff --git a/chrome/browser/ui/views/side_panel/side_panel_helper.cc b/chrome/browser/ui/views/side_panel/side_panel_helper.cc
-index 616dd82f25..c486d35443 100644
+index 9dfcb4b484..0f4fb37707 100644
 --- a/chrome/browser/ui/views/side_panel/side_panel_helper.cc
 +++ b/chrome/browser/ui/views/side_panel/side_panel_helper.cc
-@@ -4,6 +4,8 @@
-
+@@ -4,11 +4,14 @@
+ 
  #include "chrome/browser/ui/views/side_panel/side_panel_helper.h"
-
+ 
 +#include "base/functional/bind.h"
 +#include "seoul/browser/canvas/seoul_canvas_ui.h"
  #include "chrome/browser/history_clusters/history_clusters_service_factory.h"
  #include "chrome/browser/profiles/profile.h"
  #include "chrome/browser/ui/browser.h"
-@@ -10,5 +12,6 @@
  #include "chrome/browser/ui/browser_actions.h"
  #include "chrome/browser/ui/browser_window/public/browser_window_features.h"
 +#include "chrome/browser/ui/side_panel/side_panel_entry.h"
  #include "chrome/browser/ui/side_panel/side_panel_registry.h"
  #include "chrome/browser/ui/side_panel/side_panel_ui.h"
  #include "chrome/browser/ui/ui_features.h"
-@@ -18,10 +21,35 @@
+@@ -17,11 +20,36 @@
+ #include "chrome/browser/ui/views/side_panel/history/history_side_panel_coordinator.h"
  #include "chrome/browser/ui/views/side_panel/history_clusters/history_clusters_side_panel_coordinator.h"
  #include "chrome/browser/ui/views/side_panel/reading_list/reading_list_side_panel_coordinator.h"
 +#include "chrome/browser/ui/views/side_panel/side_panel_web_ui_view.h"
@@ -365,13 +448,13 @@ index 616dd82f25..c486d35443 100644
 +}
 +
 +}  // namespace
-
+ 
  // static
  void SidePanelHelper::PopulateGlobalEntries(
 @@ -41,6 +69,18 @@ void SidePanelHelper::PopulateGlobalEntries(
      return;
    }
-
+ 
 +  // Seoul Canvas is profile-scoped but window-bound at creation time. It is
 +  // registered once in each regular browser window; the Shell command opens
 +  // this exact entry without constructing a tab-hosted Canvas.
@@ -387,169 +470,89 @@ index 616dd82f25..c486d35443 100644
    // Add tabs from other devices.
    if (TabsFromOtherDevicesSidePanelCoordinator::IsSupported(
            browser->profile())) {
-diff --git a/chrome/app/chrome_command_ids.h b/chrome/app/chrome_command_ids.h
---- a/chrome/app/chrome_command_ids.h
-+++ b/chrome/app/chrome_command_ids.h
-@@ -362,6 +362,7 @@
- #define IDC_CONTENT_CONTEXT_COPYLINKTEXT 50107
- #define IDC_CONTENT_CONTEXT_OPENLINKINPROFILE 50108
- #define IDC_CONTENT_CONTEXT_OPENLINKBOOKMARKAPP 50109
-+#define IDC_CONTENT_CONTEXT_OPENLINKPREVIEW 50110
- #define IDC_CONTENT_CONTEXT_OPENLINKSPLITVIEW 50111
- // Image items.
- #define IDC_CONTENT_CONTEXT_SAVEIMAGEAS 50120
-diff --git a/chrome/app/generated_resources.grd b/chrome/app/generated_resources.grd
---- a/chrome/app/generated_resources.grd
-+++ b/chrome/app/generated_resources.grd
-@@ -665,6 +665,9 @@
-           <!-- Also update IDS_CONTENT_CONTEXT_OPENLINKNEWTAB_INAPP in google_chrome_strings.grd and chromium_strings.grd. -->
-           <message name="IDS_CONTENT_CONTEXT_OPENLINKNEWTAB" desc="The name of the Open Link in New Tab command in the content area context menu">
-             Open link in new &amp;tab
-+          </message>
-+          <message name="IDS_CONTENT_CONTEXT_OPENLINKPREVIEW" desc="The name of the command that opens a link in an ephemeral preview surface">
-+            Preview link
-           </message>
-           <message name="IDS_CONTENT_CONTEXT_OPENLINKNEWWINDOW" desc="The name of the Open Link in New Window command in the content area context menu">
-             Open link in new &amp;window
-@@ -973,6 +976,9 @@
-           <message name="IDS_CONTENT_CONTEXT_OPENLINKNEWTAB" desc="In Title Case: The name of the Open Link in New Tab command in the content area context menu">
-             Open Link in New &amp;Tab
-           </message>
-+          <message name="IDS_CONTENT_CONTEXT_OPENLINKPREVIEW" desc="In Title Case: The name of the command that opens a link in an ephemeral preview surface">
-+            Preview Link
-+          </message>
-           <message name="IDS_CONTENT_CONTEXT_OPENLINKNEWWINDOW" desc="In Title Case: The name of the Open Link in New Window command in the content area context menu">
-             Open Link in New &amp;Window
-           </message>
-diff --git a/chrome/browser/renderer_context_menu/render_view_context_menu.cc b/chrome/browser/renderer_context_menu/render_view_context_menu.cc
---- a/chrome/browser/renderer_context_menu/render_view_context_menu.cc
-+++ b/chrome/browser/renderer_context_menu/render_view_context_menu.cc
-@@ -232,6 +232,9 @@
- #include "services/metrics/public/cpp/ukm_builders.h"
- #include "services/metrics/public/cpp/ukm_recorder.h"
- #include "services/service_manager/public/cpp/interface_provider.h"
-+#include "seoul/browser/product/browser/seoul_runtime_service.h"
-+#include "seoul/browser/product/browser/seoul_runtime_service_factory.h"
-+#include "seoul/browser/preview/preview_host_service.h"
- #include "third_party/blink/public/common/associated_interfaces/associated_interface_provider.h"
- #include "third_party/blink/public/common/context_menu_data/context_menu_data.h"
- #include "third_party/blink/public/common/context_menu_data/edit_flags.h"
-@@ -602,13 +605,14 @@
-        {IDC_CONTENT_CONTEXT_GLIC, 162},
-        {IDC_CONTENT_CONTEXT_VIDEO_FRAME, 163},
-        {IDC_CONTENT_CONTEXT_LISTEN_TO_THIS_PAGE, 164},
-+       {IDC_CONTENT_CONTEXT_OPENLINKPREVIEW, 165},
-        // To add new items:
-        //   - Add one more line above this comment block, using the UMA value
-        //     from the line below this comment block.
-        //   - Increment the UMA value in that latter line.
-        //   - Add the new item to the RenderViewContextMenuItem enum in
-        //     tools/metrics/histograms/metadata/ui/enums.xml.
--       {0, 165}});
-+       {0, 166}});
-   // LINT.ThenChange(//tools/metrics/histograms/metadata/ui/enums.xml:RenderViewContextMenuItem)
--
+diff --git a/chrome/browser/ui/webui/chrome_web_ui_configs.cc b/chrome/browser/ui/webui/chrome_web_ui_configs.cc
+index 9daef52054..5e4ccc17f9 100644
+--- a/chrome/browser/ui/webui/chrome_web_ui_configs.cc
++++ b/chrome/browser/ui/webui/chrome_web_ui_configs.cc
+@@ -13,6 +13,7 @@
+ #include "chrome/browser/ui/webui/about/about_ui.h"
+ #include "chrome/browser/ui/webui/accessibility/accessibility_ui.h"
+ #include "chrome/browser/ui/webui/accessibility_annotator_internals/accessibility_annotator_internals_ui.h"
++#include "seoul/browser/canvas/seoul_canvas_ui.h"
+ #include "chrome/browser/ui/webui/actor_internals/actor_internals_ui.h"
+ #include "chrome/browser/ui/webui/autofill_and_password_manager_internals/autofill_internals_ui.h"
+ #include "chrome/browser/ui/webui/autofill_and_password_manager_internals/password_manager_internals_ui.h"
+@@ -242,6 +243,7 @@ void RegisterChromeWebUIConfigs() {
+ #endif  // BUILDFLAG(IS_CHROMEOS)
+ 
+   auto& map = content::WebUIConfigMap::GetInstance();
++  map.AddWebUIConfig(std::make_unique<seoul::SeoulCanvasUIConfig>());
+   map.AddWebUIConfig(std::make_unique<AccessibilityUIConfig>());
+   map.AddWebUIConfig(
+       std::make_unique<AccessibilityAnnotatorInternalsUIConfig>());
+diff --git a/chrome/test/BUILD.gn b/chrome/test/BUILD.gn
+index 5a75b29519..631c51b80d 100644
+--- a/chrome/test/BUILD.gn
++++ b/chrome/test/BUILD.gn
+@@ -2596,6 +2596,10 @@ if (!is_android) {
+     defines = [ "HAS_OUT_OF_PROC_TEST_RUNNER" ]
+ 
+     deps = [
++      "//seoul/browser/commands:command_browser_tests",
++      "//seoul/browser/product/browser:product_browser_tests",
++      "//seoul/browser/projection:projection_browser_tests",
++      "//seoul/browser/shell:shell_browser_tests",
+       ":browser_tests_runner",
+       ":platform_browser_tests",
+       ":test_support",
+diff --git a/third_party/lit/v3_0/BUILD.gn b/third_party/lit/v3_0/BUILD.gn
+index 3d22db142f..33a4418d89 100644
+--- a/third_party/lit/v3_0/BUILD.gn
++++ b/third_party/lit/v3_0/BUILD.gn
+@@ -24,6 +24,7 @@ ts_library("build_ts") {
+     # dependency to CrOS-only UIs (to reduce coupling between Desktop and CrOS
+     # and reduce the maintenance burden for the Desktop WebUI team).
+ 
++    "//seoul/browser/canvas/resources:build_ts",
+     "//chrome/browser/resources/about_sys:build_ts",
+     "//chrome/browser/resources/access_code_cast:build_ts",
+     "//chrome/browser/resources/accessibility_annotator_info:build_ts",
+diff --git a/tools/gritsettings/resource_ids.spec b/tools/gritsettings/resource_ids.spec
+index 9d69921f81..6ea5983549 100644
+--- a/tools/gritsettings/resource_ids.spec
++++ b/tools/gritsettings/resource_ids.spec
+@@ -1738,6 +1738,14 @@
+     "messages": [10120],
+   },
+ 
++  # Project Seoul first-party Canvas WebUI (//seoul/browser/canvas/resources).
++  # Sits in the "everything else" section (not chrome/components/content/ios);
++  # occupies the free range below the placeholder at 12000.
++  "<(SHARED_INTERMEDIATE_DIR)/seoul/browser/canvas/resources/resources.grd": {
++    "META": {"sizes": {"includes": [50],}},
++    "includes": [10140],
++  },
 +
-   // LINT.IfChange(ContextMenuOptionDesktop)
-@@ -647,13 +651,14 @@
-        {IDC_CONTENT_CONTEXT_SEARCHWEBFORNEWTAB, 29},
-        {IDC_CONTENT_CONTEXT_OPENLINKSPLITVIEW, 31},
-        {IDC_CONTENT_CONTEXT_GLICSHAREIMAGE, 32},
-+       {IDC_CONTENT_CONTEXT_OPENLINKPREVIEW, 33},
-        // To add new items:
-        //   - Add one more line above this comment block, using the UMA value
-        //     from the line below this comment block.
-        //   - Increment the UMA value in that latter line.
-        //   - Add the new item to the ContextMenuOptionDesktop enum in
-        //     tools/metrics/histograms/metadata/enums.xml.
--       {0, 32}});
-+       {0, 34}});
-   // LINT.ThenChange(//tools/metrics/histograms/metadata/ui/enums.xml:ContextMenuOptionDesktop)
--
-+
-   return *(type == UmaEnumIdLookupType::GeneralEnumId ? kGeneralMap
-@@ -716,6 +721,7 @@
- // Returns true if the command id is for opening a link.
- bool IsCommandForOpenLink(int id) {
-   return id == IDC_CONTENT_CONTEXT_OPENLINKNEWTAB ||
-+         id == IDC_CONTENT_CONTEXT_OPENLINKPREVIEW ||
-          id == IDC_CONTENT_CONTEXT_OPENLINKNEWWINDOW ||
-          id == IDC_CONTENT_CONTEXT_OPENLINKOFFTHERECORD ||
-          id == IDC_CONTENT_CONTEXT_OPENLINKSPLITVIEW ||
-@@ -1796,6 +1802,14 @@
-           IDC_CONTENT_CONTEXT_OPENLINKNEWTAB,
-           in_app ? IDS_CONTENT_CONTEXT_OPENLINKNEWTAB_INAPP
-                  : IDS_CONTENT_CONTEXT_OPENLINKNEWTAB);
-+    }
-+
-+    Browser* const browser = GetBrowser();
-+    if (show_open_in_new_tab && browser && browser->is_type_normal() &&
-+        !GetProfile()->IsOffTheRecord() &&
-+        params_.link_url.SchemeIsHTTPOrHTTPS()) {
-+      menu_model_.AddItemWithStringId(IDC_CONTENT_CONTEXT_OPENLINKPREVIEW,
-+                                      IDS_CONTENT_CONTEXT_OPENLINKPREVIEW);
-     }
--
-+
-     if (show_open_in_new_window) {
-@@ -3001,8 +3015,15 @@
--    case IDC_CONTENT_CONTEXT_OPENLINKBOOKMARKAPP:
--    case IDC_CONTENT_CONTEXT_OPENLINKINPROFILE:
--    case IDC_CONTENT_CONTEXT_OPENLINKNEWTAB:
--    case IDC_CONTENT_CONTEXT_OPENLINKNEWWINDOW:
--      return navigation_allowed && params_.link_url.is_valid() &&
--             IsOpenLinkAllowedByDlp(params_.link_url);
--
-+    case IDC_CONTENT_CONTEXT_OPENLINKBOOKMARKAPP:
-+    case IDC_CONTENT_CONTEXT_OPENLINKINPROFILE:
-+    case IDC_CONTENT_CONTEXT_OPENLINKNEWTAB:
-+    case IDC_CONTENT_CONTEXT_OPENLINKNEWWINDOW:
-+      return navigation_allowed && params_.link_url.is_valid() &&
-+             IsOpenLinkAllowedByDlp(params_.link_url);
-+
-+    case IDC_CONTENT_CONTEXT_OPENLINKPREVIEW:
-+      return navigation_allowed && GetBrowser() &&
-+             GetBrowser()->is_type_normal() &&
-+             !GetProfile()->IsOffTheRecord() &&
-+             params_.link_url.SchemeIsHTTPOrHTTPS() &&
-+             IsOpenLinkAllowedByDlp(params_.link_url);
-+
-     case IDC_CONTENT_CONTEXT_OPENLINKSPLITVIEW:
-@@ -3319,6 +3340,15 @@
-           WindowOpenDisposition::NEW_WINDOW, ui::PAGE_TRANSITION_LINK,
-           /*extra_headers=*/std::string(),
-           /*started_from_context_menu=*/true);
-+      break;
-+
-+    case IDC_CONTENT_CONTEXT_OPENLINKPREVIEW:
-+      if (seoul::SeoulRuntimeService* runtime =
-+              seoul::SeoulRuntimeServiceFactory::GetForProfile(GetProfile())) {
-+        if (seoul::PreviewHostService* preview = runtime->preview_host()) {
-+          preview->OpenFromLink(source_web_contents_, params_.link_url);
-+        }
-+      }
-       break;
--
-+
-     case IDC_CONTENT_CONTEXT_OPENLINKOFFTHERECORD:
+   "<(SHARED_INTERMEDIATE_DIR)/THIS_IS_A_PLACEHOLDER.grd": {
+     "META": {"sizes": {"includes": [800]}},
+     "includes": [12000],
 diff --git a/tools/metrics/histograms/metadata/ui/enums.xml b/tools/metrics/histograms/metadata/ui/enums.xml
+index f65a7cda7f..08a3d6825e 100644
 --- a/tools/metrics/histograms/metadata/ui/enums.xml
 +++ b/tools/metrics/histograms/metadata/ui/enums.xml
-@@ -78,6 +78,7 @@
+@@ -78,6 +78,7 @@ chromium-metrics-reviews@google.com.
    <int value="29" label="Search web for... in new tab"/>
    <int value="31" label="Open link in split view"/>
    <int value="32" label="Create image with Gemini in Chrome"/>
 +  <int value="33" label="Preview link"/>
  </enum>
--
-+
+ 
  <!-- LINT.ThenChange(//chrome/browser/renderer_context_menu/render_view_context_menu.cc:ContextMenuOptionDesktop) -->
-@@ -363,6 +364,7 @@
+@@ -363,6 +364,7 @@ chromium-metrics-reviews@google.com.
    <int value="162" label="IDC_CONTENT_CONTEXT_GLIC"/>
    <int value="163" label="IDC_CONTENT_CONTEXT_VIDEO_FRAME"/>
    <int value="164" label="IDC_CONTENT_CONTEXT_LISTEN_TO_THIS_PAGE"/>
 +  <int value="165" label="IDC_CONTENT_CONTEXT_OPENLINKPREVIEW"/>
  </enum>
--
-+
+ 
  <!-- LINT.ThenChange(//chrome/browser/renderer_context_menu/render_view_context_menu.cc:RenderViewContextMenuItem) -->

@@ -69,7 +69,7 @@ source_set("shell_chromium") {
     "//seoul/browser/organization:organization_model",
     "//seoul/browser/projection:projection_chromium",
     "//seoul/browser/projection:projection_core",
-    "//ui/accessibility:ax_enums",
+    "//ui/accessibility:ax_enums_mojo",
     "//ui/base",
     "//ui/menus",
     "//ui/views",

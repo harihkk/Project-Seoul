@@ -5,7 +5,10 @@
 #include <vector>
 
 #include "chrome/browser/profiles/profile.h"
-#include "chrome/browser/ui/browser_tabstrip.h"
+// nogncheck: //chrome/browser/ui reaches this target through the side-panel
+// Canvas registration, so a declared dep would be a dependency cycle; the
+// symbols link through //chrome/browser like the other circular includes.
+#include "chrome/browser/ui/browser_tabstrip.h"  // nogncheck
 #include "chrome/browser/ui/browser_window/public/browser_collection.h"
 #include "chrome/browser/ui/browser_window/public/browser_window_interface.h"
 #include "chrome/browser/ui/browser_window/public/profile_browser_collection.h"

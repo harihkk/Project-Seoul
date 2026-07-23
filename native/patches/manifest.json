@@ -31,8 +31,8 @@
         "chrome/app/generated_resources.grd",
         "chrome/browser/BUILD.gn",
         "chrome/browser/profiles/chrome_browser_main_extra_parts_profiles.cc",
-        "chrome/browser/resources/BUILD.gn",
         "chrome/browser/renderer_context_menu/render_view_context_menu.cc",
+        "chrome/browser/resources/BUILD.gn",
         "chrome/browser/ui/side_panel/side_panel_entry_id.h",
         "chrome/browser/ui/views/frame/vertical_tab_strip_region_view.cc",
         "chrome/browser/ui/views/frame/vertical_tab_strip_region_view.h",
@@ -40,11 +40,12 @@
         "chrome/browser/ui/views/side_panel/side_panel_helper.cc",
         "chrome/browser/ui/webui/chrome_web_ui_configs.cc",
         "chrome/test/BUILD.gn",
+        "third_party/lit/v3_0/BUILD.gn",
         "tools/gritsettings/resource_ids.spec",
         "tools/metrics/histograms/metadata/ui/enums.xml"
       ],
       "dependencies": [],
-      "sha256": "c2b500e3d15bdad5d798f7cb6b5f452b14ae337330c31bbac3e50d9cdab20811",
+      "sha256": "d363bb72671e98043f7de5848967dcc06550e8f36e59b02fd94334d53081848c",
       "applyVerify": "materialize.sh apply; git -C $SEOUL_CHROMIUM_ROOT/src apply --check native/patches/chromium/0001-seoul-native-core.patch",
       "reverseVerify": "git -C $SEOUL_CHROMIUM_ROOT/src apply -R native/patches/chromium/0001-seoul-native-core.patch",
       "reviewable": true

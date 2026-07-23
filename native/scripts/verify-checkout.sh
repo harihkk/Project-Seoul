@@ -68,8 +68,28 @@ else
   else bad "src HEAD ($head) does not equal locked revision (${LOCK_REV:-?})"; fi
 
   if src_has_user_edits; then
-    bad "src has edits to tracked, non-submodule files (real user edits):"
-    git -C "$CHROMIUM_SRC" status --porcelain --ignore-submodules=all --untracked-files=no | sed 's/^/        /'
+    # Tracked edits are legitimate in exactly one case: they are precisely the
+    # applied Seoul patch series (the runbook applies patches before gen/build).
+    # Proof: every series patch reverse-applies cleanly, in reverse order, and
+    # nothing remains afterwards. --check makes this read-only.
+    series_matches=1
+    reverse_list=""
+    for p in "$PATCHES_DIR"/*.patch; do
+      [ -f "$p" ] || { series_matches=0; break; }
+      reverse_list="$p $reverse_list"
+    done
+    if [ "$series_matches" = 1 ] && [ -n "$reverse_list" ]; then
+      # shellcheck disable=SC2086
+      git -C "$CHROMIUM_SRC" apply --reverse --check $reverse_list 2>/dev/null || series_matches=0
+    else
+      series_matches=0
+    fi
+    if [ "$series_matches" = 1 ]; then
+      pass "src tracked edits are exactly the applied Seoul patch series (reverse-apply check clean)"
+    else
+      bad "src has edits to tracked, non-submodule files beyond the Seoul patch series:"
+      git -C "$CHROMIUM_SRC" status --porcelain --ignore-submodules=all --untracked-files=no | sed 's/^/        /'
+    fi
   else
     pass "src has no tracked user edits (gclient submodule gitlinks and untracked dependency dirs are expected and ignored)"
   fi

@@ -7,7 +7,10 @@
 
 #include "base/strings/string_number_conversions.h"
 #include "base/strings/utf_string_conversions.h"
-#include "chrome/browser/ui/views/chrome_layout_provider.h"
+// nogncheck: //chrome/browser/ui reaches this target through the side-panel
+// Canvas registration, so a declared dep would be a dependency cycle; the
+// symbols link through //chrome/browser like the other circular includes.
+#include "chrome/browser/ui/views/chrome_layout_provider.h"  // nogncheck
 #include "seoul/browser/shell/shell_controller.h"
 #include "seoul/browser/shell/views/seoul_workspace_menu.h"
 #include "ui/base/metadata/metadata_impl_macros.h"
