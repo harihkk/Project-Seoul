@@ -8,6 +8,7 @@ source_set("themes_core") {
   sources = [
     "theme_registry.cc",
     "theme_registry.h",
+    "theme_types.cc",
     "theme_types.h",
     "theme_validation.cc",
     "theme_validation.h",

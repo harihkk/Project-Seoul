@@ -34,6 +34,13 @@ enum class OpenApiImportError {
 const char* OpenApiImportErrorToString(OpenApiImportError error);
 
 struct OpenApiImportFailure {
+  OpenApiImportFailure();
+  OpenApiImportFailure(const OpenApiImportFailure&);
+  OpenApiImportFailure(OpenApiImportFailure&&);
+  OpenApiImportFailure& operator=(const OpenApiImportFailure&);
+  OpenApiImportFailure& operator=(OpenApiImportFailure&&);
+  ~OpenApiImportFailure();
+
   OpenApiImportError error = OpenApiImportError::kNotAnOpenApiDocument;
   std::string detail;  // operation id or path
 
@@ -44,6 +51,13 @@ struct OpenApiImportFailure {
 // One imported operation: the capability descriptor plus the HTTP binding the
 // runtime dispatcher needs to execute it.
 struct OpenApiOperationBinding {
+  OpenApiOperationBinding();
+  OpenApiOperationBinding(const OpenApiOperationBinding&);
+  OpenApiOperationBinding(OpenApiOperationBinding&&);
+  OpenApiOperationBinding& operator=(const OpenApiOperationBinding&);
+  OpenApiOperationBinding& operator=(OpenApiOperationBinding&&);
+  ~OpenApiOperationBinding();
+
   ToolDescriptor descriptor;
   std::string http_method;    // lowercase: "get", "post", ...
   std::string path_template;  // "/assets/{asset_id}"

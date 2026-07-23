@@ -118,6 +118,12 @@ enum class WorkflowTriggerKind {
 };
 
 struct WorkflowTrigger {
+  WorkflowTrigger();
+  WorkflowTrigger(const WorkflowTrigger&);
+  WorkflowTrigger(WorkflowTrigger&&);
+  WorkflowTrigger& operator=(const WorkflowTrigger&);
+  WorkflowTrigger& operator=(WorkflowTrigger&&);
+  ~WorkflowTrigger();
   WorkflowTriggerKind kind = WorkflowTriggerKind::kManual;
   int interval_minutes = 0;    // kSchedule
   std::string scene_id;        // kSceneActivation
@@ -155,6 +161,12 @@ struct WorkflowRunSummary {
 };
 
 struct WorkflowDefinition {
+  WorkflowDefinition();
+  WorkflowDefinition(const WorkflowDefinition&);
+  WorkflowDefinition(WorkflowDefinition&&);
+  WorkflowDefinition& operator=(const WorkflowDefinition&);
+  WorkflowDefinition& operator=(WorkflowDefinition&&);
+  ~WorkflowDefinition();
   WorkflowId id;
   std::string name;
   std::string description;

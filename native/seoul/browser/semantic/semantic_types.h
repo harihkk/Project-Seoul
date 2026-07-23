@@ -124,6 +124,13 @@ enum class FieldSensitivity {
 
 // One field's identity, type, and semantics.
 struct FieldSpec {
+  FieldSpec();
+  FieldSpec(const FieldSpec&);
+  FieldSpec(FieldSpec&&);
+  FieldSpec& operator=(const FieldSpec&);
+  FieldSpec& operator=(FieldSpec&&);
+  ~FieldSpec();
+
   std::string id;  // [a-z][a-z0-9_]{0,63}
   std::string label;
   std::string description;
@@ -147,6 +154,13 @@ struct FieldSpec {
 };
 
 struct Citation {
+  Citation();
+  Citation(const Citation&);
+  Citation(Citation&&);
+  Citation& operator=(const Citation&);
+  Citation& operator=(Citation&&);
+  ~Citation();
+
   std::string url;
   std::string title;
 
@@ -156,6 +170,13 @@ struct Citation {
 // Attribution for a semantic result: the generic provenance envelope plus
 // provider identity, the transformations Seoul performed, and citations.
 struct SemanticProvenance {
+  SemanticProvenance();
+  SemanticProvenance(const SemanticProvenance&);
+  SemanticProvenance(SemanticProvenance&&);
+  SemanticProvenance& operator=(const SemanticProvenance&);
+  SemanticProvenance& operator=(SemanticProvenance&&);
+  ~SemanticProvenance();
+
   DataProvenance base;
   std::string provider;  // capability provider identity
   std::vector<std::string> transformations;
@@ -166,6 +187,13 @@ struct SemanticProvenance {
 };
 
 struct SemanticError {
+  SemanticError();
+  SemanticError(const SemanticError&);
+  SemanticError(SemanticError&&);
+  SemanticError& operator=(const SemanticError&);
+  SemanticError& operator=(SemanticError&&);
+  ~SemanticError();
+
   std::string code;
   std::string message;
 
@@ -175,6 +203,13 @@ struct SemanticError {
 // A disagreement between sources about one field; surfaced, never silently
 // resolved.
 struct SourceConflict {
+  SourceConflict();
+  SourceConflict(const SourceConflict&);
+  SourceConflict(SourceConflict&&);
+  SourceConflict& operator=(const SourceConflict&);
+  SourceConflict& operator=(SourceConflict&&);
+  ~SourceConflict();
+
   std::string field_id;
   std::string source_a;
   std::string source_b;
@@ -195,6 +230,13 @@ enum class ResultState {
 // the per-row fields of list shapes; `edge_fields` describes graph edges;
 // `parts`/`part_names` describe kComposite children (bounded recursion).
 struct SemanticSchema {
+  SemanticSchema();
+  SemanticSchema(const SemanticSchema&);
+  SemanticSchema(SemanticSchema&&);
+  SemanticSchema& operator=(const SemanticSchema&);
+  SemanticSchema& operator=(SemanticSchema&&);
+  ~SemanticSchema();
+
   int schema_version = kSemanticSchemaVersion;
   SemanticShape shape = SemanticShape::kRecord;
   std::vector<FieldSpec> fields;

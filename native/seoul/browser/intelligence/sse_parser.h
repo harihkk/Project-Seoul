@@ -17,6 +17,13 @@ namespace seoul {
 inline constexpr size_t kMaxSseBufferBytes = 1024 * 1024;  // 1 MiB pending cap
 
 struct SseEvent {
+  SseEvent();
+  SseEvent(const SseEvent&);
+  SseEvent(SseEvent&&);
+  SseEvent& operator=(const SseEvent&);
+  SseEvent& operator=(SseEvent&&);
+  ~SseEvent();
+
   std::string data;  // the concatenated data payload of one event
   bool done = false;  // the payload was the "[DONE]" sentinel
 };

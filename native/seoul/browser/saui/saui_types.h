@@ -23,7 +23,13 @@ namespace seoul {
 // Strong id for a surface, allocated by Seoul (never by the model).
 class SurfaceId {
  public:
-  SurfaceId() = default;
+  SurfaceId();
+  SurfaceId(const SurfaceId&);
+  SurfaceId(SurfaceId&&);
+  SurfaceId& operator=(const SurfaceId&);
+  SurfaceId& operator=(SurfaceId&&);
+  ~SurfaceId();
+
   static SurfaceId GenerateNew() {
     SurfaceId id;
     id.uuid_ = base::Uuid::GenerateRandomV4();
@@ -214,6 +220,13 @@ struct SeriesPoint {
 };
 
 struct DataSeries {
+  DataSeries();
+  DataSeries(const DataSeries&);
+  DataSeries(DataSeries&&);
+  DataSeries& operator=(const DataSeries&);
+  DataSeries& operator=(DataSeries&&);
+  ~DataSeries();
+
   std::string x_unit;
   std::string y_unit;
   std::vector<SeriesPoint> points;
@@ -221,6 +234,9 @@ struct DataSeries {
   friend bool operator==(const DataSeries&, const DataSeries&) = default;
 };
 
+// Kept an aggregate on purpose: parsers build columns with brace
+// initialization (columns.push_back({key, label})), which declaring any
+// constructor would break.
 struct TableColumn {
   std::string key;
   std::string label;
@@ -324,6 +340,13 @@ struct ComponentNode {
 // Who generated the surface and from what. "deterministic" marks surfaces
 // built without a model.
 struct SurfaceProvenance {
+  SurfaceProvenance();
+  SurfaceProvenance(const SurfaceProvenance&);
+  SurfaceProvenance(SurfaceProvenance&&);
+  SurfaceProvenance& operator=(const SurfaceProvenance&);
+  SurfaceProvenance& operator=(SurfaceProvenance&&);
+  ~SurfaceProvenance();
+
   std::string generator;  // "deterministic" or "model:<provider>/<model>"
   base::Time created_at;
   std::vector<std::string> source_urls;
@@ -333,6 +356,13 @@ struct SurfaceProvenance {
 };
 
 struct AdaptiveSurface {
+  AdaptiveSurface();
+  AdaptiveSurface(const AdaptiveSurface&);
+  AdaptiveSurface(AdaptiveSurface&&);
+  AdaptiveSurface& operator=(const AdaptiveSurface&);
+  AdaptiveSurface& operator=(AdaptiveSurface&&);
+  ~AdaptiveSurface();
+
   SurfaceId id;
   SurfaceKind kind = SurfaceKind::kResponse;
   int schema_version = kSauiSchemaVersion;

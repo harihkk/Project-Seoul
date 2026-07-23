@@ -41,6 +41,13 @@ enum class ContextItemKind {
 const char* ContextItemKindToString(ContextItemKind kind);
 
 struct ContextItem {
+  ContextItem();
+  ContextItem(const ContextItem&);
+  ContextItem(ContextItem&&);
+  ContextItem& operator=(const ContextItem&);
+  ContextItem& operator=(ContextItem&&);
+  ~ContextItem();
+
   std::string id;  // generated
   ContextItemKind kind = ContextItemKind::kNote;
   std::string title;
@@ -106,6 +113,13 @@ class ContextThread {
 // `include_bodies` is false, keeping references and citations. This is the
 // only path by which thread content reaches a cloud model.
 struct CloudContextScope {
+  CloudContextScope();
+  CloudContextScope(const CloudContextScope&);
+  CloudContextScope(CloudContextScope&&);
+  CloudContextScope& operator=(const CloudContextScope&);
+  CloudContextScope& operator=(CloudContextScope&&);
+  ~CloudContextScope();
+
   std::vector<ContextItem> items;
   size_t approximate_bytes = 0;
 };

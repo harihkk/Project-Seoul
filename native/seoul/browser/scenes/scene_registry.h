@@ -21,6 +21,13 @@ namespace seoul {
 // Existence checks into the other subsystems (organization, themes, site
 // layers). Returning false rejects the reference at validation time.
 struct SceneResolvers {
+  SceneResolvers();
+  SceneResolvers(const SceneResolvers&);
+  SceneResolvers(SceneResolvers&&);
+  SceneResolvers& operator=(const SceneResolvers&);
+  SceneResolvers& operator=(SceneResolvers&&);
+  ~SceneResolvers();
+
   base::RepeatingCallback<bool(const std::string& workspace_id)>
       workspace_exists;
   base::RepeatingCallback<bool(const std::string& theme_id)> theme_exists;

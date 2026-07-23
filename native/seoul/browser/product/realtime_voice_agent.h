@@ -27,6 +27,13 @@ inline constexpr char kSeoulRealtimeVoiceProductTarget[] = "gpt-live-1";
 inline constexpr char kSeoulRealtimeVoiceToolName[] = "seoul_browser_task";
 
 struct RealtimeVoiceAgentSnapshot {
+  RealtimeVoiceAgentSnapshot();
+  RealtimeVoiceAgentSnapshot(const RealtimeVoiceAgentSnapshot&);
+  RealtimeVoiceAgentSnapshot(RealtimeVoiceAgentSnapshot&&);
+  RealtimeVoiceAgentSnapshot& operator=(const RealtimeVoiceAgentSnapshot&);
+  RealtimeVoiceAgentSnapshot& operator=(RealtimeVoiceAgentSnapshot&&);
+  ~RealtimeVoiceAgentSnapshot();
+
   bool configured = false;
   bool creating_session = false;
   std::string api_model = kSeoulRealtimeVoiceApiModel;

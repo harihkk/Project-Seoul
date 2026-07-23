@@ -21,6 +21,7 @@ source_set("organization_model") {
     "organization_observer.h",
     "organization_store.cc",
     "organization_store.h",
+    "organization_types.cc",
     "organization_types.h",
   ]
 

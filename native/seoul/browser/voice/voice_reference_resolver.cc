@@ -10,6 +10,13 @@
 
 namespace seoul {
 
+VisibleReferent::VisibleReferent() = default;
+VisibleReferent::VisibleReferent(const VisibleReferent&) = default;
+VisibleReferent::VisibleReferent(VisibleReferent&&) = default;
+VisibleReferent& VisibleReferent::operator=(const VisibleReferent&) = default;
+VisibleReferent& VisibleReferent::operator=(VisibleReferent&&) = default;
+VisibleReferent::~VisibleReferent() = default;
+
 namespace {
 
 struct OrdinalWord {

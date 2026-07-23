@@ -5,6 +5,8 @@
 #include <set>
 #include <string>
 
+#include "base/compiler_specific.h"
+#include "base/containers/span.h"
 #include "seoul/browser/saui/saui_catalog.h"
 #include "seoul/browser/saui/saui_limits.h"
 
@@ -60,11 +62,16 @@ SauiStatusResult ValidateComponent(const ComponentNode& node,
   }
   const ComponentTypeInfo& info = GetComponentTypeInfo(node.type);
 
-  for (size_t i = 0; i < info.required_prop_count; ++i) {
-    if (!NonEmptyStringProp(node.props, info.required_props[i])) {
+  // SAFETY: `required_props` points at a static, catalog-owned array of exactly
+  // `required_prop_count` entries (they are set together in the same table row),
+  // so every index in [0, required_prop_count) is in range.
+  const auto required_props = UNSAFE_BUFFERS(
+      base::span(info.required_props, info.required_prop_count));
+  for (const char* prop : required_props) {
+    if (!NonEmptyStringProp(node.props, prop)) {
       // Required props may also be non-string (booleans such as
       // baseline_zero); accept any present non-none value.
-      const base::Value* value = node.props.Find(info.required_props[i]);
+      const base::Value* value = node.props.Find(prop);
       if (!value || value->is_none()) {
         return SauiErr(SauiError::kMissingRequiredProperty);
       }

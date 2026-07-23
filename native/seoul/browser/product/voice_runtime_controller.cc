@@ -2,6 +2,7 @@
 
 #include "seoul/browser/product/voice_runtime_controller.h"
 
+#include <tuple>
 #include <utility>
 
 namespace seoul {
@@ -14,6 +15,16 @@ bool IsTerminalTaskState(TaskState state) {
 }
 
 }  // namespace
+
+VoiceRuntimeSnapshot::VoiceRuntimeSnapshot() = default;
+VoiceRuntimeSnapshot::VoiceRuntimeSnapshot(const VoiceRuntimeSnapshot&) =
+    default;
+VoiceRuntimeSnapshot::VoiceRuntimeSnapshot(VoiceRuntimeSnapshot&&) = default;
+VoiceRuntimeSnapshot& VoiceRuntimeSnapshot::operator=(
+    const VoiceRuntimeSnapshot&) = default;
+VoiceRuntimeSnapshot& VoiceRuntimeSnapshot::operator=(VoiceRuntimeSnapshot&&) =
+    default;
+VoiceRuntimeSnapshot::~VoiceRuntimeSnapshot() = default;
 
 VoiceRuntimeController::VoiceRuntimeController(
     TaskService* tasks,
@@ -114,15 +125,15 @@ void VoiceRuntimeController::OnTaskFinished(const TaskId& task_id) {
 void VoiceRuntimeController::OnPartialTranscript(const std::string& text,
                                                  double confidence) {
   if (session_.state() == VoiceSessionState::kMicrophoneRequesting) {
-    session_.OnMicrophoneGranted();
+    std::ignore = session_.OnMicrophoneGranted();
   }
-  session_.OnPartialTranscript(text, confidence);
+  std::ignore = session_.OnPartialTranscript(text, confidence);
 }
 
 void VoiceRuntimeController::OnFinalTranscript(const std::string& text,
                                                double confidence) {
   if (session_.state() == VoiceSessionState::kMicrophoneRequesting) {
-    session_.OnMicrophoneGranted();
+    std::ignore = session_.OnMicrophoneGranted();
   }
   if (auto accepted = session_.OnFinalTranscript(text, confidence);
       !accepted.has_value()) {
@@ -131,18 +142,18 @@ void VoiceRuntimeController::OnFinalTranscript(const std::string& text,
   last_final_transcript_ = text;
 
   if (!active_window_.is_valid() || start_goal_.is_null()) {
-    session_.Cancel();
+    std::ignore = session_.Cancel();
     return;
   }
 
   const TaskId task_id = start_goal_.Run(text, active_window_);
   if (!task_id.is_valid()) {
-    session_.Cancel();
+    std::ignore = session_.Cancel();
     return;
   }
   session_.set_active_task_id(task_id.value());
   if (session_.state() == VoiceSessionState::kUnderstanding) {
-    session_.OnUnderstandingComplete();
+    std::ignore = session_.OnUnderstandingComplete();
   }
   AdvanceFromTaskSnapshot(task_id);
 }
@@ -156,10 +167,10 @@ void VoiceRuntimeController::OnSilenceDetected() {
 
 void VoiceRuntimeController::OnProviderError(const std::string&) {
   if (session_.state() == VoiceSessionState::kMicrophoneRequesting) {
-    session_.OnMicrophoneDenied();
+    std::ignore = session_.OnMicrophoneDenied();
     return;
   }
-  session_.Cancel();
+  std::ignore = session_.Cancel();
 }
 
 void VoiceRuntimeController::AdvanceFromTaskSnapshot(const TaskId& task_id) {
@@ -173,26 +184,26 @@ void VoiceRuntimeController::AdvanceFromTaskSnapshot(const TaskId& task_id) {
   }
 
   if (session_.state() == VoiceSessionState::kUnderstanding) {
-    session_.OnUnderstandingComplete();
+    std::ignore = session_.OnUnderstandingComplete();
   }
   if (session_.state() == VoiceSessionState::kPlanning &&
       snapshot->state != TaskState::kPlanning &&
       snapshot->state != TaskState::kDraft) {
-    session_.OnPlanReady(snapshot->state == TaskState::kAwaitingApproval);
+    std::ignore = session_.OnPlanReady(snapshot->state == TaskState::kAwaitingApproval);
   }
   if (snapshot->state == TaskState::kAwaitingApproval) {
     return;
   }
   if (snapshot->state == TaskState::kCompleted &&
       session_.state() == VoiceSessionState::kExecuting) {
-    session_.OnExecutionFinished(SpokenSummaryFor(*snapshot));
+    std::ignore = session_.OnExecutionFinished(SpokenSummaryFor(*snapshot));
     return;
   }
   if (IsTerminalTaskState(snapshot->state) &&
       session_.state() != VoiceSessionState::kIdle &&
       session_.state() != VoiceSessionState::kCancelled &&
       session_.state() != VoiceSessionState::kFailed) {
-    session_.Cancel();
+    std::ignore = session_.Cancel();
   }
 }
 

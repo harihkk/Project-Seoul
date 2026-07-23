@@ -22,6 +22,12 @@ class SpeechToTextProvider {
   virtual SpeechRoute route() const = 0;
 
   struct CaptureCallbacks {
+    // Move-only: holds base::OnceCallbacks. Passed by value into StartCapture.
+    CaptureCallbacks();
+    CaptureCallbacks(CaptureCallbacks&&);
+    CaptureCallbacks& operator=(CaptureCallbacks&&);
+    ~CaptureCallbacks();
+
     // Fired repeatedly with the evolving hypothesis for the current utterance.
     base::RepeatingCallback<void(const std::string& text, double confidence)>
         on_partial;
@@ -49,6 +55,12 @@ class TextToSpeechProvider {
   virtual SpeechRoute route() const = 0;
 
   struct SpeakCallbacks {
+    // Move-only: holds base::OnceCallbacks. Passed by value into Speak.
+    SpeakCallbacks();
+    SpeakCallbacks(SpeakCallbacks&&);
+    SpeakCallbacks& operator=(SpeakCallbacks&&);
+    ~SpeakCallbacks();
+
     base::OnceCallback<void()> on_started;
     base::OnceCallback<void()> on_finished;
     base::OnceCallback<void(const std::string& message)> on_error;

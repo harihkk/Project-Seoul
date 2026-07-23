@@ -21,6 +21,13 @@ namespace seoul {
 inline constexpr size_t kMaxSelectedFiles = 64;
 
 struct SelectedFile {
+  SelectedFile();
+  SelectedFile(const SelectedFile&);
+  SelectedFile(SelectedFile&&);
+  SelectedFile& operator=(const SelectedFile&);
+  SelectedFile& operator=(SelectedFile&&);
+  ~SelectedFile();
+
   std::string token;         // opaque, generated at selection time
   std::string display_name;  // shown to the user; carries no directory path
   std::string mime_type;

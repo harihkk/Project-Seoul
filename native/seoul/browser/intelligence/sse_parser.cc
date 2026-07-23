@@ -6,6 +6,13 @@
 
 namespace seoul {
 
+SseEvent::SseEvent() = default;
+SseEvent::SseEvent(const SseEvent&) = default;
+SseEvent::SseEvent(SseEvent&&) = default;
+SseEvent& SseEvent::operator=(const SseEvent&) = default;
+SseEvent& SseEvent::operator=(SseEvent&&) = default;
+SseEvent::~SseEvent() = default;
+
 SseParser::SseParser() = default;
 SseParser::~SseParser() = default;
 

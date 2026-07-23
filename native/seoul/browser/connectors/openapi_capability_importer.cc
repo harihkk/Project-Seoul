@@ -10,6 +10,27 @@
 
 namespace seoul {
 
+OpenApiImportFailure::OpenApiImportFailure() = default;
+OpenApiImportFailure::OpenApiImportFailure(const OpenApiImportFailure&) =
+    default;
+OpenApiImportFailure::OpenApiImportFailure(OpenApiImportFailure&&) = default;
+OpenApiImportFailure& OpenApiImportFailure::operator=(
+    const OpenApiImportFailure&) = default;
+OpenApiImportFailure& OpenApiImportFailure::operator=(
+    OpenApiImportFailure&&) = default;
+OpenApiImportFailure::~OpenApiImportFailure() = default;
+
+OpenApiOperationBinding::OpenApiOperationBinding() = default;
+OpenApiOperationBinding::OpenApiOperationBinding(
+    const OpenApiOperationBinding&) = default;
+OpenApiOperationBinding::OpenApiOperationBinding(OpenApiOperationBinding&&) =
+    default;
+OpenApiOperationBinding& OpenApiOperationBinding::operator=(
+    const OpenApiOperationBinding&) = default;
+OpenApiOperationBinding& OpenApiOperationBinding::operator=(
+    OpenApiOperationBinding&&) = default;
+OpenApiOperationBinding::~OpenApiOperationBinding() = default;
+
 namespace {
 
 base::unexpected<OpenApiImportFailure> Failure(OpenApiImportError error,

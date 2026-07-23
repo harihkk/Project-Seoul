@@ -66,6 +66,16 @@ base::DictValue BuildPlanResponseSchema() {
 
 }  // namespace
 
+ProviderStateSnapshot::ProviderStateSnapshot() = default;
+ProviderStateSnapshot::ProviderStateSnapshot(const ProviderStateSnapshot&) =
+    default;
+ProviderStateSnapshot::ProviderStateSnapshot(ProviderStateSnapshot&&) = default;
+ProviderStateSnapshot& ProviderStateSnapshot::operator=(
+    const ProviderStateSnapshot&) = default;
+ProviderStateSnapshot& ProviderStateSnapshot::operator=(
+    ProviderStateSnapshot&&) = default;
+ProviderStateSnapshot::~ProviderStateSnapshot() = default;
+
 ProviderRegistry::ProviderRegistry(HttpTransport* local_transport,
                                    HttpTransport* cloud_transport,
                                    CredentialStore* credentials)

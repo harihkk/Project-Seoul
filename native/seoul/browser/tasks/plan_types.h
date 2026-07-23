@@ -25,6 +25,13 @@ enum class PlanStepKind {
 
 // A guard makes a step conditional on an earlier step's outcome.
 struct StepGuard {
+  StepGuard();
+  StepGuard(const StepGuard&);
+  StepGuard(StepGuard&&);
+  StepGuard& operator=(const StepGuard&);
+  StepGuard& operator=(StepGuard&&);
+  ~StepGuard();
+
   std::string depends_on_step;
   bool require_success = true;  // false: run only if the dependency failed
 
@@ -59,6 +66,13 @@ struct PlanStep {
 };
 
 struct Plan {
+  Plan();
+  Plan(const Plan&);
+  Plan(Plan&&);
+  Plan& operator=(const Plan&);
+  Plan& operator=(Plan&&);
+  ~Plan();
+
   std::string goal;  // the user's outcome statement, for display
   std::vector<PlanStep> steps;
   TaskBudgets budgets;
@@ -85,6 +99,13 @@ enum class PlanError {
 const char* PlanErrorToString(PlanError error);
 
 struct PlanViolation {
+  PlanViolation();
+  PlanViolation(const PlanViolation&);
+  PlanViolation(PlanViolation&&);
+  PlanViolation& operator=(const PlanViolation&);
+  PlanViolation& operator=(PlanViolation&&);
+  ~PlanViolation();
+
   PlanError error = PlanError::kEmptyPlan;
   std::string step_id;  // empty for plan-level violations
 

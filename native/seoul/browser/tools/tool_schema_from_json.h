@@ -31,6 +31,13 @@ enum class JsonSchemaImportError {
 const char* JsonSchemaImportErrorToString(JsonSchemaImportError error);
 
 struct JsonSchemaImportFailure {
+  JsonSchemaImportFailure();
+  JsonSchemaImportFailure(const JsonSchemaImportFailure&);
+  JsonSchemaImportFailure(JsonSchemaImportFailure&&);
+  JsonSchemaImportFailure& operator=(const JsonSchemaImportFailure&);
+  JsonSchemaImportFailure& operator=(JsonSchemaImportFailure&&);
+  ~JsonSchemaImportFailure();
+
   JsonSchemaImportError error = JsonSchemaImportError::kMalformedSchema;
   std::string path;  // "properties.query.items"
 

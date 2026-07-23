@@ -12,6 +12,13 @@
 
 namespace seoul {
 
+ProviderDelta::ProviderDelta() = default;
+ProviderDelta::ProviderDelta(const ProviderDelta&) = default;
+ProviderDelta::ProviderDelta(ProviderDelta&&) = default;
+ProviderDelta& ProviderDelta::operator=(const ProviderDelta&) = default;
+ProviderDelta& ProviderDelta::operator=(ProviderDelta&&) = default;
+ProviderDelta::~ProviderDelta() = default;
+
 bool IsLocalOnlyEndpoint(const std::string& url) {
   GURL parsed{url};
   if (!parsed.is_valid() || !parsed.SchemeIsHTTPOrHTTPS()) {

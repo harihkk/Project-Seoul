@@ -24,6 +24,13 @@ namespace seoul {
 // ("hide that column", "compare only these") carry stable field/entity ids
 // resolved by the reference layer, never screen positions.
 struct InterfaceIntent {
+  InterfaceIntent();
+  InterfaceIntent(const InterfaceIntent&);
+  InterfaceIntent(InterfaceIntent&&);
+  InterfaceIntent& operator=(const InterfaceIntent&);
+  InterfaceIntent& operator=(InterfaceIntent&&);
+  ~InterfaceIntent();
+
   std::string title;  // surface title; required for pinned surfaces
   // Explicit representation request ("show this as a table"). Honored only
   // when compatible with the data; a misleading request falls back with a
@@ -77,6 +84,13 @@ enum class CompilerReason {
 const char* CompilerReasonToString(CompilerReason reason);
 
 struct CompiledInterface {
+  CompiledInterface();
+  CompiledInterface(const CompiledInterface&);
+  CompiledInterface(CompiledInterface&&);
+  CompiledInterface& operator=(const CompiledInterface&);
+  CompiledInterface& operator=(CompiledInterface&&);
+  ~CompiledInterface();
+
   AdaptiveSurface surface;
   std::vector<CompilerReason> reasons;
 };

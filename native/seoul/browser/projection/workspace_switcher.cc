@@ -2,6 +2,8 @@
 
 #include "seoul/browser/projection/workspace_switcher.h"
 
+#include <tuple>
+
 #include "seoul/browser/commands/browser_command.h"
 #include "seoul/browser/commands/command_id.h"
 #include "seoul/browser/projection/projection_calculator.h"
@@ -156,14 +158,14 @@ WorkspaceSwitcher::SwitchWorkspaceForWindow(WorkspaceId target_workspace) {
   const auto activation = executor_->Submit(std::move(cmd));
   if (!activation.has_value()) {
     if (prior_workspace_.is_valid()) {
-      model_->SetActiveWorkspaceForWindow(window.value(), prior_workspace_);
+      std::ignore = model_->SetActiveWorkspaceForWindow(window.value(), prior_workspace_);
     }
     return RejectSwitch(ProjectionError::kActivationFailed);
   }
   if (*activation == CommandStatus::kApplied) {
     if (!IsTargetTabActive(target_tab)) {
       if (prior_workspace_.is_valid()) {
-        model_->SetActiveWorkspaceForWindow(window.value(), prior_workspace_);
+        std::ignore = model_->SetActiveWorkspaceForWindow(window.value(), prior_workspace_);
       }
       return RejectSwitch(ProjectionError::kActivationFailed);
     }
@@ -174,7 +176,7 @@ WorkspaceSwitcher::SwitchWorkspaceForWindow(WorkspaceId target_workspace) {
   }
   if (*activation != CommandStatus::kAwaitingObservation) {
     if (prior_workspace_.is_valid()) {
-      model_->SetActiveWorkspaceForWindow(window.value(), prior_workspace_);
+      std::ignore = model_->SetActiveWorkspaceForWindow(window.value(), prior_workspace_);
     }
     return RejectSwitch(ProjectionError::kActivationFailed);
   }
@@ -220,7 +222,7 @@ ProjectionResult<WorkspaceSwitchResult> WorkspaceSwitcher::CommitWorkspace(
       model_->SetActiveWorkspaceForWindow(window.value(), target_workspace);
   if (!set_active.has_value()) {
     if (prior_workspace_.is_valid()) {
-      model_->SetActiveWorkspaceForWindow(window.value(), prior_workspace_);
+      std::ignore = model_->SetActiveWorkspaceForWindow(window.value(), prior_workspace_);
     }
     return RejectSwitch(ProjectionError::kInvalidWorkspace);
   }
@@ -263,7 +265,7 @@ void WorkspaceSwitcher::OnCommandCompleted(CommandId id,
         IsTargetTabActive(pending_activation_tab_)) {
       (void)CommitWorkspace(pending_target_, target_projection);
     } else if (prior_workspace_.is_valid()) {
-      model_->SetActiveWorkspaceForWindow(window.value(), prior_workspace_);
+      std::ignore = model_->SetActiveWorkspaceForWindow(window.value(), prior_workspace_);
       controller_->OnOrganizationChanged();
     }
     ResetTransaction();
@@ -273,7 +275,7 @@ void WorkspaceSwitcher::OnCommandCompleted(CommandId id,
   if (status == CommandStatus::kCancelled ||
       status == CommandStatus::kRejected) {
     if (prior_workspace_.is_valid()) {
-      model_->SetActiveWorkspaceForWindow(window.value(), prior_workspace_);
+      std::ignore = model_->SetActiveWorkspaceForWindow(window.value(), prior_workspace_);
       controller_->OnOrganizationChanged();
     }
     SetPhase(status == CommandStatus::kCancelled
@@ -286,7 +288,7 @@ void WorkspaceSwitcher::OnCommandCompleted(CommandId id,
 
   if (!IsTargetTabActive(pending_activation_tab_)) {
     if (prior_workspace_.is_valid()) {
-      model_->SetActiveWorkspaceForWindow(window.value(), prior_workspace_);
+      std::ignore = model_->SetActiveWorkspaceForWindow(window.value(), prior_workspace_);
       controller_->OnOrganizationChanged();
     }
     SetPhase(WorkspaceSwitchPhase::kRejected,

@@ -6,6 +6,13 @@
 
 namespace seoul {
 
+TaskRecord::TaskRecord() = default;
+TaskRecord::TaskRecord(const TaskRecord&) = default;
+TaskRecord::TaskRecord(TaskRecord&&) = default;
+TaskRecord& TaskRecord::operator=(const TaskRecord&) = default;
+TaskRecord& TaskRecord::operator=(TaskRecord&&) = default;
+TaskRecord::~TaskRecord() = default;
+
 namespace {
 
 bool IsFinishedState(TaskState state) {

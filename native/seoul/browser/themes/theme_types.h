@@ -58,6 +58,13 @@ struct ThemeColorRoles {
 };
 
 struct ThemeTypography {
+  ThemeTypography();
+  ThemeTypography(const ThemeTypography&);
+  ThemeTypography(ThemeTypography&&);
+  ThemeTypography& operator=(const ThemeTypography&);
+  ThemeTypography& operator=(ThemeTypography&&);
+  ~ThemeTypography();
+
   std::string font_family;  // family name only; never a URL or @font-face
   int base_size_px = 14;
   double scale_ratio = 1.2;              // modular scale for headings
@@ -76,6 +83,13 @@ struct ThemeMotion {
 };
 
 struct Theme {
+  Theme();
+  Theme(const Theme&);
+  Theme(Theme&&);
+  Theme& operator=(const Theme&);
+  Theme& operator=(Theme&&);
+  ~Theme();
+
   int schema_version = kThemeSchemaVersion;
   std::string id;  // stable slug
   std::string name;

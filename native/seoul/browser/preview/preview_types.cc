@@ -40,4 +40,18 @@ const char* PreviewErrorToString(PreviewError error) {
   return "invalid_state";
 }
 
+PreviewRecord::PreviewRecord() = default;
+PreviewRecord::PreviewRecord(const PreviewRecord&) = default;
+PreviewRecord::PreviewRecord(PreviewRecord&&) = default;
+PreviewRecord& PreviewRecord::operator=(const PreviewRecord&) = default;
+PreviewRecord& PreviewRecord::operator=(PreviewRecord&&) = default;
+PreviewRecord::~PreviewRecord() = default;
+
+PreviewOpenResult::PreviewOpenResult() = default;
+PreviewOpenResult::PreviewOpenResult(const PreviewOpenResult&) = default;
+PreviewOpenResult::PreviewOpenResult(PreviewOpenResult&&) = default;
+PreviewOpenResult& PreviewOpenResult::operator=(const PreviewOpenResult&) = default;
+PreviewOpenResult& PreviewOpenResult::operator=(PreviewOpenResult&&) = default;
+PreviewOpenResult::~PreviewOpenResult() = default;
+
 }  // namespace seoul

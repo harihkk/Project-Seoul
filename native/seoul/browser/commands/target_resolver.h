@@ -23,6 +23,13 @@ struct ResolvedTabTarget {
 };
 
 struct ResolvedSplitTarget {
+  ResolvedSplitTarget();
+  ResolvedSplitTarget(const ResolvedSplitTarget&);
+  ResolvedSplitTarget(ResolvedSplitTarget&&);
+  ResolvedSplitTarget& operator=(const ResolvedSplitTarget&);
+  ResolvedSplitTarget& operator=(ResolvedSplitTarget&&);
+  ~ResolvedSplitTarget();
+
   LiveWindowKey window;
   LiveTabKey pane_a;
   LiveTabKey pane_b;

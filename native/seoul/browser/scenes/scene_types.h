@@ -39,6 +39,13 @@ struct SceneLifecyclePolicy {
 // Assistant context defaults: what the operator may reach by default in this
 // Scene (still capped by the user's global permission context at run time).
 struct SceneAssistantDefaults {
+  SceneAssistantDefaults();
+  SceneAssistantDefaults(const SceneAssistantDefaults&);
+  SceneAssistantDefaults(SceneAssistantDefaults&&);
+  SceneAssistantDefaults& operator=(const SceneAssistantDefaults&);
+  SceneAssistantDefaults& operator=(SceneAssistantDefaults&&);
+  ~SceneAssistantDefaults();
+
   bool allow_network = false;
   bool allow_cloud_models = false;
   DataSensitivity max_sensitivity = DataSensitivity::kOrganization;
@@ -50,6 +57,13 @@ struct SceneAssistantDefaults {
 };
 
 struct SceneDefinition {
+  SceneDefinition();
+  SceneDefinition(const SceneDefinition&);
+  SceneDefinition(SceneDefinition&&);
+  SceneDefinition& operator=(const SceneDefinition&);
+  SceneDefinition& operator=(SceneDefinition&&);
+  ~SceneDefinition();
+
   int schema_version = kSceneSchemaVersion;
   std::string id;
   std::string name;

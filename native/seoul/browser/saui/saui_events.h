@@ -23,7 +23,13 @@ enum class ComponentEventKind {
   kDismiss,       // drawer/section dismissed
 };
 
+// Move-only: the event value is a base::Value, which has no copy constructor.
 struct ComponentEvent {
+  ComponentEvent();
+  ComponentEvent(ComponentEvent&&);
+  ComponentEvent& operator=(ComponentEvent&&);
+  ~ComponentEvent();
+
   SurfaceId surface_id;
   std::string component_id;
   ComponentEventKind kind = ComponentEventKind::kActivate;

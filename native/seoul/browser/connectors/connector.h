@@ -27,6 +27,13 @@ const char* ConnectorStateToString(ConnectorState state);
 // Identity of the connected account, shown to the user. Never holds tokens or
 // credentials; those live in the platform secure store, out of this module.
 struct ConnectorAccount {
+  ConnectorAccount();
+  ConnectorAccount(const ConnectorAccount&);
+  ConnectorAccount(ConnectorAccount&&);
+  ConnectorAccount& operator=(const ConnectorAccount&);
+  ConnectorAccount& operator=(ConnectorAccount&&);
+  ~ConnectorAccount();
+
   std::string account_label;  // "user@example.com", "Personal Drive"
   std::vector<std::string> granted_scopes;
 };

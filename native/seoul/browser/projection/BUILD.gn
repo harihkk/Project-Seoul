@@ -19,6 +19,7 @@ source_set("projection_core") {
     "projection_observer.h",
     "projection_ordering.cc",
     "projection_ordering.h",
+    "projection_types.cc",
     "projection_types.h",
     "vertical_presentation_filter.cc",
     "vertical_presentation_filter.h",

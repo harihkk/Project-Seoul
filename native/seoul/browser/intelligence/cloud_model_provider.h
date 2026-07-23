@@ -22,6 +22,13 @@
 namespace seoul {
 
 struct CloudModelConfig {
+  CloudModelConfig();
+  CloudModelConfig(const CloudModelConfig&);
+  CloudModelConfig(CloudModelConfig&&);
+  CloudModelConfig& operator=(const CloudModelConfig&);
+  CloudModelConfig& operator=(CloudModelConfig&&);
+  ~CloudModelConfig();
+
   std::string endpoint_url;
   std::string model_id;
   std::string api_version_header;  // e.g. a version pin sent as a header

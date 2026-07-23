@@ -14,6 +14,7 @@ class VerticalPresentationFilter {
  public:
   VerticalPresentationFilter();
   explicit VerticalPresentationFilter(const WindowProjection& projection);
+  ~VerticalPresentationFilter();
 
   void UpdateProjection(const WindowProjection& projection);
   void SetDisabled(bool disabled);

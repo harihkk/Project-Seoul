@@ -4,11 +4,19 @@
 
 #include <optional>
 #include <set>
+#include <tuple>
 #include <utility>
 
 #include "seoul/browser/tools/tool_descriptor_wire.h"
 
 namespace seoul {
+
+SceneResolvers::SceneResolvers() = default;
+SceneResolvers::SceneResolvers(const SceneResolvers&) = default;
+SceneResolvers::SceneResolvers(SceneResolvers&&) = default;
+SceneResolvers& SceneResolvers::operator=(const SceneResolvers&) = default;
+SceneResolvers& SceneResolvers::operator=(SceneResolvers&&) = default;
+SceneResolvers::~SceneResolvers() = default;
 
 namespace {
 
@@ -279,7 +287,7 @@ void SceneRegistry::RestorePersistedState(const base::DictValue& state) {
     }
     std::optional<SceneDefinition> scene = SceneFromValue(entry);
     if (scene.has_value()) {
-      restored.Upsert(std::move(scene.value()));
+      std::ignore = restored.Upsert(std::move(scene.value()));
     }
   }
   scenes_ = std::move(restored.scenes_);

@@ -74,6 +74,14 @@ PageObservation& PageObservation::operator=(const PageObservation&) = default;
 PageObservation& PageObservation::operator=(PageObservation&&) = default;
 PageObservation::~PageObservation() = default;
 
+PageActionRequest::PageActionRequest() = default;
+PageActionRequest::PageActionRequest(const PageActionRequest&) = default;
+PageActionRequest::PageActionRequest(PageActionRequest&&) = default;
+PageActionRequest& PageActionRequest::operator=(const PageActionRequest&) =
+    default;
+PageActionRequest& PageActionRequest::operator=(PageActionRequest&&) = default;
+PageActionRequest::~PageActionRequest() = default;
+
 PageAgent::PageAgent(WebContentsResolver resolver)
     : resolver_(std::move(resolver)) {}
 

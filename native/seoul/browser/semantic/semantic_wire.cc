@@ -48,7 +48,10 @@ bool IsValidWireFieldId(std::string_view id) {
 
 base::unexpected<SemanticViolation> WireErr(SemanticFabricError error,
                                             std::string detail) {
-  return base::unexpected(SemanticViolation{error, std::move(detail)});
+  SemanticViolation violation;
+  violation.error = error;
+  violation.detail = std::move(detail);
+  return base::unexpected(std::move(violation));
 }
 
 // Rejects any key the canonical schema does not declare for `context`.
@@ -747,7 +750,10 @@ base::expected<SemanticResult, SemanticViolation> ParseSemanticResult(
       if (!code || code->empty() || !message) {
         return WireErr(SemanticFabricError::kInvalidShapeData, "errors");
       }
-      result.errors.push_back({*code, *message});
+      SemanticError error;
+      error.code = *code;
+      error.message = *message;
+      result.errors.push_back(std::move(error));
     }
   }
   if (const base::ListValue* conflicts = dict->FindList("conflicts")) {

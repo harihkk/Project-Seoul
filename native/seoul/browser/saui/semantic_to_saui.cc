@@ -12,6 +12,15 @@
 
 namespace seoul {
 
+SauiDataConversion::SauiDataConversion() = default;
+SauiDataConversion::SauiDataConversion(const SauiDataConversion&) = default;
+SauiDataConversion::SauiDataConversion(SauiDataConversion&&) = default;
+SauiDataConversion& SauiDataConversion::operator=(const SauiDataConversion&) =
+    default;
+SauiDataConversion& SauiDataConversion::operator=(SauiDataConversion&&) =
+    default;
+SauiDataConversion::~SauiDataConversion() = default;
+
 std::map<std::string, std::string> BuildSauiKeyMap(
     const std::vector<std::string>& semantic_ids) {
   std::map<std::string, std::string> result;

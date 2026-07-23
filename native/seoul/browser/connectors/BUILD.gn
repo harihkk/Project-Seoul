@@ -10,6 +10,7 @@ import("//testing/test.gni")
 
 source_set("connectors_core") {
   sources = [
+    "connector.cc",
     "connector.h",
     "connector_registry.cc",
     "connector_registry.h",

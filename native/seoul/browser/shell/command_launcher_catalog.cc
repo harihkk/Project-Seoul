@@ -109,4 +109,11 @@ std::vector<CommandLauncherEntry> CommandLauncherCatalog::Filter(
   return filtered;
 }
 
+CommandLauncherEntry::CommandLauncherEntry() = default;
+CommandLauncherEntry::CommandLauncherEntry(const CommandLauncherEntry&) = default;
+CommandLauncherEntry::CommandLauncherEntry(CommandLauncherEntry&&) = default;
+CommandLauncherEntry& CommandLauncherEntry::operator=(const CommandLauncherEntry&) = default;
+CommandLauncherEntry& CommandLauncherEntry::operator=(CommandLauncherEntry&&) = default;
+CommandLauncherEntry::~CommandLauncherEntry() = default;
+
 }  // namespace seoul

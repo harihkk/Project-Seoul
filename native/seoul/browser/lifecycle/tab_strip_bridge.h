@@ -43,6 +43,12 @@ class TabStripBridge : public TabStripModelObserver {
 
   LiveWindowKey window() const { return window_; }
 
+  // Pure, stateless conversions from a tab (or its contents) to a LiveTabKey.
+  // Public because LiveWindowStateProvider derives the same keys when it takes
+  // its own bounded snapshots.
+  static LiveTabKey KeyForContents(const content::WebContents* contents);
+  static LiveTabKey KeyForTab(const tabs::TabInterface* tab);
+
   // Bounded snapshot of tabs and splits already present when the bridge
   // attaches. Idempotent on first call; RescanExistingState() re-inspects.
   void EnumerateExistingState();
@@ -71,8 +77,6 @@ class TabStripBridge : public TabStripModelObserver {
                     TabInsertKind insert_kind = TabInsertKind::kUnknown,
                     TabRemovalKind removal_kind = TabRemovalKind::kUnknown);
   TabRemovalKind ClassifyRemoval(TabRemovedReason reason) const;
-  static LiveTabKey KeyForContents(const content::WebContents* contents);
-  static LiveTabKey KeyForTab(const tabs::TabInterface* tab);
 
   void PublishLiveSnapshot();
 

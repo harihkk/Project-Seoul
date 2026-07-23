@@ -78,6 +78,13 @@ inline constexpr size_t kMaxReferencePhraseLength = 512;
 inline constexpr size_t kMaxVisibleReferents = 256;
 
 struct TranscriptSegment {
+  TranscriptSegment();
+  TranscriptSegment(const TranscriptSegment&);
+  TranscriptSegment(TranscriptSegment&&);
+  TranscriptSegment& operator=(const TranscriptSegment&);
+  TranscriptSegment& operator=(TranscriptSegment&&);
+  ~TranscriptSegment();
+
   std::string text;
   bool is_final = false;
   double confidence = 0.0;  // provider-reported, [0, 1]; 0 when unknown
@@ -89,6 +96,13 @@ struct TranscriptSegment {
 };
 
 struct VoiceSettings {
+  VoiceSettings();
+  VoiceSettings(const VoiceSettings&);
+  VoiceSettings(VoiceSettings&&);
+  VoiceSettings& operator=(const VoiceSettings&);
+  VoiceSettings& operator=(VoiceSettings&&);
+  ~VoiceSettings();
+
   VoiceInputMode input_mode = VoiceInputMode::kPushToTalk;
   std::string input_device_id;  // empty selects the system default
   base::TimeDelta silence_timeout = base::Seconds(2);

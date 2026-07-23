@@ -71,6 +71,12 @@ enum class PreviewError {
 const char* PreviewErrorToString(PreviewError error);
 
 struct PreviewRecord {
+  PreviewRecord();
+  PreviewRecord(const PreviewRecord&);
+  PreviewRecord(PreviewRecord&&);
+  PreviewRecord& operator=(const PreviewRecord&);
+  PreviewRecord& operator=(PreviewRecord&&);
+  ~PreviewRecord();
   PreviewId id;
   LiveWindowKey window;
   LiveTabKey parent_tab;
@@ -85,6 +91,12 @@ struct PreviewRecord {
 };
 
 struct PreviewOpenResult {
+  PreviewOpenResult();
+  PreviewOpenResult(const PreviewOpenResult&);
+  PreviewOpenResult(PreviewOpenResult&&);
+  PreviewOpenResult& operator=(const PreviewOpenResult&);
+  PreviewOpenResult& operator=(PreviewOpenResult&&);
+  ~PreviewOpenResult();
   PreviewId id;
   std::optional<PreviewId> replaced;
 };

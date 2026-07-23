@@ -14,6 +14,7 @@ source_set("shell_core") {
     "shell_errors.cc",
     "shell_errors.h",
     "shell_observer.h",
+    "shell_types.cc",
     "shell_types.h",
     "shell_view_model.cc",
     "shell_view_model.h",

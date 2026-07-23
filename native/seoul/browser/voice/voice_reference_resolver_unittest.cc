@@ -8,13 +8,28 @@
 namespace seoul {
 namespace {
 
+// VisibleReferent declares its special members out of line, so it is not an
+// aggregate; build referents field by field.
+VisibleReferent MakeReferent(const std::string& id,
+                             const std::string& label,
+                             const std::string& kind,
+                             int ordinal) {
+  VisibleReferent referent;
+  referent.id = id;
+  referent.label = label;
+  referent.kind = kind;
+  referent.ordinal = ordinal;
+  return referent;
+}
+
 std::vector<VisibleReferent> SearchResults() {
-  return {
-      {"r1", "Chromium documentation", "result", 1, false, false},
-      {"r2", "GN reference", "result", 2, false, false},
-      {"r3", "Ninja manual", "result", 3, false, false},
-      {"chart1", "red line", "chart", 1, false, false},
-  };
+  std::vector<VisibleReferent> referents;
+  referents.push_back(
+      MakeReferent("r1", "Chromium documentation", "result", 1));
+  referents.push_back(MakeReferent("r2", "GN reference", "result", 2));
+  referents.push_back(MakeReferent("r3", "Ninja manual", "result", 3));
+  referents.push_back(MakeReferent("chart1", "red line", "chart", 1));
+  return referents;
 }
 
 TEST(VoiceReferenceResolverTest, DeicticUsesSelectionThenFocus) {
@@ -66,10 +81,9 @@ TEST(VoiceReferenceResolverTest, LabelMatchIsCaseInsensitive) {
 }
 
 TEST(VoiceReferenceResolverTest, AmbiguousLabelIsReported) {
-  std::vector<VisibleReferent> referents = {
-      {"d1", "Saturday", "card", 1, false, false},
-      {"d2", "Saturday evening", "card", 2, false, false},
-  };
+  std::vector<VisibleReferent> referents;
+  referents.push_back(MakeReferent("d1", "Saturday", "card", 1));
+  referents.push_back(MakeReferent("d2", "Saturday evening", "card", 2));
   // "saturday" appears in both labels; exact match breaks the tie.
   auto resolved = ResolveVoiceReference("saturday", referents);
   ASSERT_TRUE(resolved.has_value());

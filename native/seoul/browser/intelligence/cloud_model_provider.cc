@@ -9,6 +9,14 @@
 
 namespace seoul {
 
+CloudModelConfig::CloudModelConfig() = default;
+CloudModelConfig::CloudModelConfig(const CloudModelConfig&) = default;
+CloudModelConfig::CloudModelConfig(CloudModelConfig&&) = default;
+CloudModelConfig& CloudModelConfig::operator=(const CloudModelConfig&) =
+    default;
+CloudModelConfig& CloudModelConfig::operator=(CloudModelConfig&&) = default;
+CloudModelConfig::~CloudModelConfig() = default;
+
 CloudModelProvider::CloudModelProvider(CloudModelConfig config,
                                        HttpTransport* transport,
                                        CredentialStore* credentials)

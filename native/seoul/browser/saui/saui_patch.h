@@ -56,12 +56,26 @@ struct SurfacePatchOp {
 };
 
 struct SurfacePatch {
+  SurfacePatch();
+  SurfacePatch(const SurfacePatch&);
+  SurfacePatch(SurfacePatch&&);
+  SurfacePatch& operator=(const SurfacePatch&);
+  SurfacePatch& operator=(SurfacePatch&&);
+  ~SurfacePatch();
+
   SurfaceId surface_id;
   std::vector<SurfacePatchOp> ops;
 };
 
 // The renderer consumes this to update only what changed.
 struct AppliedPatch {
+  AppliedPatch();
+  AppliedPatch(const AppliedPatch&);
+  AppliedPatch(AppliedPatch&&);
+  AppliedPatch& operator=(const AppliedPatch&);
+  AppliedPatch& operator=(AppliedPatch&&);
+  ~AppliedPatch();
+
   uint64_t new_revision = 0;
   std::vector<std::string> changed_component_ids;
   std::vector<std::string> changed_entry_names;

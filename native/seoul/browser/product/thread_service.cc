@@ -2,6 +2,7 @@
 
 #include "seoul/browser/product/thread_service.h"
 
+#include <tuple>
 #include <utility>
 
 #include "base/strings/string_number_conversions.h"
@@ -31,6 +32,13 @@ std::optional<ContextItemKind> ItemKindFromKey(const std::string& key) {
 }
 
 }  // namespace
+
+ThreadSummary::ThreadSummary() = default;
+ThreadSummary::ThreadSummary(const ThreadSummary&) = default;
+ThreadSummary::ThreadSummary(ThreadSummary&&) = default;
+ThreadSummary& ThreadSummary::operator=(const ThreadSummary&) = default;
+ThreadSummary& ThreadSummary::operator=(ThreadSummary&&) = default;
+ThreadSummary::~ThreadSummary() = default;
 
 ThreadService::ThreadService(base::RepeatingCallback<base::Time()> clock)
     : clock_(std::move(clock)) {}
@@ -185,7 +193,7 @@ void ThreadService::RestorePersistedState(const base::DictValue& state) {
         if (const std::string* text = item_dict->FindString("text")) {
           item.text = *text;
         }
-        thread->AddItem(std::move(item), clock_.Run());
+        std::ignore = thread->AddItem(std::move(item), clock_.Run());
       }
     }
     threads_[*id] = std::move(thread);

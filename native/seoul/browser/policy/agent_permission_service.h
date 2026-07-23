@@ -26,6 +26,13 @@ inline constexpr base::TimeDelta kDefaultAgentGrantDuration = base::Minutes(30);
 inline constexpr base::TimeDelta kMaxAgentGrantDuration = base::Hours(24);
 
 struct AgentPermissionRequest {
+  AgentPermissionRequest();
+  AgentPermissionRequest(const AgentPermissionRequest&);
+  AgentPermissionRequest(AgentPermissionRequest&&);
+  AgentPermissionRequest& operator=(const AgentPermissionRequest&);
+  AgentPermissionRequest& operator=(AgentPermissionRequest&&);
+  ~AgentPermissionRequest();
+
   ToolId capability;
   ApprovalPolicy approval = ApprovalPolicy::kNeverRequired;
   RiskCategory risk = RiskCategory::kReadOnly;

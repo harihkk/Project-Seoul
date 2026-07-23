@@ -60,6 +60,17 @@ std::string ErrorSummary(int http_status, const std::string& body) {
 
 }  // namespace
 
+RealtimeVoiceAgentSnapshot::RealtimeVoiceAgentSnapshot() = default;
+RealtimeVoiceAgentSnapshot::RealtimeVoiceAgentSnapshot(
+    const RealtimeVoiceAgentSnapshot&) = default;
+RealtimeVoiceAgentSnapshot::RealtimeVoiceAgentSnapshot(
+    RealtimeVoiceAgentSnapshot&&) = default;
+RealtimeVoiceAgentSnapshot& RealtimeVoiceAgentSnapshot::operator=(
+    const RealtimeVoiceAgentSnapshot&) = default;
+RealtimeVoiceAgentSnapshot& RealtimeVoiceAgentSnapshot::operator=(
+    RealtimeVoiceAgentSnapshot&&) = default;
+RealtimeVoiceAgentSnapshot::~RealtimeVoiceAgentSnapshot() = default;
+
 RealtimeVoiceAgent::RealtimeVoiceAgent(HttpTransport* transport,
                                        CredentialStore* credentials)
     : transport_(transport), credentials_(credentials) {}

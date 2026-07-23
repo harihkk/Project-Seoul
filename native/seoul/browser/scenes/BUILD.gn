@@ -10,6 +10,7 @@ source_set("scenes_core") {
   sources = [
     "scene_registry.cc",
     "scene_registry.h",
+    "scene_types.cc",
     "scene_types.h",
   ]
 

@@ -4,6 +4,7 @@
 
 #include <algorithm>
 #include <cmath>
+#include <string_view>
 
 namespace seoul {
 
@@ -114,7 +115,7 @@ bool ParseHexColor(const std::string& hex, ThemeColor* out) {
 }
 
 std::string ColorToHex(const ThemeColor& color) {
-  static const char* kDigits = "0123456789abcdef";
+  static constexpr std::string_view kDigits = "0123456789abcdef";
   std::string hex = "#";
   for (uint8_t channel : {color.r, color.g, color.b, color.a}) {
     hex.push_back(kDigits[channel >> 4]);

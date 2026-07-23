@@ -35,6 +35,13 @@ enum class McpImportError {
 const char* McpImportErrorToString(McpImportError error);
 
 struct McpImportFailure {
+  McpImportFailure();
+  McpImportFailure(const McpImportFailure&);
+  McpImportFailure(McpImportFailure&&);
+  McpImportFailure& operator=(const McpImportFailure&);
+  McpImportFailure& operator=(McpImportFailure&&);
+  ~McpImportFailure();
+
   McpImportError error = McpImportError::kNotAToolList;
   std::string detail;
 

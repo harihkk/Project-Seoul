@@ -11,6 +11,7 @@ source_set("workflows_core") {
     "workflow_editor.h",
     "workflow_graph.cc",
     "workflow_graph.h",
+    "workflow_types.cc",
     "workflow_types.h",
   ]
 

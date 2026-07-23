@@ -40,6 +40,13 @@ enum class SemanticFabricError {
 const char* SemanticFabricErrorToString(SemanticFabricError error);
 
 struct SemanticViolation {
+  SemanticViolation();
+  SemanticViolation(const SemanticViolation&);
+  SemanticViolation(SemanticViolation&&);
+  SemanticViolation& operator=(const SemanticViolation&);
+  SemanticViolation& operator=(SemanticViolation&&);
+  ~SemanticViolation();
+
   SemanticFabricError error = SemanticFabricError::kInvalidShapeData;
   std::string detail;  // field id, part name, or row index text
 

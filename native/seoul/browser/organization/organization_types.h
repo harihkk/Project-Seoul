@@ -50,6 +50,12 @@ enum class RoutingDisposition {
 };
 
 struct WorkspaceRecord {
+  WorkspaceRecord();
+  WorkspaceRecord(const WorkspaceRecord&);
+  WorkspaceRecord(WorkspaceRecord&&);
+  WorkspaceRecord& operator=(const WorkspaceRecord&);
+  WorkspaceRecord& operator=(WorkspaceRecord&&);
+  ~WorkspaceRecord();
   WorkspaceId id;
   std::string name;
   std::string
@@ -62,6 +68,12 @@ struct WorkspaceRecord {
 };
 
 struct EssentialRecord {
+  EssentialRecord();
+  EssentialRecord(const EssentialRecord&);
+  EssentialRecord(EssentialRecord&&);
+  EssentialRecord& operator=(const EssentialRecord&);
+  EssentialRecord& operator=(EssentialRecord&&);
+  ~EssentialRecord();
   EssentialId id;
   EssentialKind kind = EssentialKind::kPersistentDestination;
   std::string name;
@@ -73,6 +85,12 @@ struct EssentialRecord {
 };
 
 struct TabMembershipRecord {
+  TabMembershipRecord();
+  TabMembershipRecord(const TabMembershipRecord&);
+  TabMembershipRecord(TabMembershipRecord&&);
+  TabMembershipRecord& operator=(const TabMembershipRecord&);
+  TabMembershipRecord& operator=(TabMembershipRecord&&);
+  ~TabMembershipRecord();
   TabMembershipId id;
   WorkspaceId workspace_id;
   // Opaque, stable handle to the Chromium tab, assigned by the future bridge
@@ -87,6 +105,12 @@ struct TabMembershipRecord {
 };
 
 struct SplitGroupRecord {
+  SplitGroupRecord();
+  SplitGroupRecord(const SplitGroupRecord&);
+  SplitGroupRecord(SplitGroupRecord&&);
+  SplitGroupRecord& operator=(const SplitGroupRecord&);
+  SplitGroupRecord& operator=(SplitGroupRecord&&);
+  ~SplitGroupRecord();
   SplitGroupId id;
   WorkspaceId workspace_id;
   // Ordered panes (v0: exactly two). Each entry is a tab_key in the same
@@ -120,6 +144,12 @@ struct RoutingResult {
 };
 
 struct RoutingRule {
+  RoutingRule();
+  RoutingRule(const RoutingRule&);
+  RoutingRule(RoutingRule&&);
+  RoutingRule& operator=(const RoutingRule&);
+  RoutingRule& operator=(RoutingRule&&);
+  ~RoutingRule();
   RoutingRuleId id;
   int priority = 0;  // higher wins; ties broken deterministically by id
   RoutingPredicate predicate;
@@ -130,6 +160,12 @@ struct RoutingRule {
 // Input to routing evaluation. Supplied by the bridge; no website behavior is
 // baked into the model.
 struct RoutingRequest {
+  RoutingRequest();
+  RoutingRequest(const RoutingRequest&);
+  RoutingRequest(RoutingRequest&&);
+  RoutingRequest& operator=(const RoutingRequest&);
+  RoutingRequest& operator=(RoutingRequest&&);
+  ~RoutingRequest();
   std::string url;
   std::string origin;
   WorkspaceId source_workspace;
@@ -164,6 +200,12 @@ struct TabLiveActivity {
 // Archived tab metadata. Recoverable, but not a live renderer and not a second
 // copy of browser history.
 struct ArchivedTabRecord {
+  ArchivedTabRecord();
+  ArchivedTabRecord(const ArchivedTabRecord&);
+  ArchivedTabRecord(ArchivedTabRecord&&);
+  ArchivedTabRecord& operator=(const ArchivedTabRecord&);
+  ArchivedTabRecord& operator=(ArchivedTabRecord&&);
+  ~ArchivedTabRecord();
   TabMembershipId original_id;
   WorkspaceId workspace_id;
   TabRole original_role = TabRole::kTemporary;
@@ -175,6 +217,12 @@ struct ArchivedTabRecord {
 // A deterministic, fully-ordered snapshot of the organization state. Vectors
 // are sorted (by order, then id) so serialization is stable.
 struct OrganizationSnapshot {
+  OrganizationSnapshot();
+  OrganizationSnapshot(const OrganizationSnapshot&);
+  OrganizationSnapshot(OrganizationSnapshot&&);
+  OrganizationSnapshot& operator=(const OrganizationSnapshot&);
+  OrganizationSnapshot& operator=(OrganizationSnapshot&&);
+  ~OrganizationSnapshot();
   int schema_version = kOrganizationSchemaVersion;
   WorkspaceId default_workspace_id;
   std::vector<WorkspaceRecord> workspaces;

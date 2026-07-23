@@ -8,6 +8,27 @@
 
 namespace seoul {
 
+SchemaField::SchemaField() = default;
+SchemaField::SchemaField(const SchemaField&) = default;
+SchemaField::SchemaField(SchemaField&&) = default;
+SchemaField& SchemaField::operator=(const SchemaField&) = default;
+SchemaField& SchemaField::operator=(SchemaField&&) = default;
+SchemaField::~SchemaField() = default;
+
+ToolSchema::ToolSchema() = default;
+ToolSchema::ToolSchema(const ToolSchema&) = default;
+ToolSchema::ToolSchema(ToolSchema&&) = default;
+ToolSchema& ToolSchema::operator=(const ToolSchema&) = default;
+ToolSchema& ToolSchema::operator=(ToolSchema&&) = default;
+ToolSchema::~ToolSchema() = default;
+
+SchemaViolation::SchemaViolation() = default;
+SchemaViolation::SchemaViolation(const SchemaViolation&) = default;
+SchemaViolation::SchemaViolation(SchemaViolation&&) = default;
+SchemaViolation& SchemaViolation::operator=(const SchemaViolation&) = default;
+SchemaViolation& SchemaViolation::operator=(SchemaViolation&&) = default;
+SchemaViolation::~SchemaViolation() = default;
+
 namespace {
 
 bool ValidFieldName(const std::string& name) {

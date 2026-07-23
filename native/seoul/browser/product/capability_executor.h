@@ -69,7 +69,7 @@ class CapabilityExecutor {
   // The capability this executor implements. Must match a registered
   // descriptor exactly (id and version).
   virtual ToolId capability_id() const = 0;
-  virtual int version() const { return 1; }
+  virtual int version() const;
 
   // Starts one invocation. The callback is invoked exactly once, on the
   // calling sequence, including for rejection, cancellation, timeout, and
@@ -105,6 +105,13 @@ class CapabilityExecutorRegistry {
   // with no executor (those must be marked unavailable by the caller) and
   // executors with no descriptor (an architecture violation).
   struct CompletenessReport {
+    CompletenessReport();
+    CompletenessReport(const CompletenessReport&);
+    CompletenessReport(CompletenessReport&&);
+    CompletenessReport& operator=(const CompletenessReport&);
+    CompletenessReport& operator=(CompletenessReport&&);
+    ~CompletenessReport();
+
     std::vector<ToolId> descriptors_without_executor;
     std::vector<ToolId> executors_without_descriptor;
   };

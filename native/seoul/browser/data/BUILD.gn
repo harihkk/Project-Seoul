@@ -10,6 +10,7 @@ source_set("data_core") {
     "data_errors.h",
     "data_validation.cc",
     "data_validation.h",
+    "provenance.cc",
     "provenance.h",
   ]
 

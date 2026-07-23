@@ -32,6 +32,13 @@ namespace seoul {
 inline constexpr size_t kMaxThreads = 100;
 
 struct ThreadSummary {
+  ThreadSummary();
+  ThreadSummary(const ThreadSummary&);
+  ThreadSummary(ThreadSummary&&);
+  ThreadSummary& operator=(const ThreadSummary&);
+  ThreadSummary& operator=(ThreadSummary&&);
+  ~ThreadSummary();
+
   std::string id;
   std::string name;
   bool archived = false;

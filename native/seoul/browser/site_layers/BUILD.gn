@@ -11,6 +11,7 @@ source_set("site_layers_core") {
     "site_layer_compiler.h",
     "site_layer_registry.cc",
     "site_layer_registry.h",
+    "site_layer_types.cc",
     "site_layer_types.h",
   ]
 

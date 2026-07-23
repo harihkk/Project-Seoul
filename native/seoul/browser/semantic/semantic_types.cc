@@ -8,6 +8,50 @@
 
 namespace seoul {
 
+FieldSpec::FieldSpec() = default;
+FieldSpec::FieldSpec(const FieldSpec&) = default;
+FieldSpec::FieldSpec(FieldSpec&&) = default;
+FieldSpec& FieldSpec::operator=(const FieldSpec&) = default;
+FieldSpec& FieldSpec::operator=(FieldSpec&&) = default;
+FieldSpec::~FieldSpec() = default;
+
+Citation::Citation() = default;
+Citation::Citation(const Citation&) = default;
+Citation::Citation(Citation&&) = default;
+Citation& Citation::operator=(const Citation&) = default;
+Citation& Citation::operator=(Citation&&) = default;
+Citation::~Citation() = default;
+
+SemanticProvenance::SemanticProvenance() = default;
+SemanticProvenance::SemanticProvenance(const SemanticProvenance&) = default;
+SemanticProvenance::SemanticProvenance(SemanticProvenance&&) = default;
+SemanticProvenance& SemanticProvenance::operator=(const SemanticProvenance&) =
+    default;
+SemanticProvenance& SemanticProvenance::operator=(SemanticProvenance&&) =
+    default;
+SemanticProvenance::~SemanticProvenance() = default;
+
+SemanticError::SemanticError() = default;
+SemanticError::SemanticError(const SemanticError&) = default;
+SemanticError::SemanticError(SemanticError&&) = default;
+SemanticError& SemanticError::operator=(const SemanticError&) = default;
+SemanticError& SemanticError::operator=(SemanticError&&) = default;
+SemanticError::~SemanticError() = default;
+
+SourceConflict::SourceConflict() = default;
+SourceConflict::SourceConflict(const SourceConflict&) = default;
+SourceConflict::SourceConflict(SourceConflict&&) = default;
+SourceConflict& SourceConflict::operator=(const SourceConflict&) = default;
+SourceConflict& SourceConflict::operator=(SourceConflict&&) = default;
+SourceConflict::~SourceConflict() = default;
+
+SemanticSchema::SemanticSchema() = default;
+SemanticSchema::SemanticSchema(const SemanticSchema&) = default;
+SemanticSchema::SemanticSchema(SemanticSchema&&) = default;
+SemanticSchema& SemanticSchema::operator=(const SemanticSchema&) = default;
+SemanticSchema& SemanticSchema::operator=(SemanticSchema&&) = default;
+SemanticSchema::~SemanticSchema() = default;
+
 SemanticResult::SemanticResult() = default;
 SemanticResult::SemanticResult(SemanticResult&&) = default;
 SemanticResult& SemanticResult::operator=(SemanticResult&&) = default;

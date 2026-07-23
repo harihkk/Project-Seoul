@@ -9,6 +9,20 @@
 
 namespace seoul {
 
+NextAction::NextAction() = default;
+NextAction::NextAction(const NextAction&) = default;
+NextAction::NextAction(NextAction&&) = default;
+NextAction& NextAction::operator=(const NextAction&) = default;
+NextAction& NextAction::operator=(NextAction&&) = default;
+NextAction::~NextAction() = default;
+
+StepOutcome::StepOutcome() = default;
+StepOutcome::StepOutcome(const StepOutcome&) = default;
+StepOutcome::StepOutcome(StepOutcome&&) = default;
+StepOutcome& StepOutcome::operator=(const StepOutcome&) = default;
+StepOutcome& StepOutcome::operator=(StepOutcome&&) = default;
+StepOutcome::~StepOutcome() = default;
+
 namespace {
 
 bool IsTerminalStep(StepStatus status) {

@@ -3,6 +3,7 @@
 #include "seoul/browser/lifecycle/lifecycle_coordinator.h"
 
 #include <string>
+#include <tuple>
 #include <utility>
 #include <vector>
 
@@ -206,11 +207,11 @@ void LifecycleCoordinator::HandleWindowDiscovered(
   }
   known_windows_.insert(event.window);
 
-  model_->EnsureDefaultWorkspace();
+  std::ignore = model_->EnsureDefaultWorkspace();
   const std::string window_key = event.window.value();
   const WorkspaceId active = model_->ActiveWorkspaceForWindow(window_key);
   if (!active.is_valid()) {
-    model_->SetActiveWorkspaceForWindow(window_key,
+    std::ignore = model_->SetActiveWorkspaceForWindow(window_key,
                                         model_->default_workspace());
   }
 }
@@ -222,7 +223,7 @@ void LifecycleCoordinator::HandleWindowGone(const NormalizedEvent& event) {
   known_windows_.erase(event.window);
   ExpireTransfersForWindow(event.window);
   ExpireExpectedInsertionsForWindow(event.window);
-  model_->ForgetWindow(event.window.value());
+  std::ignore = model_->ForgetWindow(event.window.value());
 }
 
 void LifecycleCoordinator::HandleTabInserted(const NormalizedEvent& event) {
@@ -244,14 +245,14 @@ void LifecycleCoordinator::HandleTabInserted(const NormalizedEvent& event) {
   if (pending != pending_transfers_.end()) {
     pending_transfers_.erase(pending);
     if (existing.is_valid() && event.order_index >= 0) {
-      model_->ReorderTabMembership(existing, event.order_index);
+      std::ignore = model_->ReorderTabMembership(existing, event.order_index);
     }
     return;
   }
 
   if (existing.is_valid()) {
     if (event.order_index >= 0) {
-      model_->ReorderTabMembership(existing, event.order_index);
+      std::ignore = model_->ReorderTabMembership(existing, event.order_index);
     }
     return;
   }
@@ -267,7 +268,7 @@ void LifecycleCoordinator::HandleTabInserted(const NormalizedEvent& event) {
   const MutationResult<TabMembershipId> result =
       model_->AddTabMembership(ws, tab_key, insertion_role);
   if (result.has_value() && event.order_index >= 0) {
-    model_->ReorderTabMembership(result.value(), event.order_index);
+    std::ignore = model_->ReorderTabMembership(result.value(), event.order_index);
   }
 }
 
@@ -280,7 +281,7 @@ void LifecycleCoordinator::HandleTabRemoved(const NormalizedEvent& event) {
       const TabMembershipId id =
           model_->FindMembershipIdByTabKey(event.tab.value());
       if (id.is_valid()) {
-        model_->RemoveTabMembership(id);
+        std::ignore = model_->RemoveTabMembership(id);
       }
       pending_transfers_.erase(event.tab);
       break;
@@ -315,7 +316,7 @@ void LifecycleCoordinator::HandleTabMoved(const NormalizedEvent& event) {
   if (!id.is_valid()) {
     return;
   }
-  model_->ReorderTabMembership(id, event.order_index);
+  std::ignore = model_->ReorderTabMembership(id, event.order_index);
 }
 
 void LifecycleCoordinator::HandleActiveTabChanged(
@@ -328,14 +329,14 @@ void LifecycleCoordinator::HandleActiveTabChanged(
   if (!id.is_valid()) {
     return;
   }
-  model_->TouchTabActivated(id);
+  std::ignore = model_->TouchTabActivated(id);
 
   const TabMembershipRecord* m = model_->FindMembership(id);
   if (m && event.window.is_valid() && m->workspace_id.is_valid()) {
     const WorkspaceId current =
         model_->ActiveWorkspaceForWindow(event.window.value());
     if (!(m->workspace_id == current)) {
-      model_->SetActiveWorkspaceForWindow(event.window.value(),
+      std::ignore = model_->SetActiveWorkspaceForWindow(event.window.value(),
                                           m->workspace_id);
     }
   }
@@ -362,12 +363,12 @@ void LifecycleCoordinator::HandlePinnedStateChanged(
     if (m->role == TabRole::kPinned) {
       return;
     }
-    model_->PinTab(id, std::string());
+    std::ignore = model_->PinTab(id, std::string());
   } else {
     if (m->role != TabRole::kPinned) {
       return;
     }
-    model_->UnpinTab(id);
+    std::ignore = model_->UnpinTab(id);
   }
 }
 
@@ -395,14 +396,14 @@ void LifecycleCoordinator::HandleSplitAdded(const NormalizedEvent& event) {
   }
   const std::vector<std::string> panes = {event.split_pane_a.value(),
                                           event.split_pane_b.value()};
-  model_->CreateSplitGroup(ma->workspace_id, panes, event.divider_ratio,
+  std::ignore = model_->CreateSplitGroup(ma->workspace_id, panes, event.divider_ratio,
                            event.upstream_split_token);
 }
 
 void LifecycleCoordinator::HandleSplitRemoved(const NormalizedEvent& event) {
   const SplitGroupId id = FindSplitByToken(event.upstream_split_token);
   if (id.is_valid()) {
-    model_->DissolveSplitGroup(id);
+    std::ignore = model_->DissolveSplitGroup(id);
   }
 }
 
@@ -412,7 +413,7 @@ void LifecycleCoordinator::HandleSplitContentsChanged(
       !event.split_pane_b.is_valid()) {
     const SplitGroupId stale = FindSplitByToken(event.upstream_split_token);
     if (stale.is_valid()) {
-      model_->DissolveSplitGroup(stale);
+      std::ignore = model_->DissolveSplitGroup(stale);
     }
     return;
   }
@@ -442,7 +443,7 @@ void LifecycleCoordinator::HandleSplitContentsChanged(
   const MutationStatus replaced = model_->ReplaceSplitGroupContents(
       event.upstream_split_token, panes, ratio, active_pane);
   if (!replaced.has_value() && existing.is_valid()) {
-    model_->DissolveSplitGroup(existing);
+    std::ignore = model_->DissolveSplitGroup(existing);
   }
 }
 
@@ -457,7 +458,7 @@ void LifecycleCoordinator::HandleSplitVisualsChanged(
   }
   const SplitGroupRecord* s = model_->FindSplit(id);
   const int active = s ? s->active_pane_index : 0;
-  model_->UpdateSplitLayout(id, event.divider_ratio, active);
+  std::ignore = model_->UpdateSplitLayout(id, event.divider_ratio, active);
 }
 
 void LifecycleCoordinator::HandleReconciliationCompleted(

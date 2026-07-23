@@ -11,6 +11,12 @@
 namespace seoul {
 
 struct ShellBuildContext {
+  ShellBuildContext();
+  ShellBuildContext(const ShellBuildContext&);
+  ShellBuildContext(ShellBuildContext&&);
+  ShellBuildContext& operator=(const ShellBuildContext&);
+  ShellBuildContext& operator=(ShellBuildContext&&);
+  ~ShellBuildContext();
   ShellWindowKey window;
   ShellMode mode = ShellMode::kExpanded;
   bool recovery_required = false;

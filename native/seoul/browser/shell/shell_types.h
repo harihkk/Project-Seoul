@@ -82,6 +82,12 @@ enum class ShellUtilityAction {
 };
 
 struct ShellEssentialItem {
+  ShellEssentialItem();
+  ShellEssentialItem(const ShellEssentialItem&);
+  ShellEssentialItem(ShellEssentialItem&&);
+  ShellEssentialItem& operator=(const ShellEssentialItem&);
+  ShellEssentialItem& operator=(ShellEssentialItem&&);
+  ~ShellEssentialItem();
   EssentialId id;
   std::string name;
   std::string icon;
@@ -109,6 +115,12 @@ struct ShellPinnedItem {
 };
 
 struct ShellWorkspaceHeader {
+  ShellWorkspaceHeader();
+  ShellWorkspaceHeader(const ShellWorkspaceHeader&);
+  ShellWorkspaceHeader(ShellWorkspaceHeader&&);
+  ShellWorkspaceHeader& operator=(const ShellWorkspaceHeader&);
+  ShellWorkspaceHeader& operator=(ShellWorkspaceHeader&&);
+  ~ShellWorkspaceHeader();
   WorkspaceId workspace_id;
   std::string name;
   std::string icon;
@@ -162,6 +174,12 @@ struct ShellTaskSummary {
 };
 
 struct ShellSnapshot {
+  ShellSnapshot();
+  ShellSnapshot(const ShellSnapshot&);
+  ShellSnapshot(ShellSnapshot&&);
+  ShellSnapshot& operator=(const ShellSnapshot&);
+  ShellSnapshot& operator=(ShellSnapshot&&);
+  ~ShellSnapshot();
   ShellWindowKey window;
   ShellMode mode = ShellMode::kExpanded;
   ShellStatus status = ShellStatus::kCoherent;

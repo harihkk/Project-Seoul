@@ -33,6 +33,13 @@ enum class RetentionPolicy {
 };
 
 struct ModelCapabilities {
+  ModelCapabilities();
+  ModelCapabilities(const ModelCapabilities&);
+  ModelCapabilities(ModelCapabilities&&);
+  ModelCapabilities& operator=(const ModelCapabilities&);
+  ModelCapabilities& operator=(ModelCapabilities&&);
+  ~ModelCapabilities();
+
   bool text_generation = true;
   bool structured_generation = false;
   bool tool_planning = false;
@@ -49,7 +56,14 @@ struct ModelCapabilities {
   int64_t output_cost_per_mtok_microdollars = 0;
 };
 
+// Move-only: base::DictValue is move-only, so the copy operations stay
+// implicitly deleted (deep copies are an explicit Clone()).
 struct GenerationRequest {
+  GenerationRequest();
+  GenerationRequest(GenerationRequest&&);
+  GenerationRequest& operator=(GenerationRequest&&);
+  ~GenerationRequest();
+
   std::string system_prompt;
   std::string user_prompt;
   // When non-empty, the provider must return JSON conforming to this schema
@@ -65,7 +79,14 @@ struct UsageStats {
   int64_t cost_microdollars = 0;
 };
 
+// Move-only: base::Value is move-only, so the copy operations stay implicitly
+// deleted (deep copies are an explicit Clone()).
 struct GenerationResult {
+  GenerationResult();
+  GenerationResult(GenerationResult&&);
+  GenerationResult& operator=(GenerationResult&&);
+  ~GenerationResult();
+
   std::string text;
   base::Value structured;  // set when response_schema was provided
   UsageStats usage;

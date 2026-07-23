@@ -75,4 +75,21 @@ CapabilityExecutorRegistry::CheckCompleteness(
   return report;
 }
 
+int CapabilityExecutor::version() const {
+  return 1;
+}
+
+CapabilityExecutorRegistry::CompletenessReport::CompletenessReport() = default;
+CapabilityExecutorRegistry::CompletenessReport::CompletenessReport(
+    const CompletenessReport&) = default;
+CapabilityExecutorRegistry::CompletenessReport::CompletenessReport(
+    CompletenessReport&&) = default;
+CapabilityExecutorRegistry::CompletenessReport&
+CapabilityExecutorRegistry::CompletenessReport::operator=(
+    const CompletenessReport&) = default;
+CapabilityExecutorRegistry::CompletenessReport&
+CapabilityExecutorRegistry::CompletenessReport::operator=(CompletenessReport&&) =
+    default;
+CapabilityExecutorRegistry::CompletenessReport::~CompletenessReport() = default;
+
 }  // namespace seoul

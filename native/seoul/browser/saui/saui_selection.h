@@ -38,6 +38,12 @@ enum class SelectionReason {
 // collected tool results, and the user's phrasing; nothing here inspects raw
 // model text.
 struct PresentationSignals {
+  PresentationSignals();
+  PresentationSignals(const PresentationSignals&);
+  PresentationSignals(PresentationSignals&&);
+  PresentationSignals& operator=(const PresentationSignals&);
+  PresentationSignals& operator=(PresentationSignals&&);
+  ~PresentationSignals();
   bool user_requested_visual = false;
   bool user_requested_text_only = false;
   // Count of required inputs the user has not supplied yet (a form beats a
@@ -55,6 +61,13 @@ struct PresentationSignals {
 };
 
 struct PresentationDecision {
+  PresentationDecision();
+  PresentationDecision(const PresentationDecision&);
+  PresentationDecision(PresentationDecision&&);
+  PresentationDecision& operator=(const PresentationDecision&);
+  PresentationDecision& operator=(PresentationDecision&&);
+  ~PresentationDecision();
+
   PresentationForm form = PresentationForm::kTextOnly;
   bool persist = false;
   std::vector<SelectionReason> reasons;

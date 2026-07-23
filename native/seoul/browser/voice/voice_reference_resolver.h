@@ -18,6 +18,13 @@ namespace seoul {
 // id is the stable SAUI component id (or a data selection key), never a
 // coordinate.
 struct VisibleReferent {
+  VisibleReferent();
+  VisibleReferent(const VisibleReferent&);
+  VisibleReferent(VisibleReferent&&);
+  VisibleReferent& operator=(const VisibleReferent&);
+  VisibleReferent& operator=(VisibleReferent&&);
+  ~VisibleReferent();
+
   std::string id;
   std::string label;  // user-visible label ("Saturday", "Apple", "red line")
   std::string kind;   // singular noun class ("result", "chart", "step",

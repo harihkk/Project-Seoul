@@ -96,6 +96,13 @@ enum class LiveRefreshState {
 };
 
 struct BoardElement {
+  BoardElement();
+  BoardElement(const BoardElement&);
+  BoardElement(BoardElement&&);
+  BoardElement& operator=(const BoardElement&);
+  BoardElement& operator=(BoardElement&&);
+  ~BoardElement();
+
   BoardElementId id;
   BoardElementKind kind = BoardElementKind::kText;
   std::string title;
@@ -112,6 +119,13 @@ struct BoardElement {
 };
 
 struct BoardRecord {
+  BoardRecord();
+  BoardRecord(const BoardRecord&);
+  BoardRecord(BoardRecord&&);
+  BoardRecord& operator=(const BoardRecord&);
+  BoardRecord& operator=(BoardRecord&&);
+  ~BoardRecord();
+
   BoardId id;
   std::string name;
   std::vector<BoardElement> elements;
@@ -125,6 +139,13 @@ struct BoardRecord {
 // Metadata only. `reference` is a browser-owned file handle, capture id, or
 // other opaque durable reference; the Library pref never stores binary bytes.
 struct LibraryArtifact {
+  LibraryArtifact();
+  LibraryArtifact(const LibraryArtifact&);
+  LibraryArtifact(LibraryArtifact&&);
+  LibraryArtifact& operator=(const LibraryArtifact&);
+  LibraryArtifact& operator=(LibraryArtifact&&);
+  ~LibraryArtifact();
+
   LibraryArtifactId id;
   LibraryArtifactKind kind = LibraryArtifactKind::kCapture;
   std::string title;
@@ -139,6 +160,13 @@ struct LibraryArtifact {
 };
 
 struct LiveCollectionDefinition {
+  LiveCollectionDefinition();
+  LiveCollectionDefinition(const LiveCollectionDefinition&);
+  LiveCollectionDefinition(LiveCollectionDefinition&&);
+  LiveCollectionDefinition& operator=(const LiveCollectionDefinition&);
+  LiveCollectionDefinition& operator=(LiveCollectionDefinition&&);
+  ~LiveCollectionDefinition();
+
   LiveCollectionId id;
   std::string name;
   // Any registered read-only capability can back a collection. The registry
@@ -156,6 +184,13 @@ struct LiveCollectionDefinition {
 };
 
 struct LiveCollectionItem {
+  LiveCollectionItem();
+  LiveCollectionItem(const LiveCollectionItem&);
+  LiveCollectionItem(LiveCollectionItem&&);
+  LiveCollectionItem& operator=(const LiveCollectionItem&);
+  LiveCollectionItem& operator=(LiveCollectionItem&&);
+  ~LiveCollectionItem();
+
   std::string stable_key;
   std::string title;
   std::string subtitle;
@@ -170,6 +205,13 @@ struct LiveCollectionItem {
 };
 
 struct LiveCollectionRecord {
+  LiveCollectionRecord();
+  LiveCollectionRecord(const LiveCollectionRecord&);
+  LiveCollectionRecord(LiveCollectionRecord&&);
+  LiveCollectionRecord& operator=(const LiveCollectionRecord&);
+  LiveCollectionRecord& operator=(LiveCollectionRecord&&);
+  ~LiveCollectionRecord();
+
   LiveCollectionDefinition definition;
   std::vector<LiveCollectionItem> items;
   LiveRefreshState refresh_state = LiveRefreshState::kIdle;

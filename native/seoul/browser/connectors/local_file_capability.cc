@@ -8,6 +8,13 @@
 
 namespace seoul {
 
+SelectedFile::SelectedFile() = default;
+SelectedFile::SelectedFile(const SelectedFile&) = default;
+SelectedFile::SelectedFile(SelectedFile&&) = default;
+SelectedFile& SelectedFile::operator=(const SelectedFile&) = default;
+SelectedFile& SelectedFile::operator=(SelectedFile&&) = default;
+SelectedFile::~SelectedFile() = default;
+
 SelectedFileRegistry::SelectedFileRegistry() = default;
 SelectedFileRegistry::~SelectedFileRegistry() = default;
 

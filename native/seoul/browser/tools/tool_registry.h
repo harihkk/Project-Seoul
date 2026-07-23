@@ -20,6 +20,13 @@ namespace seoul {
 // What the current task/scene is allowed to reach. Built by the task layer
 // from user settings, Scene defaults, and connected services.
 struct ToolPermissionContext {
+  ToolPermissionContext();
+  ToolPermissionContext(const ToolPermissionContext&);
+  ToolPermissionContext(ToolPermissionContext&&);
+  ToolPermissionContext& operator=(const ToolPermissionContext&);
+  ToolPermissionContext& operator=(ToolPermissionContext&&);
+  ~ToolPermissionContext();
+
   DataSensitivity max_sensitivity = DataSensitivity::kOrganization;
   bool allow_network = false;
   // Connector providers currently connected and enabled. Builtin ("seoul")

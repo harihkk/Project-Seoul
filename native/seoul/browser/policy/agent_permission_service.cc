@@ -40,6 +40,17 @@ std::string ScopeLabel(const AgentPermissionRequest& request) {
 
 }  // namespace
 
+AgentPermissionRequest::AgentPermissionRequest() = default;
+AgentPermissionRequest::AgentPermissionRequest(const AgentPermissionRequest&) =
+    default;
+AgentPermissionRequest::AgentPermissionRequest(AgentPermissionRequest&&) =
+    default;
+AgentPermissionRequest& AgentPermissionRequest::operator=(
+    const AgentPermissionRequest&) = default;
+AgentPermissionRequest& AgentPermissionRequest::operator=(
+    AgentPermissionRequest&&) = default;
+AgentPermissionRequest::~AgentPermissionRequest() = default;
+
 AgentPermissionService::AgentPermissionService(Clock clock)
     : clock_(std::move(clock)) {}
 

@@ -45,6 +45,14 @@ struct NextAction {
     kCompleted,
     kStopped,
   };
+
+  NextAction();
+  NextAction(const NextAction&);
+  NextAction(NextAction&&);
+  NextAction& operator=(const NextAction&);
+  NextAction& operator=(NextAction&&);
+  ~NextAction();
+
   Kind kind = Kind::kCompleted;
   std::string step_id;  // set for kRunStep/kAwaitApproval/kAwaitInput
   TaskFailureReason failure = TaskFailureReason::kNone;  // set for kStopped
@@ -52,6 +60,13 @@ struct NextAction {
 
 // The observed, verified result of one step run.
 struct StepOutcome {
+  StepOutcome();
+  StepOutcome(const StepOutcome&);
+  StepOutcome(StepOutcome&&);
+  StepOutcome& operator=(const StepOutcome&);
+  StepOutcome& operator=(StepOutcome&&);
+  ~StepOutcome();
+
   StepStatus status = StepStatus::kSucceeded;
   std::string observed_summary;
   VerificationRecord verification;

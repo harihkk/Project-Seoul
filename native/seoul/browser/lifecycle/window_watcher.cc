@@ -1,5 +1,7 @@
 // Project Seoul native lifecycle bridge.
 
+#include "seoul/browser/lifecycle/window_watcher.h"
+
 #include <utility>
 
 #include "chrome/browser/ui/browser_window/public/browser_window_interface.h"

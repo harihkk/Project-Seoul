@@ -16,6 +16,7 @@ source_set("tools_core") {
     "tool_schema.h",
     "tool_schema_from_json.cc",
     "tool_schema_from_json.h",
+    "tool_types.cc",
     "tool_types.h",
   ]
 

@@ -20,6 +20,13 @@
 namespace seoul {
 
 struct LocalModelConfig {
+  LocalModelConfig();
+  LocalModelConfig(const LocalModelConfig&);
+  LocalModelConfig(LocalModelConfig&&);
+  LocalModelConfig& operator=(const LocalModelConfig&);
+  LocalModelConfig& operator=(LocalModelConfig&&);
+  ~LocalModelConfig();
+
   std::string endpoint_url;  // must be loopback (enforced)
   std::string model_id;      // discovered/selected local model
   ModelCapabilities capabilities;

@@ -15,11 +15,29 @@
 namespace seoul {
 
 struct HttpHeader {
+  HttpHeader();
+  // Two-field constructor so existing brace-initialized call sites
+  // (`headers.push_back({name, value})`) keep working now that the struct is
+  // no longer an aggregate.
+  HttpHeader(std::string name, std::string value);
+  HttpHeader(const HttpHeader&);
+  HttpHeader(HttpHeader&&);
+  HttpHeader& operator=(const HttpHeader&);
+  HttpHeader& operator=(HttpHeader&&);
+  ~HttpHeader();
+
   std::string name;
   std::string value;
 };
 
 struct HttpRequest {
+  HttpRequest();
+  HttpRequest(const HttpRequest&);
+  HttpRequest(HttpRequest&&);
+  HttpRequest& operator=(const HttpRequest&);
+  HttpRequest& operator=(HttpRequest&&);
+  ~HttpRequest();
+
   std::string method = "POST";
   std::string url;
   std::vector<HttpHeader> headers;
@@ -31,7 +49,14 @@ struct HttpRequest {
 // (the provider feeds them to an SseParser); `on_complete` fires once with the
 // final HTTP status and any transport error. A transport never interprets the
 // body; it moves bytes.
+// Move-only: base::OnceCallback is move-only, so the copy operations stay
+// implicitly deleted.
 struct HttpStreamCallbacks {
+  HttpStreamCallbacks();
+  HttpStreamCallbacks(HttpStreamCallbacks&&);
+  HttpStreamCallbacks& operator=(HttpStreamCallbacks&&);
+  ~HttpStreamCallbacks();
+
   base::RepeatingCallback<void(std::string_view chunk)> on_chunk;
   base::OnceCallback<void(int http_status, const std::string& transport_error)>
       on_complete;

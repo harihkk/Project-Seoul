@@ -3,6 +3,7 @@
 #include "seoul/browser/runtime/seoul_runtime.h"
 
 #include <string>
+#include <tuple>
 #include <utility>
 #include <vector>
 
@@ -28,13 +29,13 @@ void SeoulRuntime::RegisterBuiltinCapabilities() {
   // owner (this runtime); the task planner only ever sees registered,
   // permitted capabilities from here.
   for (const ToolDescriptor& descriptor : BuildBrowserCapabilities()) {
-    capabilities_.Register(descriptor);
+    std::ignore = capabilities_.Register(descriptor);
   }
   for (const ToolDescriptor& descriptor : BuildInformationCapabilities()) {
-    capabilities_.Register(descriptor);
+    std::ignore = capabilities_.Register(descriptor);
   }
   for (const ToolDescriptor& descriptor : BuildLocalFileCapabilities()) {
-    capabilities_.Register(descriptor);
+    std::ignore = capabilities_.Register(descriptor);
   }
 }
 
@@ -59,7 +60,7 @@ void SeoulRuntime::Shutdown() {
     providers.push_back(connector->provider());
   }
   for (const std::string& provider : providers) {
-    connectors_.Disconnect(provider);
+    std::ignore = connectors_.Disconnect(provider);
   }
 }
 

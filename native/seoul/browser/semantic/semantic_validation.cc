@@ -8,6 +8,14 @@
 
 namespace seoul {
 
+SemanticViolation::SemanticViolation() = default;
+SemanticViolation::SemanticViolation(const SemanticViolation&) = default;
+SemanticViolation::SemanticViolation(SemanticViolation&&) = default;
+SemanticViolation& SemanticViolation::operator=(const SemanticViolation&) =
+    default;
+SemanticViolation& SemanticViolation::operator=(SemanticViolation&&) = default;
+SemanticViolation::~SemanticViolation() = default;
+
 namespace {
 
 base::unexpected<SemanticViolation> Violation(SemanticFabricError error,
@@ -464,17 +472,14 @@ SemanticValidationResult MergeStreamingRows(SemanticResult& result,
                                             const base::ListValue& rows) {
   if (result.state != ResultState::kStreaming &&
       result.state != ResultState::kPartial) {
-    return base::unexpected(SemanticViolation{
-        SemanticFabricError::kNotStreaming, std::string()});
+    return Violation(SemanticFabricError::kNotStreaming, std::string());
   }
   base::ListValue* existing = result.data.GetIfList();
   if (!existing) {
-    return base::unexpected(SemanticViolation{
-        SemanticFabricError::kInvalidShapeData, "list"});
+    return Violation(SemanticFabricError::kInvalidShapeData, "list");
   }
   if (existing->size() + rows.size() > kMaxSemanticRows) {
-    return base::unexpected(SemanticViolation{
-        SemanticFabricError::kRowLimitExceeded, std::string()});
+    return Violation(SemanticFabricError::kRowLimitExceeded, std::string());
   }
   // Validate all incoming rows before appending any (atomic merge).
   std::set<std::string> unavailable(result.unavailable_field_ids.begin(),

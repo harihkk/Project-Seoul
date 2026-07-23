@@ -6,6 +6,17 @@
 
 namespace seoul {
 
+JsonSchemaImportFailure::JsonSchemaImportFailure() = default;
+JsonSchemaImportFailure::JsonSchemaImportFailure(
+    const JsonSchemaImportFailure&) = default;
+JsonSchemaImportFailure::JsonSchemaImportFailure(JsonSchemaImportFailure&&) =
+    default;
+JsonSchemaImportFailure& JsonSchemaImportFailure::operator=(
+    const JsonSchemaImportFailure&) = default;
+JsonSchemaImportFailure& JsonSchemaImportFailure::operator=(
+    JsonSchemaImportFailure&&) = default;
+JsonSchemaImportFailure::~JsonSchemaImportFailure() = default;
+
 namespace {
 
 base::unexpected<JsonSchemaImportFailure> Failure(

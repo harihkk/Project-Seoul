@@ -20,6 +20,13 @@ namespace seoul {
 // "edges" (graph), "series_<field_id>" per temporal numeric measure, and
 // part-prefixed names for composites ("<part>_rows", ...).
 struct SauiDataConversion {
+  SauiDataConversion();
+  SauiDataConversion(const SauiDataConversion&);
+  SauiDataConversion(SauiDataConversion&&);
+  SauiDataConversion& operator=(const SauiDataConversion&);
+  SauiDataConversion& operator=(SauiDataConversion&&);
+  ~SauiDataConversion();
+
   std::map<std::string, DataEntry> entries;
   // Rows dropped because the semantic result exceeded the SAUI table bound;
   // surfaced so truncation is never silent.

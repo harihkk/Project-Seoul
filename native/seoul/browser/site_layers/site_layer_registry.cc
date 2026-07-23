@@ -3,6 +3,7 @@
 #include "seoul/browser/site_layers/site_layer_registry.h"
 
 #include <optional>
+#include <tuple>
 #include <utility>
 
 #include "base/strings/string_util.h"
@@ -126,7 +127,7 @@ void SiteLayerRegistry::RestorePersistedState(const base::DictValue& state) {
     }
     SiteLayerResult<SiteLayer> layer = SiteLayerFromValue(entry);
     if (layer.has_value()) {
-      restored.Upsert(std::move(layer.value()));
+      std::ignore = restored.Upsert(std::move(layer.value()));
     }
   }
   layers_ = std::move(restored.layers_);

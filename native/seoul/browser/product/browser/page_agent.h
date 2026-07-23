@@ -69,6 +69,13 @@ enum class PageActionKind {
 };
 
 struct PageActionRequest {
+  PageActionRequest();
+  PageActionRequest(const PageActionRequest&);
+  PageActionRequest(PageActionRequest&&);
+  PageActionRequest& operator=(const PageActionRequest&);
+  PageActionRequest& operator=(PageActionRequest&&);
+  ~PageActionRequest();
+
   PageActionKind kind = PageActionKind::kClick;
   std::string handle;  // element handle from the current observation
   std::string value;   // kType / kSelectOption text

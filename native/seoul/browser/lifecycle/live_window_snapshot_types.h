@@ -13,6 +13,12 @@
 namespace seoul {
 
 struct LiveTabDescriptor {
+  LiveTabDescriptor();
+  LiveTabDescriptor(const LiveTabDescriptor&);
+  LiveTabDescriptor(LiveTabDescriptor&&);
+  LiveTabDescriptor& operator=(const LiveTabDescriptor&);
+  LiveTabDescriptor& operator=(LiveTabDescriptor&&);
+  ~LiveTabDescriptor();
   LiveTabKey tab;
   // Ephemeral, data-minimized presentation metadata. The title is bounded by
   // the provider and the origin never includes a path, query, or fragment.
@@ -29,6 +35,12 @@ struct LiveTabDescriptor {
 };
 
 struct LiveWindowSnapshot {
+  LiveWindowSnapshot();
+  LiveWindowSnapshot(const LiveWindowSnapshot&);
+  LiveWindowSnapshot(LiveWindowSnapshot&&);
+  LiveWindowSnapshot& operator=(const LiveWindowSnapshot&);
+  LiveWindowSnapshot& operator=(LiveWindowSnapshot&&);
+  ~LiveWindowSnapshot();
   LiveWindowKey window;
   bool eligible = true;
   bool lifecycle_degraded = false;

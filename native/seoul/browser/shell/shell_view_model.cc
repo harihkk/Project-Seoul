@@ -258,4 +258,11 @@ ShellSnapshot ShellViewModel::Build(const OrganizationModel& model,
   return snapshot;
 }
 
+ShellBuildContext::ShellBuildContext() = default;
+ShellBuildContext::ShellBuildContext(const ShellBuildContext&) = default;
+ShellBuildContext::ShellBuildContext(ShellBuildContext&&) = default;
+ShellBuildContext& ShellBuildContext::operator=(const ShellBuildContext&) = default;
+ShellBuildContext& ShellBuildContext::operator=(ShellBuildContext&&) = default;
+ShellBuildContext::~ShellBuildContext() = default;
+
 }  // namespace seoul

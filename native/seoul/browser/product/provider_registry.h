@@ -35,6 +35,13 @@
 namespace seoul {
 
 struct ProviderStateSnapshot {
+  ProviderStateSnapshot();
+  ProviderStateSnapshot(const ProviderStateSnapshot&);
+  ProviderStateSnapshot(ProviderStateSnapshot&&);
+  ProviderStateSnapshot& operator=(const ProviderStateSnapshot&);
+  ProviderStateSnapshot& operator=(ProviderStateSnapshot&&);
+  ~ProviderStateSnapshot();
+
   bool local_configured = false;
   bool local_healthy = false;
   std::string local_endpoint;

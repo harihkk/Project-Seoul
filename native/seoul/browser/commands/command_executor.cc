@@ -2,6 +2,8 @@
 
 #include "seoul/browser/commands/command_executor.h"
 
+#include <tuple>
+
 #include "base/time/time.h"
 #include "seoul/browser/commands/url_policy.h"
 #include "seoul/browser/lifecycle/lifecycle_coordinator.h"
@@ -310,15 +312,15 @@ void CommandExecutor::OnNormalizedLifecycleEvent(const NormalizedEvent& event) {
       continue;
     }
     if (obs->expected_event != event.type) {
-      registry_.Register(*obs);
+      std::ignore = registry_.Register(*obs);
       continue;
     }
     if (obs->window.is_valid() && obs->window != event.window) {
-      registry_.Register(*obs);
+      std::ignore = registry_.Register(*obs);
       continue;
     }
     if (obs->tab.is_valid() && event.tab.is_valid() && obs->tab != event.tab) {
-      registry_.Register(*obs);
+      std::ignore = registry_.Register(*obs);
       continue;
     }
     auto cmd_it = pending_commands_.find(id);
@@ -353,14 +355,14 @@ void CommandExecutor::OnNormalizedLifecycleEvent(const NormalizedEvent& event) {
       const TabMembershipId membership =
           model_->FindMembershipIdByTabKey(event.tab.value());
       if (membership.is_valid()) {
-        model_->PinTab(membership, cmd_it->second.saved_root_url);
+        std::ignore = model_->PinTab(membership, cmd_it->second.saved_root_url);
       }
     }
     if (cmd_it->second.kind == CommandKind::kUnpinTab && event.tab.is_valid()) {
       const TabMembershipId membership =
           model_->FindMembershipIdByTabKey(event.tab.value());
       if (membership.is_valid()) {
-        model_->UnpinTab(membership);
+        std::ignore = model_->UnpinTab(membership);
       }
     }
     completed.push_back(id);

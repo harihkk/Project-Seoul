@@ -48,6 +48,20 @@ SurfacePatchOp& SurfacePatchOp::operator=(const SurfacePatchOp& other) {
   return *this;
 }
 
+SurfacePatch::SurfacePatch() = default;
+SurfacePatch::SurfacePatch(const SurfacePatch&) = default;
+SurfacePatch::SurfacePatch(SurfacePatch&&) = default;
+SurfacePatch& SurfacePatch::operator=(const SurfacePatch&) = default;
+SurfacePatch& SurfacePatch::operator=(SurfacePatch&&) = default;
+SurfacePatch::~SurfacePatch() = default;
+
+AppliedPatch::AppliedPatch() = default;
+AppliedPatch::AppliedPatch(const AppliedPatch&) = default;
+AppliedPatch::AppliedPatch(AppliedPatch&&) = default;
+AppliedPatch& AppliedPatch::operator=(const AppliedPatch&) = default;
+AppliedPatch& AppliedPatch::operator=(AppliedPatch&&) = default;
+AppliedPatch::~AppliedPatch() = default;
+
 namespace {
 
 ComponentNode* FindComponent(std::vector<ComponentNode>& nodes,

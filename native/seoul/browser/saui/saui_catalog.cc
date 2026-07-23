@@ -4,6 +4,8 @@
 
 #include <iterator>
 
+#include "base/containers/span.h"
+
 namespace seoul {
 
 namespace {
@@ -255,8 +257,8 @@ uint8_t DataEntryKindBit(DataEntryKind kind) {
 const ComponentTypeInfo& GetComponentTypeInfo(ComponentType type) {
   const size_t index = static_cast<size_t>(type);
   // The static_assert above guarantees coverage; the index is always in range
-  // for a valid enum value.
-  return kCatalog[index];
+  // for a valid enum value. base::span gives a bounds-checked access.
+  return base::span(kCatalog)[index];
 }
 
 const ComponentTypeInfo* FindComponentTypeByName(std::string_view name) {

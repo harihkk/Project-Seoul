@@ -4,6 +4,16 @@
 
 namespace seoul {
 
+PresentationDecision::PresentationDecision() = default;
+PresentationDecision::PresentationDecision(const PresentationDecision&) =
+    default;
+PresentationDecision::PresentationDecision(PresentationDecision&&) = default;
+PresentationDecision& PresentationDecision::operator=(
+    const PresentationDecision&) = default;
+PresentationDecision& PresentationDecision::operator=(PresentationDecision&&) =
+    default;
+PresentationDecision::~PresentationDecision() = default;
+
 PresentationDecision SelectPresentation(const PresentationSignals& signals) {
   PresentationDecision decision;
   decision.persist =
@@ -68,5 +78,12 @@ PresentationDecision SelectPresentation(const PresentationSignals& signals) {
                                      : PresentationForm::kSingleComponent;
   return decision;
 }
+
+PresentationSignals::PresentationSignals() = default;
+PresentationSignals::PresentationSignals(const PresentationSignals&) = default;
+PresentationSignals::PresentationSignals(PresentationSignals&&) = default;
+PresentationSignals& PresentationSignals::operator=(const PresentationSignals&) = default;
+PresentationSignals& PresentationSignals::operator=(PresentationSignals&&) = default;
+PresentationSignals::~PresentationSignals() = default;
 
 }  // namespace seoul

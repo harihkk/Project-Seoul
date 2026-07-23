@@ -18,6 +18,13 @@
 namespace seoul {
 
 struct TaskRecord {
+  TaskRecord();
+  TaskRecord(const TaskRecord&);
+  TaskRecord(TaskRecord&&);
+  TaskRecord& operator=(const TaskRecord&);
+  TaskRecord& operator=(TaskRecord&&);
+  ~TaskRecord();
+
   TaskId id;
   std::string title;
   std::string goal;

@@ -13,6 +13,21 @@
 
 namespace seoul {
 
+InterfaceIntent::InterfaceIntent() = default;
+InterfaceIntent::InterfaceIntent(const InterfaceIntent&) = default;
+InterfaceIntent::InterfaceIntent(InterfaceIntent&&) = default;
+InterfaceIntent& InterfaceIntent::operator=(const InterfaceIntent&) = default;
+InterfaceIntent& InterfaceIntent::operator=(InterfaceIntent&&) = default;
+InterfaceIntent::~InterfaceIntent() = default;
+
+CompiledInterface::CompiledInterface() = default;
+CompiledInterface::CompiledInterface(const CompiledInterface&) = default;
+CompiledInterface::CompiledInterface(CompiledInterface&&) = default;
+CompiledInterface& CompiledInterface::operator=(const CompiledInterface&) =
+    default;
+CompiledInterface& CompiledInterface::operator=(CompiledInterface&&) = default;
+CompiledInterface::~CompiledInterface() = default;
+
 namespace {
 
 // Bounded number of composite/document sections materialized as components.

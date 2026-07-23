@@ -131,6 +131,13 @@ struct RetryPolicy {
 // "capability" are the same concept in this codebase; ToolId is the stable
 // CapabilityId.
 struct ToolDescriptor {
+  ToolDescriptor();
+  ToolDescriptor(const ToolDescriptor&);
+  ToolDescriptor(ToolDescriptor&&);
+  ToolDescriptor& operator=(const ToolDescriptor&);
+  ToolDescriptor& operator=(ToolDescriptor&&);
+  ~ToolDescriptor();
+
   ToolId id;
   int version = 1;          // bump on breaking schema changes
   std::string name;         // short human name

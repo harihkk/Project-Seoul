@@ -23,6 +23,13 @@ bool IsLocalOnlyEndpoint(const std::string& url);
 
 // One streamed delta parsed from a provider event payload.
 struct ProviderDelta {
+  ProviderDelta();
+  ProviderDelta(const ProviderDelta&);
+  ProviderDelta(ProviderDelta&&);
+  ProviderDelta& operator=(const ProviderDelta&);
+  ProviderDelta& operator=(ProviderDelta&&);
+  ~ProviderDelta();
+
   std::string text;       // incremental output text (may be empty)
   bool stop = false;      // the provider signaled end of the message
   int input_tokens = 0;   // usage, when the payload carries it

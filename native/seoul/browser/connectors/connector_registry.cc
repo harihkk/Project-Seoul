@@ -15,7 +15,6 @@ ConnectorStatusResult ConnectorRegistry::RegisterConnectorTools(
     Connector* connector) {
   const std::string provider = connector->provider();
   std::vector<ToolDescriptor> tools = connector->DiscoverTools();
-  size_t registered = 0;
   for (ToolDescriptor& descriptor : tools) {
     // Force the provider to match; the registry additionally enforces that
     // the id lives under connector.<provider>.*.
@@ -25,7 +24,6 @@ ConnectorStatusResult ConnectorRegistry::RegisterConnectorTools(
       tool_registry_->UnregisterProvider(provider);
       return base::unexpected(ConnectorError::kToolRegistrationFailed);
     }
-    ++registered;
   }
   return base::ok();
 }

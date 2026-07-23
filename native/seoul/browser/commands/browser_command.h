@@ -16,6 +16,13 @@
 namespace seoul {
 
 struct BrowserCommand {
+  BrowserCommand();
+  BrowserCommand(const BrowserCommand&);
+  BrowserCommand(BrowserCommand&&);
+  BrowserCommand& operator=(const BrowserCommand&);
+  BrowserCommand& operator=(BrowserCommand&&);
+  ~BrowserCommand();
+
   CommandId id;
   CommandKind kind = CommandKind::kCreateWorkspace;
   CommandOrigin origin = CommandOrigin::kUser;

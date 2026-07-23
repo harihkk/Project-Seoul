@@ -9,6 +9,14 @@
 
 namespace seoul {
 
+McpImportFailure::McpImportFailure() = default;
+McpImportFailure::McpImportFailure(const McpImportFailure&) = default;
+McpImportFailure::McpImportFailure(McpImportFailure&&) = default;
+McpImportFailure& McpImportFailure::operator=(const McpImportFailure&) =
+    default;
+McpImportFailure& McpImportFailure::operator=(McpImportFailure&&) = default;
+McpImportFailure::~McpImportFailure() = default;
+
 namespace {
 
 base::unexpected<McpImportFailure> Failure(McpImportError error,

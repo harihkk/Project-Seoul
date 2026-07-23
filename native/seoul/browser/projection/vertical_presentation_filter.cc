@@ -11,6 +11,8 @@ VerticalPresentationFilter::VerticalPresentationFilter(
   UpdateProjection(projection);
 }
 
+VerticalPresentationFilter::~VerticalPresentationFilter() = default;
+
 void VerticalPresentationFilter::UpdateProjection(
     const WindowProjection& projection) {
   presented_tabs_.clear();

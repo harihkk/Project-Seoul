@@ -7,6 +7,21 @@
 
 namespace seoul {
 
+ContextItem::ContextItem() = default;
+ContextItem::ContextItem(const ContextItem&) = default;
+ContextItem::ContextItem(ContextItem&&) = default;
+ContextItem& ContextItem::operator=(const ContextItem&) = default;
+ContextItem& ContextItem::operator=(ContextItem&&) = default;
+ContextItem::~ContextItem() = default;
+
+CloudContextScope::CloudContextScope() = default;
+CloudContextScope::CloudContextScope(const CloudContextScope&) = default;
+CloudContextScope::CloudContextScope(CloudContextScope&&) = default;
+CloudContextScope& CloudContextScope::operator=(const CloudContextScope&) =
+    default;
+CloudContextScope& CloudContextScope::operator=(CloudContextScope&&) = default;
+CloudContextScope::~CloudContextScope() = default;
+
 namespace {
 
 bool ValidName(const std::string& name) {

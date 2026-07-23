@@ -6,6 +6,17 @@
 
 namespace seoul {
 
+ToolPermissionContext::ToolPermissionContext() = default;
+ToolPermissionContext::ToolPermissionContext(const ToolPermissionContext&) =
+    default;
+ToolPermissionContext::ToolPermissionContext(ToolPermissionContext&&) =
+    default;
+ToolPermissionContext& ToolPermissionContext::operator=(
+    const ToolPermissionContext&) = default;
+ToolPermissionContext& ToolPermissionContext::operator=(
+    ToolPermissionContext&&) = default;
+ToolPermissionContext::~ToolPermissionContext() = default;
+
 namespace {
 
 // Root namespaces reserved for Seoul builtins. A connector can never shadow a

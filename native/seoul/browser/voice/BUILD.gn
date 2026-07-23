@@ -8,11 +8,13 @@ import("//testing/test.gni")
 
 source_set("voice_core") {
   sources = [
+    "speech_providers.cc",
     "speech_providers.h",
     "voice_reference_resolver.cc",
     "voice_reference_resolver.h",
     "voice_session.cc",
     "voice_session.h",
+    "voice_types.cc",
     "voice_types.h",
   ]
 

@@ -20,7 +20,13 @@ namespace seoul {
 
 class TaskId {
  public:
-  TaskId() = default;
+  TaskId();
+  TaskId(const TaskId&);
+  TaskId(TaskId&&);
+  TaskId& operator=(const TaskId&);
+  TaskId& operator=(TaskId&&);
+  ~TaskId();
+
   static TaskId GenerateNew() {
     TaskId id;
     id.uuid_ = base::Uuid::GenerateRandomV4();
@@ -109,6 +115,13 @@ struct TaskBudgets {
 };
 
 struct VerificationRecord {
+  VerificationRecord();
+  VerificationRecord(const VerificationRecord&);
+  VerificationRecord(VerificationRecord&&);
+  VerificationRecord& operator=(const VerificationRecord&);
+  VerificationRecord& operator=(VerificationRecord&&);
+  ~VerificationRecord();
+
   bool verified = false;
   std::string method;  // "postcondition", "observation", "verifier:<id>"
   std::string detail;
@@ -119,6 +132,13 @@ struct VerificationRecord {
 
 // One executed step's evidence. Receipts are append-only and bounded.
 struct ActionReceipt {
+  ActionReceipt();
+  ActionReceipt(const ActionReceipt&);
+  ActionReceipt(ActionReceipt&&);
+  ActionReceipt& operator=(const ActionReceipt&);
+  ActionReceipt& operator=(ActionReceipt&&);
+  ~ActionReceipt();
+
   std::string step_id;
   ToolId tool;
   StepStatus status = StepStatus::kPending;

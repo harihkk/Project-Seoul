@@ -4,6 +4,7 @@ import("//testing/test.gni")
 
 source_set("command_core") {
   sources = [
+    "browser_command.cc",
     "browser_command.h",
     "chromium_mutation_adapter.h",
     "command_completion_observer.h",
@@ -21,6 +22,7 @@ source_set("command_core") {
     "expected_observation_registry.h",
     "model_command_facade.cc",
     "model_command_facade.h",
+    "target_resolver.cc",
     "target_resolver.h",
     "url_policy.cc",
     "url_policy.h",

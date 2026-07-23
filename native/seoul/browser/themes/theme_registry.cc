@@ -2,6 +2,7 @@
 
 #include "seoul/browser/themes/theme_registry.h"
 
+#include <tuple>
 #include <utility>
 
 namespace seoul {
@@ -80,7 +81,7 @@ void ThemeRegistry::RestorePersistedState(const base::DictValue& state) {
     }
     ThemeResult<Theme> theme = ThemeFromValue(entry);
     if (theme.has_value()) {
-      restored.Upsert(std::move(theme.value()));
+      std::ignore = restored.Upsert(std::move(theme.value()));
     }
   }
   themes_ = std::move(restored.themes_);

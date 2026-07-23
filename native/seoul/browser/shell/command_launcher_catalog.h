@@ -11,6 +11,12 @@
 namespace seoul {
 
 struct CommandLauncherEntry {
+  CommandLauncherEntry();
+  CommandLauncherEntry(const CommandLauncherEntry&);
+  CommandLauncherEntry(CommandLauncherEntry&&);
+  CommandLauncherEntry& operator=(const CommandLauncherEntry&);
+  CommandLauncherEntry& operator=(CommandLauncherEntry&&);
+  ~CommandLauncherEntry();
   std::string id;
   std::string label;
   std::vector<std::string> tokens;

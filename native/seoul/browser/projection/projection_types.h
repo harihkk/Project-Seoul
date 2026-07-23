@@ -71,6 +71,12 @@ struct ProjectedSplit {
 };
 
 struct WindowProjection {
+  WindowProjection();
+  WindowProjection(const WindowProjection&);
+  WindowProjection(WindowProjection&&);
+  WindowProjection& operator=(const WindowProjection&);
+  WindowProjection& operator=(WindowProjection&&);
+  ~WindowProjection();
   LiveWindowKey window;
   WorkspaceId active_workspace;
   ProjectionGeneration generation;
@@ -83,6 +89,12 @@ struct WindowProjection {
 };
 
 struct ProjectionSnapshot {
+  ProjectionSnapshot();
+  ProjectionSnapshot(const ProjectionSnapshot&);
+  ProjectionSnapshot(ProjectionSnapshot&&);
+  ProjectionSnapshot& operator=(const ProjectionSnapshot&);
+  ProjectionSnapshot& operator=(ProjectionSnapshot&&);
+  ~ProjectionSnapshot();
   std::vector<WindowProjection> windows;
 };
 

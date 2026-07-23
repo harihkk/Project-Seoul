@@ -9,6 +9,14 @@
 
 namespace seoul {
 
+LocalModelConfig::LocalModelConfig() = default;
+LocalModelConfig::LocalModelConfig(const LocalModelConfig&) = default;
+LocalModelConfig::LocalModelConfig(LocalModelConfig&&) = default;
+LocalModelConfig& LocalModelConfig::operator=(const LocalModelConfig&) =
+    default;
+LocalModelConfig& LocalModelConfig::operator=(LocalModelConfig&&) = default;
+LocalModelConfig::~LocalModelConfig() = default;
+
 LocalModelProvider::LocalModelProvider(LocalModelConfig config,
                                        HttpTransport* transport)
     : config_(std::move(config)), transport_(transport) {

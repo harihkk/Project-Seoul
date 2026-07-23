@@ -27,6 +27,13 @@ const char* FreshnessStateToString(FreshnessState state);
 // obtained the data; `effective_at` is the moment the data describes. Both
 // are required for chart eligibility.
 struct DataProvenance {
+  DataProvenance();
+  DataProvenance(const DataProvenance&);
+  DataProvenance(DataProvenance&&);
+  DataProvenance& operator=(const DataProvenance&);
+  DataProvenance& operator=(DataProvenance&&);
+  ~DataProvenance();
+
   std::string source_name;  // human-readable provider name; never empty
   std::string source_url;   // link to the source when the provider permits
   base::Time retrieved_at;

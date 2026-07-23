@@ -25,6 +25,13 @@
 namespace seoul {
 
 struct VoiceRuntimeSnapshot {
+  VoiceRuntimeSnapshot();
+  VoiceRuntimeSnapshot(const VoiceRuntimeSnapshot&);
+  VoiceRuntimeSnapshot(VoiceRuntimeSnapshot&&);
+  VoiceRuntimeSnapshot& operator=(const VoiceRuntimeSnapshot&);
+  VoiceRuntimeSnapshot& operator=(VoiceRuntimeSnapshot&&);
+  ~VoiceRuntimeSnapshot();
+
   VoiceSessionState state = VoiceSessionState::kIdle;
   VoiceError last_error = VoiceError::kIllegalTransition;
   SpeechRoute route = SpeechRoute::kLocal;

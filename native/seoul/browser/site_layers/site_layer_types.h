@@ -48,6 +48,13 @@ enum class DensityLevel {
 };
 
 struct SiteAdjustment {
+  SiteAdjustment();
+  SiteAdjustment(const SiteAdjustment&);
+  SiteAdjustment(SiteAdjustment&&);
+  SiteAdjustment& operator=(const SiteAdjustment&);
+  SiteAdjustment& operator=(SiteAdjustment&&);
+  ~SiteAdjustment();
+
   SiteAdjustmentKind kind = SiteAdjustmentKind::kReadingMode;
   // Target selectors. Empty means document-level (only valid for the
   // document-scoped kinds: reading mode, contrast, motion, width). Non-empty
@@ -63,6 +70,13 @@ struct SiteAdjustment {
 };
 
 struct SiteLayer {
+  SiteLayer();
+  SiteLayer(const SiteLayer&);
+  SiteLayer(SiteLayer&&);
+  SiteLayer& operator=(const SiteLayer&);
+  SiteLayer& operator=(SiteLayer&&);
+  ~SiteLayer();
+
   int schema_version = kSiteLayerSchemaVersion;
   std::string id;
   std::string name;

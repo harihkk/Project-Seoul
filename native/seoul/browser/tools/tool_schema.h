@@ -33,6 +33,13 @@ enum class SchemaFieldKind {
 };
 
 struct SchemaField {
+  SchemaField();
+  SchemaField(const SchemaField&);
+  SchemaField(SchemaField&&);
+  SchemaField& operator=(const SchemaField&);
+  SchemaField& operator=(SchemaField&&);
+  ~SchemaField();
+
   std::string name;
   SchemaFieldKind kind = SchemaFieldKind::kString;
   bool required = false;
@@ -52,6 +59,13 @@ struct SchemaField {
 };
 
 struct ToolSchema {
+  ToolSchema();
+  ToolSchema(const ToolSchema&);
+  ToolSchema(ToolSchema&&);
+  ToolSchema& operator=(const ToolSchema&);
+  ToolSchema& operator=(ToolSchema&&);
+  ~ToolSchema();
+
   std::vector<SchemaField> fields;
 };
 
@@ -69,6 +83,13 @@ enum class SchemaViolationKind {
 };
 
 struct SchemaViolation {
+  SchemaViolation();
+  SchemaViolation(const SchemaViolation&);
+  SchemaViolation(SchemaViolation&&);
+  SchemaViolation& operator=(const SchemaViolation&);
+  SchemaViolation& operator=(SchemaViolation&&);
+  ~SchemaViolation();
+
   SchemaViolationKind kind = SchemaViolationKind::kMalformedSchema;
   std::string field_path;  // "query", "filters.max_price", "items[3]"
 

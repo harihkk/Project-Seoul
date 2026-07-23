@@ -10,6 +10,7 @@
 #include <cstdint>
 #include <string_view>
 
+#include "base/memory/raw_ptr_exclusion.h"
 #include "seoul/browser/saui/saui_types.h"
 
 namespace seoul {
@@ -34,7 +35,10 @@ struct ComponentTypeInfo {
   bool requires_accessible_name;   // non-empty accessible_name enforced
   uint8_t accepted_binding_kinds;  // kBind* mask for the "data" slot
   bool binding_required;           // "data" slot must be bound
-  const char* const* required_props;
+  // Points into a static, catalog-owned array of string literals. Excluded
+  // from raw_ptr because ComponentTypeInfo is a constexpr aggregate in a
+  // static table, which raw_ptr/raw_span cannot back.
+  RAW_PTR_EXCLUSION const char* const* required_props;
   size_t required_prop_count;
 };
 

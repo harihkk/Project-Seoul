@@ -59,7 +59,17 @@ enum class TabRemovalKind {
 
 // A single normalized event. Presence of an id is signalled by is_valid().
 struct NormalizedEvent {
-  NormalizedEventType type;
+  NormalizedEvent();
+  // Convenience for the common "event of a kind" construction, including the
+  // brace form NormalizedEvent{kind}.
+  explicit NormalizedEvent(NormalizedEventType type);
+  NormalizedEvent(const NormalizedEvent&);
+  NormalizedEvent(NormalizedEvent&&);
+  NormalizedEvent& operator=(const NormalizedEvent&);
+  NormalizedEvent& operator=(NormalizedEvent&&);
+  ~NormalizedEvent();
+
+  NormalizedEventType type = NormalizedEventType::kWindowDiscovered;
   MutationOrigin origin = MutationOrigin::kChromiumObservation;
 
   LiveWindowKey window;

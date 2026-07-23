@@ -6,6 +6,7 @@ source_set("library_core") {
   sources = [
     "library_service.cc",
     "library_service.h",
+    "library_types.cc",
     "library_types.h",
   ]
   deps = [
