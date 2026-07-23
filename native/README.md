@@ -24,8 +24,8 @@ source and no build output**.
 - **Upstream vertical tabs and split view must be EXTENDED before any replacement
   is considered.** The pinned revision already ships both (see
   `../docs/native/chromium-baseline.md`); Seoul builds on them.
-- **The Manifest V3 extension harness (`apps/browser-harness/`) remains frozen** as
-  a browser-control protocol reference; no new features.
+- **The canonical `protocol/` directory is the browser-control protocol
+  reference.** The retired Manifest V3 extension harness has been removed.
 
 ## Scripts
 

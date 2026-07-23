@@ -3,11 +3,11 @@
 ## Honesty header
 
 This document is product DIRECTION, not a description of a shipping product.
-Nothing in this matrix is implemented in Seoul yet. As of this writing the MV3
-browser-control harness is frozen (protocol and safety reference only), the
+Nothing in this matrix is implemented in Seoul yet. As of this writing the
 pinned Chromium checkout is complete and gclient-validated, and zero Chromium
-patches exist. GN generation, compilation, launch, smoke, and runtime tab
-validation have not happened.
+patches exist (the retired MV3 harness has been removed; `protocol/` is the
+browser-control protocol reference). GN generation, compilation, launch, smoke,
+and runtime tab validation have not happened.
 
 Seoul copies feature CAPABILITIES from other browsers. It does not copy their
 source code, assets, branding, or layout. Every reference-browser note below

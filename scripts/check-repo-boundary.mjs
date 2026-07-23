@@ -2,8 +2,8 @@
 // Repository-boundary guard. Fails if Project Seoul tracks or has a non-ignored
 // untracked file that must stay out of the repo: the external Chromium checkout or its source, Chromium build
 // output, browser profiles, secrets/keys, or generated audit evidence.
-// The harness's own source (apps/browser-harness/...) and Seoul-owned native
-// source (native/seoul/...) are repository-owned and allowed.
+// Seoul-owned native source (native/seoul/...) and the design labs (apps/...)
+// are repository-owned and allowed.
 
 import { execSync } from 'node:child_process';
 import path from 'node:path';

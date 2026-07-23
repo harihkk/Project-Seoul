@@ -10,15 +10,15 @@
 
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import puppeteer from 'puppeteer';
 import path from 'node:path';
 import { pathToFileURL } from 'node:url';
+import { launchBrowser } from '../launch-browser.mjs';
 
 const here = path.dirname(new URL(import.meta.url).pathname);
 const htmlUrl = pathToFileURL(path.join(here, '..', 'dist', 'index.html')).href;
 
 test('design lab renders, patches in place, and preserves focus and scroll', async () => {
-  const browser = await puppeteer.launch({ args: ['--no-sandbox'] });
+  const browser = await launchBrowser({ args: ['--no-sandbox'] });
   try {
     const page = await browser.newPage();
     const errors = [];

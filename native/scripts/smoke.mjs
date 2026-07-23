@@ -1,15 +1,16 @@
 #!/usr/bin/env node
 // Baseline launch smoke test for the locally built Chromium.
 //
-// Uses the Project Seoul repo's pinned Puppeteer with an explicit executablePath
-// pointing at the built binary. Requires no internet (uses a data: URL) and does
-// not modify Chromium source. Fails on browser disconnect or page crash.
+// Uses the repo's pinned puppeteer-core (no browser download) with an explicit
+// executablePath pointing at the built binary. Requires no internet (uses a
+// data: URL) and does not modify Chromium source. Fails on browser disconnect
+// or page crash.
 
 import { existsSync, mkdtempSync, rmSync } from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
-import puppeteer from 'puppeteer';
+import puppeteer from 'puppeteer-core';
 
 const here = path.dirname(fileURLToPath(import.meta.url));
 const repoRoot = path.resolve(here, '..', '..');

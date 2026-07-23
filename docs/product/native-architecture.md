@@ -41,8 +41,8 @@ Two product concepts define Seoul beyond stock Chromium:
 
 Do not overclaim. As of this document:
 
-- The Manifest V3 browser-control harness is frozen and serves only as a
-  protocol and safety reference. It is not the product.
+- The Manifest V3 browser-control harness has been removed from the tree; the
+  canonical `protocol/` corpus is the browser-control protocol reference.
 - The Chromium checkout is complete and gclient-validated.
 - GN generation, compilation, launch, smoke, and runtime tab validation have
   NOT yet happened.
@@ -195,9 +195,9 @@ it integrates with Chromium, and the data it owns.
   interaction go through `content/public/browser/web_contents.h` (verified).
   Tab/window/split operations reuse the command ids in
   `chrome/app/chrome_command_ids.h` (verified, e.g. `IDC_NEW_SPLIT_TAB`) routed
-  through `chrome/browser/ui/browser_command_controller.cc` (verified). The MV3
-  harness under the frozen browser-harness app is the protocol reference for the
-  action vocabulary, not the implementation.
+  through `chrome/browser/ui/browser_command_controller.cc` (verified). The
+  canonical `protocol/` corpus is the protocol reference for the action
+  vocabulary, not the implementation.
 - **Data owned.** The action schema/registry and per-action audit records.
   Actions are stateless executors; durable consequences belong to the task-state
   subsystem.
@@ -287,8 +287,8 @@ it integrates with Chromium, and the data it owns.
   verified). Build/launch/smoke scripts live in `native/scripts/`
   (`build.sh`, `gen.sh`, `run.sh`, `smoke.mjs`, verified present).
 - **Chromium integration.** Seoul targets build via GN/Ninja against the pinned
-  tree; the frozen MV3 harness remains the browser-control protocol reference
-  only.
+  tree; the canonical `protocol/` corpus is the browser-control protocol
+  reference.
 - **Data owned.** Test fixtures and recorded evidence (cited upstream paths,
   smoke output). The evidence convention in this document - verify against the
   local checkout or mark research required - is the standing rule.

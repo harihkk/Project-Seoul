@@ -1,3 +1,0 @@
-Custom toolbar icons are intentionally omitted for this development harness.
-Chrome supplies a default action icon when none is declared in the manifest.
-A simple geometric development icon can be added here in a later milestone.

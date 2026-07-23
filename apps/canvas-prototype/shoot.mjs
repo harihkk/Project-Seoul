@@ -1,9 +1,9 @@
 // Renders the built Canvas, runs several goals to populate a variety of
 // adaptive artifacts, and captures screenshots (dark + light) so the result
 // can be reviewed visually. Not a test; a reviewer aid.
-import puppeteer from 'puppeteer';
 import path from 'node:path';
 import { pathToFileURL } from 'node:url';
+import { launchBrowser } from './launch-browser.mjs';
 
 const here = path.dirname(new URL(import.meta.url).pathname);
 const htmlUrl = pathToFileURL(path.join(here, 'dist', 'index.html')).href;
@@ -17,7 +17,7 @@ const goals = [
   'return the reference citations for the thread', // source list
 ];
 
-const browser = await puppeteer.launch({ args: ['--no-sandbox'] });
+const browser = await launchBrowser({ args: ['--no-sandbox'] });
 const page = await browser.newPage();
 await page.setViewport({ width: 1440, height: 1000, deviceScaleFactor: 2 });
 await page.goto(htmlUrl, { waitUntil: 'networkidle0' });

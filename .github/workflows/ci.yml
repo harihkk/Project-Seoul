@@ -1,9 +1,6 @@
 name: ci
 
 # Repository-owned checks that run WITHOUT a Chromium checkout or build.
-# The real-Chrome integration suite is a separate, capable-host-only workflow
-# (integration-capable-host.yml) and is intentionally not a gate here, because it
-# downloads Chrome for Testing and is not deterministic on hosted runners.
 
 on:
   push:
@@ -23,25 +20,11 @@ jobs:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
         with:
-          # Node >= 23.6 is required for built-in TypeScript type stripping used by
-          # the unit tests and harness modules.
           node-version: "24"
           cache: npm
       - name: Install (lockfile)
         run: npm ci
-      - name: Type check, build, validate, unit tests
+      - name: Repository checks (scripts, json, manifest, boundary, neutrality, architecture, syntax, protocol)
         run: npm run check
-      - name: Shell script syntax (bash -n, every tracked .sh)
-        run: npm run check:scripts
-      - name: JSON parse/schema checks
-        run: npm run check:json
-      - name: Patch-manifest validation
-        run: npm run check:manifest
-      - name: Repository-boundary check
-        run: npm run check:boundary
-      - name: Domain-neutrality check (core is not domain-routed)
-        run: npm run check:neutrality
-      - name: Harness architecture gate
-        run: npm run check:harness-arch
-      - name: Native architecture gate
-        run: npm run check:native-arch
+      - name: Tests (protocol conformance, canvas)
+        run: npm test
