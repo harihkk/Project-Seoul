@@ -47,7 +47,7 @@
         "ui/webui/resources/tools/build_webui.gni"
       ],
       "dependencies": [],
-      "sha256": "0a24a8a969714abd9f231e83fb5d4a648bc5785fa4cc3b426d0bc71a11ec5e06",
+      "sha256": "8318f4d1fe930f25d41f0aea1e9b1854a18662783586e5ed72e93678ddb87831",
       "applyVerify": "materialize.sh apply; git -C $SEOUL_CHROMIUM_ROOT/src apply --check native/patches/chromium/0001-seoul-native-core.patch",
       "reverseVerify": "git -C $SEOUL_CHROMIUM_ROOT/src apply -R native/patches/chromium/0001-seoul-native-core.patch",
       "reviewable": true
