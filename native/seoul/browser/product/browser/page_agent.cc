@@ -190,7 +190,14 @@ void PageAgent::OnSnapshot(
     field.protected_state = node.IsPasswordField();
     field.input_type =
         node.GetStringAttribute(ax::mojom::StringAttribute::kInputType);
-    field.autocomplete = node.GetHtmlAttribute("autocomplete");
+    // AXNodeData::GetHtmlAttribute is declared but undefined at this revision;
+    // read the html_attributes pairs directly.
+    for (const auto& [attr_name, attr_value] : node.html_attributes) {
+      if (attr_name == "autocomplete") {
+        field.autocomplete = attr_value;
+        break;
+      }
+    }
     element.sensitivity = ClassifyPageField(field);
     element.agent_writable =
         element.editable && AllowsModelValueMutation(element.sensitivity);
