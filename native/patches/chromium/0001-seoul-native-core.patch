@@ -563,6 +563,18 @@ index 9d69921f81..6ea5983549 100644
    "<(SHARED_INTERMEDIATE_DIR)/THIS_IS_A_PLACEHOLDER.grd": {
      "META": {"sizes": {"includes": [800]}},
      "includes": [12000],
+diff --git a/tools/metrics/histograms/metadata/page/histograms.xml b/tools/metrics/histograms/metadata/page/histograms.xml
+index aa07126513..7164563ebe 100644
+--- a/tools/metrics/histograms/metadata/page/histograms.xml
++++ b/tools/metrics/histograms/metadata/page/histograms.xml
+@@ -600,6 +600,7 @@ chromium-metrics-reviews@google.com.
+   <variant name=".ReadAnythingUntrusted"/>
+   <variant name=".ReadingList"/>
+   <variant name=".ReloadButtonUI"/>
++  <variant name=".SeoulCanvas"/>
+   <variant name=".ShoppingInsightsSidePanel"/>
+   <variant name=".TabSearch"/>
+   <variant name=".TabsFromOtherDevicesSidePanel"/>
 diff --git a/tools/metrics/histograms/metadata/ui/enums.xml b/tools/metrics/histograms/metadata/ui/enums.xml
 index f65a7cda7f..08a3d6825e 100644
 --- a/tools/metrics/histograms/metadata/ui/enums.xml
