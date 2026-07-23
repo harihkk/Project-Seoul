@@ -284,4 +284,19 @@ void PageAgent::InvalidateTab(const LiveTabKey& tab) {
   }
 }
 
+
+PageObservation::Element::Element() = default;
+PageObservation::Element::Element(const Element&) = default;
+PageObservation::Element::Element(Element&&) = default;
+PageObservation::Element& PageObservation::Element::operator=(const Element&) = default;
+PageObservation::Element& PageObservation::Element::operator=(Element&&) = default;
+PageObservation::Element::~Element() = default;
+
+PageAgent::TabGeneration::TabGeneration() = default;
+PageAgent::TabGeneration::TabGeneration(const TabGeneration&) = default;
+PageAgent::TabGeneration::TabGeneration(TabGeneration&&) = default;
+PageAgent::TabGeneration& PageAgent::TabGeneration::operator=(const TabGeneration&) = default;
+PageAgent::TabGeneration& PageAgent::TabGeneration::operator=(TabGeneration&&) = default;
+PageAgent::TabGeneration::~TabGeneration() = default;
+
 }  // namespace seoul

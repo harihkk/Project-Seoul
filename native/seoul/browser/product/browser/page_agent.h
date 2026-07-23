@@ -44,6 +44,13 @@ struct PageObservation {
   bool loaded = false;
 
   struct Element {
+    Element();
+    Element(const Element&);
+    Element(Element&&);
+    Element& operator=(const Element&);
+    Element& operator=(Element&&);
+    ~Element();
+
     std::string handle;  // opaque, generation-scoped
     std::string role;    // accessible role (button, textbox, link, ...)
     std::string name;    // accessible name
@@ -128,6 +135,13 @@ class PageAgent {
     PageFieldSensitivity sensitivity = PageFieldSensitivity::kNone;
   };
   struct TabGeneration {
+    TabGeneration();
+    TabGeneration(const TabGeneration&);
+    TabGeneration(TabGeneration&&);
+    TabGeneration& operator=(const TabGeneration&);
+    TabGeneration& operator=(TabGeneration&&);
+    ~TabGeneration();
+
     uint64_t generation = 0;
     std::map<std::string, NodeBinding> handles;  // handle -> node
   };

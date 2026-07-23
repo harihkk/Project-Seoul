@@ -661,4 +661,10 @@ void SeoulRuntimeService::Shutdown() {
   cloud_transport_.reset();
 }
 
+
+SeoulRuntimeService::WindowBindingRecord::WindowBindingRecord() = default;
+SeoulRuntimeService::WindowBindingRecord::WindowBindingRecord(WindowBindingRecord&&) = default;
+SeoulRuntimeService::WindowBindingRecord& SeoulRuntimeService::WindowBindingRecord::operator=(WindowBindingRecord&&) = default;
+SeoulRuntimeService::WindowBindingRecord::~WindowBindingRecord() = default;
+
 }  // namespace seoul

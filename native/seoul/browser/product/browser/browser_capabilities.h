@@ -50,6 +50,12 @@ class BrowserCommandExecutor : public CapabilityExecutor,
 
  private:
   struct Pending {
+    // Move-only: holds a base::OnceCallback.
+    Pending();
+    Pending(Pending&&);
+    Pending& operator=(Pending&&);
+    ~Pending();
+
     CapabilityCallback callback;
     TaskId task_id;
     std::string step_id;

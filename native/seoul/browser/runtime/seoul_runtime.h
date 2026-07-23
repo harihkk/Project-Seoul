@@ -47,6 +47,7 @@ class SeoulRuntime {
 
   ToolRegistry& capabilities() { return capabilities_; }
   ConnectorRegistry& connectors() { return connectors_; }
+  const ConnectorRegistry& connectors() const { return connectors_; }
   SceneRegistry& scenes() { return scenes_; }
 
   // The reasoning policy for a task, derived from the runtime's provider

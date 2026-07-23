@@ -219,7 +219,7 @@ index ac0e2c2d6a..7a32d68825 100644
    /* Extensions (nothing more should be added below here) */                  \
    V(kExtension, std::nullopt, "Extension")
 diff --git a/chrome/browser/ui/views/frame/vertical_tab_strip_region_view.cc b/chrome/browser/ui/views/frame/vertical_tab_strip_region_view.cc
-index 25ffbdf18e..661a0325a5 100644
+index 25ffbdf18e..046ffd0eac 100644
 --- a/chrome/browser/ui/views/frame/vertical_tab_strip_region_view.cc
 +++ b/chrome/browser/ui/views/frame/vertical_tab_strip_region_view.cc
 @@ -49,6 +49,12 @@
@@ -365,16 +365,32 @@ index 25ffbdf18e..661a0325a5 100644
    if (state == tabs::VerticalTabStripCollapseState::kExpanded ||
        state == tabs::VerticalTabStripCollapseState::kCollapsed) {
      UpdateExpandOnHoverState();
+@@ -1608,5 +1709,15 @@ gfx::Rect VerticalTabStripRegionView::GetLinkDropBoundsFromPosition(
+   return gfx::Rect(position, gfx::Size(DropArrow::kSize, DropArrow::kSize));
+ }
+ 
++// Seoul shell anchors. Defined out-of-line because the concrete child types are
++// only complete in this translation unit.
++views::View* VerticalTabStripRegionView::GetSeoulShellSeparatorAnchor() {
++  return top_button_separator_;
++}
++
++views::View* VerticalTabStripRegionView::GetSeoulShellFooterAnchor() {
++  return bottom_button_container_;
++}
++
+ BEGIN_METADATA(VerticalTabStripRegionView)
+ END_METADATA
 diff --git a/chrome/browser/ui/views/frame/vertical_tab_strip_region_view.h b/chrome/browser/ui/views/frame/vertical_tab_strip_region_view.h
-index 70c78e23c0..b599558b39 100644
+index 70c78e23c0..5bd1b5a10b 100644
 --- a/chrome/browser/ui/views/frame/vertical_tab_strip_region_view.h
 +++ b/chrome/browser/ui/views/frame/vertical_tab_strip_region_view.h
 @@ -187,6 +187,13 @@ class VerticalTabStripRegionView final
    tabs::VerticalTabStripState target_collapse_state_for_testing() {
      return target_collapse_state_;
    }
-+  views::View* GetSeoulShellSeparatorAnchor() { return top_button_separator_; }
-+  views::View* GetSeoulShellFooterAnchor() { return bottom_button_container_; }
++  views::View* GetSeoulShellSeparatorAnchor();
++  views::View* GetSeoulShellFooterAnchor();
 +  views::View* GetSeoulTabStripView() { return tab_strip_view_; }
 +  // Production accessor for the initialized vertical-tab root node, used by the
 +  // Seoul projection adapter (not a testing-only accessor). Non-null only
@@ -556,3 +572,28 @@ index f65a7cda7f..08a3d6825e 100644
  </enum>
  
  <!-- LINT.ThenChange(//chrome/browser/renderer_context_menu/render_view_context_menu.cc:RenderViewContextMenuItem) -->
+diff --git a/ui/views/bubble/bubble_dialog_delegate_view.h b/ui/views/bubble/bubble_dialog_delegate_view.h
+index 4257c7ba1a..220bd0a471 100644
+--- a/ui/views/bubble/bubble_dialog_delegate_view.h
++++ b/ui/views/bubble/bubble_dialog_delegate_view.h
+@@ -101,6 +101,11 @@ class RichNudge;
+ }  // namespace input_overlay
+ }  // namespace arc
+ 
++namespace seoul {
++class CommandLauncherBubble;
++class SeoulPreviewBubbleView;
++}  // namespace seoul
++
+ namespace ash {
+ class AnchoredNudge;
+ class ContextualNudge;
+@@ -792,6 +797,8 @@ class VIEWS_EXPORT BubbleDialogDelegateView : public View,
+   // These existing cases are "grandfathered in", but there shouldn't be more.
+   // See comments atop class.
+   friend class ::AccountChooserDialogView;
++  friend class seoul::CommandLauncherBubble;
++  friend class seoul::SeoulPreviewBubbleView;
+   friend class ::AnnouncementView;
+   friend class ::AppDialogView;
+   friend class ::BruschettaUninstallerView;

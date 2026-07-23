@@ -16,7 +16,7 @@ namespace seoul {
 class LifecycleCoordinator;
 class WindowWatcher;
 
-class SessionRestoreWatcher : public SessionRestoreObserver {
+class SessionRestoreWatcher final : public SessionRestoreObserver {
  public:
   SessionRestoreWatcher(Profile* profile,
                         WindowWatcher* window_watcher,

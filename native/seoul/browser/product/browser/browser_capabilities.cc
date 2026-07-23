@@ -430,4 +430,10 @@ void PageActionExecutor::Execute(CapabilityRequest request,
   std::move(callback).Run(std::move(outcome));
 }
 
+
+BrowserCommandExecutor::Pending::Pending() = default;
+BrowserCommandExecutor::Pending::Pending(Pending&&) = default;
+BrowserCommandExecutor::Pending& BrowserCommandExecutor::Pending::operator=(Pending&&) = default;
+BrowserCommandExecutor::Pending::~Pending() = default;
+
 }  // namespace seoul

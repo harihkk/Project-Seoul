@@ -197,6 +197,12 @@ class SeoulRuntimeService : public KeyedService,
   void LoadState();
 
   struct WindowBindingRecord {
+    // Move-only: holds a base::CallbackListSubscription.
+    WindowBindingRecord();
+    WindowBindingRecord(WindowBindingRecord&&);
+    WindowBindingRecord& operator=(WindowBindingRecord&&);
+    ~WindowBindingRecord();
+
     raw_ptr<BrowserWindowInterface> browser = nullptr;
     LiveWindowKey window;
     std::optional<base::CallbackListSubscription> close_subscription;

@@ -2,6 +2,7 @@
 
 #include "seoul/browser/organization/seoul_organization_service.h"
 
+#include <tuple>
 #include <utility>
 
 #include "base/functional/bind.h"
@@ -170,7 +171,7 @@ void SeoulOrganizationService::LoadFromPrefs() {
 
   const base::DictValue& stored = prefs_->GetDict(kOrganizationPref);
   if (stored.empty()) {
-    model_.EnsureDefaultWorkspace();
+    std::ignore = model_.EnsureDefaultWorkspace();
     loading_ = false;
     WriteToPrefs();
     return;
@@ -186,7 +187,7 @@ void SeoulOrganizationService::LoadFromPrefs() {
     CopyActivePrefToRecovery();
     suppress_persist_ = true;
     recovery_required_ = true;
-    model_.EnsureDefaultWorkspace();
+    std::ignore = model_.EnsureDefaultWorkspace();
     loading_ = false;
     return;
   }
@@ -197,13 +198,13 @@ void SeoulOrganizationService::LoadFromPrefs() {
     CopyActivePrefToRecovery();
     suppress_persist_ = true;
     recovery_required_ = true;
-    model_.EnsureDefaultWorkspace();
+    std::ignore = model_.EnsureDefaultWorkspace();
     loading_ = false;
     return;
   }
 
   last_load_result_ = OrganizationLoadResult::kLoaded;
-  model_.EnsureDefaultWorkspace();
+  std::ignore = model_.EnsureDefaultWorkspace();
   loading_ = false;
 }
 

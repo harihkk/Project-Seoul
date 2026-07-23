@@ -2,6 +2,7 @@
 
 #include "seoul/browser/commands/chromium_mutation_adapter_impl.h"
 
+#include <optional>
 #include <vector>
 
 #include "chrome/browser/profiles/profile.h"
@@ -14,6 +15,7 @@
 #include "chrome/browser/ui/browser_window/public/profile_browser_collection.h"
 #include "chrome/browser/ui/navigator/browser_navigator.h"
 #include "chrome/browser/ui/navigator/browser_navigator_params.h"
+#include "chrome/browser/ui/tabs/split_tab_metrics.h"
 #include "chrome/browser/ui/tabs/tab_enums.h"
 #include "chrome/browser/ui/tabs/tab_strip_model.h"
 #include "components/sessions/content/session_tab_helper.h"
@@ -226,19 +228,19 @@ CommandStatusResult ChromiumMutationAdapterImpl::DissolveSplit(
   if (!strip || upstream_token.empty()) {
     return CommandErr(CommandError::kSplitPreconditionFailure);
   }
-  split_tabs::SplitTabId split_id;
-  bool found = false;
+  // SplitTabId is a TokenId with no default constructor, so track the match in
+  // an optional rather than default-constructing an empty id.
+  std::optional<split_tabs::SplitTabId> split_id;
   for (const split_tabs::SplitTabId& candidate : strip->ListSplits()) {
     if (candidate.ToString() == upstream_token) {
       split_id = candidate;
-      found = true;
       break;
     }
   }
-  if (!found || split_id.is_empty() || !strip->ContainsSplit(split_id)) {
+  if (!split_id || split_id->is_empty() || !strip->ContainsSplit(*split_id)) {
     return CommandErr(CommandError::kSplitPreconditionFailure);
   }
-  strip->RemoveSplit(split_id);
+  strip->RemoveSplit(*split_id);
   return CommandOk();
 }
 

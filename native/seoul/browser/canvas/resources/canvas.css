@@ -1,3 +1,8 @@
+/* #css_wrapper_metadata_start
+ * #type=style-lit
+ * #scheme=relative
+ * #css_wrapper_metadata_end */
+
 :host {
   --ink: light-dark(#171713, #f3f2ec);
   --muted: light-dark(#727169, #aaa9a1);

@@ -4,6 +4,7 @@
 
 #include <algorithm>
 #include <memory>
+#include <tuple>
 #include <utility>
 #include <vector>
 
@@ -194,7 +195,7 @@ class SeoulPreviewBubbleView : public views::BubbleDialogDelegateView,
     }
     terminal_ = true;
     if (manager_->Find(record_.id)) {
-      manager_->Dismiss(record_.id, reason);
+      std::ignore = manager_->Dismiss(record_.id, reason);
     }
     if (reason != PreviewDismissReason::kParentTabRemoved &&
         reason != PreviewDismissReason::kWindowClosed) {
@@ -207,7 +208,7 @@ class SeoulPreviewBubbleView : public views::BubbleDialogDelegateView,
 
   void WindowClosing() override {
     if (!terminal_ && manager_->Find(record_.id)) {
-      manager_->Dismiss(record_.id, PreviewDismissReason::kUserDismissed);
+      std::ignore = manager_->Dismiss(record_.id, PreviewDismissReason::kUserDismissed);
       RestoreParentFocus();
     }
     terminal_ = true;
@@ -233,7 +234,7 @@ class SeoulPreviewBubbleView : public views::BubbleDialogDelegateView,
       }
     }
     if (navigation_handle->IsErrorPage()) {
-      manager_->MarkFailed(record_.id);
+      std::ignore = manager_->MarkFailed(record_.id);
       SetPreviewStatus(u"Could not load this page", false);
       return;
     }
@@ -299,7 +300,7 @@ class SeoulPreviewBubbleView : public views::BubbleDialogDelegateView,
     if (!model || parent_index == TabStripModel::kNoTab ||
         (target == PreviewPromotionTarget::kSplit &&
          model->GetSplitForTab(parent_index).has_value())) {
-      manager_->AbortPromotion(record_.id);
+      std::ignore = manager_->AbortPromotion(record_.id);
       return;
     }
 
@@ -311,7 +312,7 @@ class SeoulPreviewBubbleView : public views::BubbleDialogDelegateView,
     if (!session_id.is_valid() ||
         !lifecycle_->ExpectTabInsertion(record_.window, promoted_tab,
                                         TabRole::kRetained)) {
-      manager_->AbortPromotion(record_.id);
+      std::ignore = manager_->AbortPromotion(record_.id);
       return;
     }
 
@@ -459,7 +460,7 @@ size_t PreviewHostService::DismissForParent(LiveTabKey parent_tab) {
     if (view != views_.end() && view->second) {
       view->second->DismissWithReason(PreviewDismissReason::kParentTabRemoved);
     } else {
-      manager_->Dismiss(id, PreviewDismissReason::kParentTabRemoved);
+      std::ignore = manager_->Dismiss(id, PreviewDismissReason::kParentTabRemoved);
     }
   }
   return matches.size();
@@ -474,7 +475,7 @@ size_t PreviewHostService::DismissForWindow(LiveWindowKey window) {
   if (view != views_.end() && view->second) {
     view->second->DismissWithReason(PreviewDismissReason::kWindowClosed);
   } else {
-    manager_->Dismiss(record->id, PreviewDismissReason::kWindowClosed);
+    std::ignore = manager_->Dismiss(record->id, PreviewDismissReason::kWindowClosed);
   }
   return 1;
 }
@@ -493,7 +494,7 @@ void PreviewHostService::Shutdown() {
   views_.clear();
   preview_by_window_.clear();
   for (const PreviewRecord* record : manager_->List()) {
-    manager_->Dismiss(record->id, PreviewDismissReason::kWindowClosed);
+    std::ignore = manager_->Dismiss(record->id, PreviewDismissReason::kWindowClosed);
   }
 }
 

@@ -2,11 +2,13 @@
 
 #include "seoul/browser/shell/views/seoul_split_chooser_view.h"
 
+#include <tuple>
 #include <utility>
 
 #include "base/memory/raw_ptr.h"
 #include "base/strings/utf_string_conversions.h"
 #include "seoul/browser/shell/shell_controller.h"
+#include "ui/base/mojom/menu_source_type.mojom.h"
 #include "ui/menus/simple_menu_model.h"
 #include "ui/views/controls/menu/menu_runner.h"
 #include "ui/views/widget/widget.h"
@@ -50,7 +52,7 @@ class SplitChooserMenuModel final : public ui::SimpleMenuModel,
         static_cast<size_t>(index) >= candidates_.size()) {
       return;
     }
-    controller_->CreateSplitWithPartner(candidates_[index].tab);
+    std::ignore = controller_->CreateSplitWithPartner(candidates_[index].tab);
   }
 
  private:
@@ -75,7 +77,7 @@ void SeoulSplitChooserView::Show(gfx::NativeWindow parent,
   views::MenuRunner menu_runner(&model, views::MenuRunner::HAS_MNEMONICS);
   menu_runner.RunMenuAt(
       anchor->GetWidget(), nullptr, anchor->GetAnchorBoundsInScreen(),
-      views::MenuAnchorPosition::kTopLeft, ui::MENU_SOURCE_KEYBOARD);
+      views::MenuAnchorPosition::kTopLeft, ui::mojom::MenuSourceType::kKeyboard);
 }
 
 }  // namespace seoul

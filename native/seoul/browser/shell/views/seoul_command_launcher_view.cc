@@ -33,6 +33,11 @@ namespace {
 constexpr size_t kMaxLauncherQueryLength = 160;
 constexpr int kLauncherWidth = 360;
 
+}  // namespace
+
+// Named in the seoul namespace (not anonymous) so it can be added to
+// BubbleDialogDelegateView's friend list, which this Chromium revision
+// requires of every subclass.
 class CommandLauncherBubble final : public views::BubbleDialogDelegateView,
                                     public views::TextfieldController {
  public:
@@ -161,7 +166,7 @@ class CommandLauncherBubble final : public views::BubbleDialogDelegateView,
         GetWidget()->Close();
       }
       if (anchor && anchor->GetWidget()) {
-        SeoulSplitChooserView::Show(anchor->GetWidget(), anchor, controller_);
+        SeoulSplitChooserView::Show(anchor->GetWidget()->GetNativeWindow(), anchor, controller_);
       }
       return;
     }
@@ -178,8 +183,6 @@ class CommandLauncherBubble final : public views::BubbleDialogDelegateView,
   raw_ptr<views::View> results_ = nullptr;
   raw_ptr<views::LabelButton> first_result_ = nullptr;
 };
-
-}  // namespace
 
 void SeoulCommandLauncherView::Show(gfx::NativeWindow parent,
                                     views::View* anchor,

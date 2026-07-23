@@ -2,6 +2,8 @@
 
 #include "seoul/browser/shell/views/seoul_workspace_menu.h"
 
+#include <tuple>
+
 #include "base/functional/bind.h"
 #include "base/strings/utf_string_conversions.h"
 #include "seoul/browser/commands/browser_command.h"
@@ -10,6 +12,7 @@
 #include "seoul/browser/organization/organization_types.h"
 #include "seoul/browser/shell/shell_controller.h"
 #include "seoul/browser/shell/views/seoul_workspace_name_dialog.h"
+#include "ui/base/mojom/menu_source_type.mojom.h"
 #include "ui/menus/simple_menu_model.h"
 #include "ui/views/controls/menu/menu_runner.h"
 #include "ui/views/widget/widget.h"
@@ -58,7 +61,7 @@ class WorkspaceMenuModel : public ui::SimpleMenuModel,
     if (command_id >= kWorkspaceBase) {
       const size_t index = static_cast<size_t>(command_id - kWorkspaceBase);
       if (index < workspace_ids_.size()) {
-        controller_->SwitchWorkspace(workspace_ids_[index]);
+        std::ignore = controller_->SwitchWorkspace(workspace_ids_[index]);
       }
       return;
     }
@@ -74,7 +77,7 @@ class WorkspaceMenuModel : public ui::SimpleMenuModel,
                   command.id = CommandId::Next();
                   command.kind = CommandKind::kCreateWorkspace;
                   command.name = std::move(name);
-                  controller->DispatchModelCommand(std::move(command));
+                  std::ignore = controller->DispatchModelCommand(std::move(command));
                 },
                 controller));
         return;
@@ -93,7 +96,7 @@ class WorkspaceMenuModel : public ui::SimpleMenuModel,
                   command.kind = CommandKind::kRenameWorkspace;
                   command.workspace_id = id;
                   command.name = std::move(name);
-                  controller->DispatchModelCommand(std::move(command));
+                  std::ignore = controller->DispatchModelCommand(std::move(command));
                 },
                 controller, id));
         return;
@@ -103,7 +106,7 @@ class WorkspaceMenuModel : public ui::SimpleMenuModel,
         command.id = CommandId::Next();
         command.kind = CommandKind::kArchiveWorkspace;
         command.workspace_id = controller_->snapshot().workspace.workspace_id;
-        controller_->DispatchModelCommand(std::move(command));
+        std::ignore = controller_->DispatchModelCommand(std::move(command));
         return;
       }
       default:
@@ -130,7 +133,7 @@ void SeoulWorkspaceMenu::Show(gfx::NativeWindow parent,
   views::MenuRunner menu_runner(&model, views::MenuRunner::HAS_MNEMONICS);
   menu_runner.RunMenuAt(
       anchor->GetWidget(), nullptr, anchor->GetAnchorBoundsInScreen(),
-      views::MenuAnchorPosition::kTopLeft, ui::MENU_SOURCE_MOUSE);
+      views::MenuAnchorPosition::kTopLeft, ui::mojom::MenuSourceType::kMouse);
 }
 
 }  // namespace seoul

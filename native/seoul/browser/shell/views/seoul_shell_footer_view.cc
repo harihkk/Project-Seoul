@@ -2,6 +2,8 @@
 
 #include "seoul/browser/shell/views/seoul_shell_footer_view.h"
 
+#include <tuple>
+
 #include "base/strings/utf_string_conversions.h"
 #include "seoul/browser/shell/shell_controller.h"
 #include "seoul/browser/shell/shell_view_model.h"
@@ -14,6 +16,7 @@
 #include "ui/views/controls/button/label_button.h"
 #include "ui/views/controls/label.h"
 #include "ui/views/layout/box_layout.h"
+#include "ui/views/widget/widget.h"
 
 namespace seoul {
 
@@ -193,7 +196,7 @@ void SeoulShellFooterView::RebuildFromSnapshot(const ShellSnapshot& snapshot) {
 
 void SeoulShellFooterView::OnNewTabPressed() {
   if (controller_) {
-    controller_->OpenNewTemporaryTab();
+    std::ignore = controller_->OpenNewTemporaryTab();
   }
 }
 
@@ -201,18 +204,18 @@ void SeoulShellFooterView::OnCommandLauncherPressed() {
   if (!controller_ || !GetWidget()) {
     return;
   }
-  SeoulCommandLauncherView::Show(GetWidget(), launcher_button_, controller_);
+  SeoulCommandLauncherView::Show(GetWidget()->GetNativeWindow(), launcher_button_, controller_);
 }
 
 void SeoulShellFooterView::OnTaskDeckPressed() {
   if (controller_) {
-    controller_->RunUtilityAction(ShellUtilityAction::kOpenTaskDeck);
+    std::ignore = controller_->RunUtilityAction(ShellUtilityAction::kOpenTaskDeck);
   }
 }
 
 void SeoulShellFooterView::OnSplitPressed() {
   if (controller_ && GetWidget()) {
-    SeoulSplitChooserView::Show(GetWidget(), split_button_, controller_);
+    SeoulSplitChooserView::Show(GetWidget()->GetNativeWindow(), split_button_, controller_);
   }
 }
 
@@ -221,10 +224,10 @@ void SeoulShellFooterView::OnReconcilePressed() {
     return;
   }
   if (controller_->snapshot().status == ShellStatus::kRecoveryRequired) {
-    controller_->AcknowledgeRecovery();
+    std::ignore = controller_->AcknowledgeRecovery();
     return;
   }
-  controller_->RunReconciliation();
+  std::ignore = controller_->RunReconciliation();
 }
 
 BEGIN_METADATA(SeoulShellFooterView)

@@ -19,8 +19,9 @@ namespace seoul {
 class ShellController;
 
 class SeoulShellHeaderView : public views::View, public ShellObserver {
- public:
   METADATA_HEADER(SeoulShellHeaderView, views::View)
+
+ public:
   explicit SeoulShellHeaderView(ShellController* controller);
   SeoulShellHeaderView(const SeoulShellHeaderView&) = delete;
   SeoulShellHeaderView& operator=(const SeoulShellHeaderView&) = delete;

@@ -3,6 +3,7 @@
 #include "seoul/browser/shell/views/seoul_shell_header_view.h"
 
 #include <algorithm>
+#include <tuple>
 #include <utility>
 
 #include "base/strings/string_number_conversions.h"
@@ -13,6 +14,7 @@
 #include "chrome/browser/ui/views/chrome_layout_provider.h"  // nogncheck
 #include "seoul/browser/shell/shell_controller.h"
 #include "seoul/browser/shell/views/seoul_workspace_menu.h"
+#include "ui/base/mojom/menu_source_type.mojom.h"
 #include "ui/base/metadata/metadata_impl_macros.h"
 #include "ui/menus/simple_menu_model.h"
 #include "ui/views/accessibility/view_accessibility.h"
@@ -62,7 +64,7 @@ class EssentialsOverflowMenuModel final
         essentials_[index].state == ShellItemState::kUnavailable) {
       return;
     }
-    controller_->OpenEssential(essentials_[index].id);
+    std::ignore = controller_->OpenEssential(essentials_[index].id);
   }
 
  private:
@@ -172,7 +174,7 @@ void SeoulShellHeaderView::RebuildFromSnapshot(const ShellSnapshot& snapshot) {
               base::BindRepeating(
                   [](ShellController* controller, EssentialId id) {
                     if (controller) {
-                      controller->OpenEssential(id);
+                      std::ignore = controller->OpenEssential(id);
                     }
                   },
                   controller_, essential.id),
@@ -230,7 +232,7 @@ void SeoulShellHeaderView::OnWorkspaceButtonPressed() {
   if (!controller_ || !GetWidget()) {
     return;
   }
-  SeoulWorkspaceMenu::Show(GetWidget(), workspace_button_, controller_);
+  SeoulWorkspaceMenu::Show(GetWidget()->GetNativeWindow(), workspace_button_, controller_);
 }
 
 void SeoulShellHeaderView::OnEssentialsOverflowPressed() {
@@ -243,7 +245,7 @@ void SeoulShellHeaderView::OnEssentialsOverflowPressed() {
   runner.RunMenuAt(GetWidget(), nullptr,
                    essentials_overflow_button_->GetAnchorBoundsInScreen(),
                    views::MenuAnchorPosition::kTopLeft,
-                   ui::MENU_SOURCE_KEYBOARD);
+                   ui::mojom::MenuSourceType::kKeyboard);
 }
 
 BEGIN_METADATA(SeoulShellHeaderView)
