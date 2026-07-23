@@ -24,8 +24,7 @@ enum class ModelLocality {
   kCloud,
 };
 
-// Provider data-retention posture, surfaced before any cloud call so the
-// router and the user can weigh privacy.
+// Provider data-retention posture, reported as provider metadata.
 enum class RetentionPolicy {
   kNoRetention,
   kEphemeralRetention,  // transient, not used for training

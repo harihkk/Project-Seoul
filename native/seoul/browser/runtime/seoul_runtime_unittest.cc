@@ -61,11 +61,12 @@ TEST(SeoulRuntimeTest, RoutingPolicyReflectsInputs) {
   SeoulRuntime runtime(PermissiveResolvers());
   const RoutingPolicy policy = runtime.MakeRoutingPolicy(
       /*cloud_enabled=*/true, /*local_available=*/true,
-      PrivacyLevel::kPersonal, /*remaining_budget_microdollars=*/500000);
+      /*remaining_budget_microdollars=*/500000);
   EXPECT_TRUE(policy.cloud_enabled);
   EXPECT_TRUE(policy.local_available);
-  EXPECT_TRUE(policy.prefer_local);
-  EXPECT_EQ(policy.privacy, PrivacyLevel::kPersonal);
+  // Capability-first default: the best qualifying route wins unless the user
+  // opts into preferring local.
+  EXPECT_FALSE(policy.prefer_local);
   EXPECT_EQ(policy.remaining_budget_microdollars, 500000);
 }
 

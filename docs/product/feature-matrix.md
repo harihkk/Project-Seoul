@@ -382,8 +382,8 @@ Milestones are a proposed ordering, not a schedule:
   page (and explicitly referenced tabs) to summarize and answer questions, with
   an original Seoul UI.
 - What Seoul will improve: Make tab context explicit and user-controlled (which
-  tabs are in scope is visible and revocable), and prefer on-device models where
-  available to reduce data egress.
+  tabs are in scope is visible and revocable), and route each request to the
+  best available model for the job.
 - Upstream Chromium support already available: Yes, substantial scaffolding. The
   Blink AI module exists at `third_party/blink/renderer/modules/ai/language_model.cc`
   (and `language_model_prompt_builder.cc`), and the on-device model execution

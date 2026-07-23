@@ -16,8 +16,8 @@ seam. A provider reports a `provider_id` (for example "local:llama-3.2-3b") and
 `kCloud`), a `RetentionPolicy`, a measured `planning_quality` (0 to 100, set from
 benchmarks not marketing), and per-mega-token input/output costs in microdollars
 (0 for local). `RetentionPolicy` (`kNoRetention`, `kEphemeralRetention`,
-`kRetainedNotTrained`, `kUnknown`) is the provider's data-retention posture,
-surfaced before any cloud call. Providers expose `Generate`, `Cancel`, and a
+`kRetainedNotTrained`, `kUnknown`) records the provider's data-retention
+posture as metadata. Providers expose `Generate`, `Cancel`, and a
 pre-flight `EstimateCostMicrodollars`. Local runtimes and official cloud APIs both
 implement this one interface.
 
@@ -32,19 +32,20 @@ model call for any of these is a routing bug. The model-eligible kinds are
 `kGeneralPlanning`, `kSummarization`, `kClassification`, `kOpenEndedGeneration`,
 and `kVisionUnderstanding`.
 
-## Cheapest-qualifying-route logic
+## Best-qualifying-route logic
 
-`RouteReasoning` in `reasoning_router.cc` picks the cheapest route that meets the
-quality threshold, ordered deterministic, then local, then cloud. If the kind is
-deterministic, it returns `kDeterministic` immediately. Otherwise it evaluates
-`LocalQualifies` and `CloudQualifies` and applies these rules in order:
+`RouteReasoning` in `reasoning_router.cc` picks the best route that meets the
+quality threshold: deterministic first, then the best qualifying model. If the
+kind is deterministic, it returns `kDeterministic` immediately. Otherwise it
+evaluates `LocalQualifies` and `CloudQualifies` and applies these rules in
+order:
 
-- Prefer local: when local qualifies and either `prefer_local` is set or cloud
-  does not qualify, it routes local (this is the "cheapest method that meets
-  quality" rule, since local is free and on-device).
-- Cloud for quality or vision: when cloud qualifies and local was not chosen, it
-  routes cloud with the estimated cost, reasoning `kCloudNeededForVision` or
-  `kCloudNeededForQuality`.
+- Local when preferred or alone: when local qualifies and either the optional
+  `prefer_local` preference is set (local is free) or cloud does not qualify,
+  it routes local.
+- Best route by default: `prefer_local` is off by default, so when cloud
+  qualifies it routes cloud with the estimated cost, reasoning
+  `kCloudNeededForVision` or `kCloudNeededForQuality`.
 - Local fallback: if local qualifies but was not preferred and cloud is
   unavailable, it still routes local rather than failing.
 - Unavailable: when nothing qualifies, it returns `kUnavailable` with the most
@@ -52,16 +53,14 @@ deterministic, it returns `kDeterministic` immediately. Otherwise it evaluates
 
 `LocalQualifies` requires `local_available`, a non-null provider, vision when
 `needs_vision`, and `planning_quality >= required_quality`. `CloudQualifies` adds
-the floors below.
+the ceilings below.
 
-## Sensitive-never-to-cloud floor, budget ceiling, vision requirement
+## Budget ceiling and vision requirement
 
 `CloudQualifies` returns false when cloud is disabled or the provider is null,
-when `privacy == kSensitive` (sensitive reasoning never leaves the device
-regardless of cloud availability), when the provider lacks vision but the step
-needs it, when the provider's `planning_quality` is below `required_quality`, or
-when the estimated cost exceeds `remaining_budget_microdollars`. When a route is
-denied because the work is sensitive, the router reports `kSensitiveStaysLocal`.
+when the provider lacks vision but the step needs it, when the provider's
+`planning_quality` is below `required_quality`, or when the estimated cost
+exceeds `remaining_budget_microdollars`.
 
 ## Official APIs only, BYOK, no consumer-chat scraping
 

@@ -50,10 +50,9 @@ class SeoulRuntime {
   SceneRegistry& scenes() { return scenes_; }
 
   // The reasoning policy for a task, derived from the runtime's provider
-  // availability and the caller's privacy/budget inputs.
+  // availability and the caller's budget input.
   RoutingPolicy MakeRoutingPolicy(bool cloud_enabled,
                                   bool local_available,
-                                  PrivacyLevel privacy,
                                   int64_t remaining_budget_microdollars) const;
 
   // Disconnects connectors and clears live registrations in a defined order.

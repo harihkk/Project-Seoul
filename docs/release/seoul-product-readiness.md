@@ -680,6 +680,14 @@ native feature development does not continue until Chrome builds and launches.
 
 ## 14. Continuation checkpoint (exact next action)
 
+Update (2026-07-23, cleanup pass): the frozen MV3 harness, its fixtures, its
+integration suite, and the root TypeScript build were removed from the tree;
+`protocol/` is the browser-control protocol reference. Repo gates are now
+`npm run check` and `npm test` (`npm run ci` chains both). The reasoning router
+is capability-first: the privacy tier was removed and `prefer_local` is an
+off-by-default preference. Harness test counts below describe the pre-cleanup
+tree.
+
 State at checkpoint (2026-07-11): tracked plus untracked native parse sweep is
 150 files clean with 36 evidence-based generated-code skips. Static gates, 110
 harness tests, protocol drift and 8 conformance tests, shipping Canvas strict

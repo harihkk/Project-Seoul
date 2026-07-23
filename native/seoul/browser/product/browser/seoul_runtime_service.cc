@@ -475,7 +475,7 @@ TaskId SeoulRuntimeService::StartGoal(const std::string& goal,
   }
   const bool use_model =
       provider_registry_ && provider_registry_->HasUsableProvider();
-  const bool prefer_local = true;  // privacy-first: local when usable
+  const bool prefer_local = false;  // capability-first: best available model
   return task_service_->StartTask(goal, window, BuildPermissionContext(),
                                   use_model, prefer_local);
 }

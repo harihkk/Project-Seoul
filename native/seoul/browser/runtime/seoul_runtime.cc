@@ -41,14 +41,11 @@ void SeoulRuntime::RegisterBuiltinCapabilities() {
 RoutingPolicy SeoulRuntime::MakeRoutingPolicy(
     bool cloud_enabled,
     bool local_available,
-    PrivacyLevel privacy,
     int64_t remaining_budget_microdollars) const {
   RoutingPolicy policy;
   policy.cloud_enabled = cloud_enabled;
   policy.local_available = local_available;
-  policy.privacy = privacy;
   policy.remaining_budget_microdollars = remaining_budget_microdollars;
-  policy.prefer_local = true;  // keep work on-device when it meets the bar
   return policy;
 }
 

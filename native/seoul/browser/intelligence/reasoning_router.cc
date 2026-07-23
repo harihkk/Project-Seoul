@@ -45,11 +45,6 @@ bool CloudQualifies(const RoutingPolicy& policy,
   if (!policy.cloud_enabled || !cloud) {
     return false;
   }
-  // Sensitive reasoning never leaves the device, regardless of cloud
-  // availability.
-  if (policy.privacy == PrivacyLevel::kSensitive) {
-    return false;
-  }
   const ModelCapabilities caps = cloud->capabilities();
   if (policy.needs_vision && !caps.vision) {
     return false;
@@ -83,8 +78,8 @@ RoutingOutcome RouteReasoning(ReasoningKind kind,
   int64_t cloud_cost = 0;
   const bool cloud_ok = CloudQualifies(policy, cloud, &cloud_cost);
 
-  // Prefer local when it meets the threshold: it is cheaper (free) and keeps
-  // data on-device. This is the "cheapest method that meets quality" rule.
+  // Local wins only when the user prefers it (it is free) or when cloud does
+  // not qualify; otherwise the best qualifying route wins.
   if (local_ok && (policy.prefer_local || !cloud_ok)) {
     outcome.decision = RouteDecision::kLocal;
     outcome.reason = policy.prefer_local
@@ -111,10 +106,7 @@ RoutingOutcome RouteReasoning(ReasoningKind kind,
 
   // Nothing qualified: report the most specific reason.
   outcome.decision = RouteDecision::kUnavailable;
-  if (policy.privacy == PrivacyLevel::kSensitive && policy.cloud_enabled &&
-      cloud) {
-    outcome.reason = RouteReason::kSensitiveStaysLocal;
-  } else if (!policy.local_available || !local) {
+  if (!policy.local_available || !local) {
     outcome.reason = policy.cloud_enabled ? RouteReason::kNoLocalModel
                                           : RouteReason::kCloudDisabled;
   } else if (!policy.cloud_enabled) {
@@ -156,8 +148,6 @@ const char* RouteReasonToString(RouteReason reason) {
       return "cloud_needed_for_quality";
     case RouteReason::kCloudNeededForVision:
       return "cloud_needed_for_vision";
-    case RouteReason::kSensitiveStaysLocal:
-      return "sensitive_stays_local";
     case RouteReason::kCloudDisabled:
       return "cloud_disabled";
     case RouteReason::kNoLocalModel:

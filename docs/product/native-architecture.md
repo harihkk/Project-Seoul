@@ -164,9 +164,8 @@ it integrates with Chromium, and the data it owns.
 
 ### 5. Page observation
 
-- **Responsibility.** Produce a structured, privacy-aware view of the current
-  page for intelligence features: text content, structure, and actionable
-  elements.
+- **Responsibility.** Produce a structured view of the current page for
+  intelligence features: text content, structure, and actionable elements.
 - **Where the code lives.** `native/seoul/observation/`.
 - **Chromium integration (verified primitives).**
   - Per-page access is via `content/public/browser/web_contents.h` (verified).
@@ -182,7 +181,7 @@ it integrates with Chromium, and the data it owns.
     DevTools path is **research required**.
 - **Data owned.** Transient, in-memory page observations scoped to a tab.
   Nothing is persisted by default; any retention is governed by the
-  telemetry/privacy subsystem.
+  telemetry subsystem.
 
 ### 6. Typed browser actions
 
@@ -260,11 +259,10 @@ it integrates with Chromium, and the data it owns.
   accounting. No page or credential data is owned here; those arrive scrubbed
   from observation and policy.
 
-### 11. Telemetry and privacy controls
+### 11. Telemetry and data controls
 
-- **Responsibility.** Govern what is measured and retained, default to privacy,
-  and give the user enforceable controls over observation, task retention, and
-  provider egress.
+- **Responsibility.** Govern what is measured and retained, and give the user
+  clear controls over observation, task retention, and provider egress.
 - **Where the code lives.** `native/seoul/telemetry/`.
 - **Chromium integration (verified primitives).** Preferences are stored through
   `components/prefs/pref_service.h` (verified). Chromium's metrics stack exists
@@ -272,7 +270,7 @@ it integrates with Chromium, and the data it owns.
   `components/metrics_services_manager/metrics_services_manager.h`, verified);
   whether Seoul reuses, restricts, or disables it is **research required** and a
   deliberate product decision, not an implementation default.
-- **Data owned.** Privacy preferences, consent state, and retention policy. It
+- **Data owned.** Data preferences, consent state, and retention policy. It
   is the authority other subsystems consult before retaining anything.
 
 ### 12. Testing and evidence
@@ -312,7 +310,7 @@ native/
     credentials/   # subsystem 8: credential mediation glue
     tasks/         # subsystem 9: task state and recovery
     providers/     # subsystem 10: model-provider adapters
-    telemetry/     # subsystem 11: telemetry and privacy controls
+    telemetry/     # subsystem 11: telemetry and data controls
     # tests are colocated per subsystem (*_unittest.cc / *_browsertest.cc)
   patches/
     chromium/      # ordered, reversible upstream integration diffs

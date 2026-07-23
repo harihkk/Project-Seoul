@@ -87,23 +87,21 @@ TEST(ReasoningRouterTest, EscalatesToCloudWhenLocalIsInsufficient) {
   EXPECT_GT(outcome.estimated_cost_microdollars, 0);
 }
 
-TEST(ReasoningRouterTest, SensitiveReasoningNeverGoesToCloud) {
-  FakeModelProvider local("local", LocalCaps(50));
-  FakeModelProvider cloud("cloud", CloudCaps(99, 1'000'000));
+TEST(ReasoningRouterTest, DefaultsToBestQualifyingRouteWhenBothQualify) {
+  FakeModelProvider local("local", LocalCaps(80));
+  FakeModelProvider cloud("cloud", CloudCaps(95, 1'000'000));
   RoutingPolicy policy;
   policy.local_available = true;
   policy.cloud_enabled = true;
-  policy.privacy = PrivacyLevel::kSensitive;
-  policy.required_quality = 90;  // only cloud could meet it
+  policy.required_quality = 70;  // both meet the bar
   policy.remaining_budget_microdollars = 10'000'000;
 
   RoutingOutcome outcome =
       RouteReasoning(ReasoningKind::kGeneralPlanning, policy, &local, &cloud);
-  // Cloud is forbidden; local does not meet the bar; the step is unavailable
-  // rather than leaking sensitive data.
-  EXPECT_EQ(outcome.decision, RouteDecision::kUnavailable);
-  EXPECT_EQ(outcome.reason, RouteReason::kSensitiveStaysLocal);
-  EXPECT_EQ(cloud.generate_calls(), 0);
+  // prefer_local is off by default: the best qualifying route wins.
+  EXPECT_EQ(outcome.decision, RouteDecision::kCloud);
+  EXPECT_EQ(outcome.reason, RouteReason::kCloudNeededForQuality);
+  EXPECT_GT(outcome.estimated_cost_microdollars, 0);
 }
 
 TEST(ReasoningRouterTest, BudgetCeilingBlocksCloud) {
