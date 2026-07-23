@@ -96,10 +96,18 @@ index 1aab47b6d0..9e6a4664d1 100644
  
  void ChromeBrowserMainExtraPartsProfiles::PreProfileInit() {
 diff --git a/chrome/browser/renderer_context_menu/render_view_context_menu.cc b/chrome/browser/renderer_context_menu/render_view_context_menu.cc
-index 556579d8e4..27e224a671 100644
+index 556579d8e4..4572176a0a 100644
 --- a/chrome/browser/renderer_context_menu/render_view_context_menu.cc
 +++ b/chrome/browser/renderer_context_menu/render_view_context_menu.cc
-@@ -232,6 +232,9 @@
+@@ -11,6 +11,7 @@
+ #include <optional>
+ #include <set>
+ #include <string>
++#include <tuple>
+ #include <utility>
+ 
+ #include "base/check.h"
+@@ -232,6 +233,9 @@
  #include "services/metrics/public/cpp/ukm_builders.h"
  #include "services/metrics/public/cpp/ukm_recorder.h"
  #include "services/service_manager/public/cpp/interface_provider.h"
@@ -109,7 +117,7 @@ index 556579d8e4..27e224a671 100644
  #include "third_party/blink/public/common/associated_interfaces/associated_interface_provider.h"
  #include "third_party/blink/public/common/context_menu_data/context_menu_data.h"
  #include "third_party/blink/public/common/context_menu_data/edit_flags.h"
-@@ -602,13 +605,14 @@ const std::map<int, int>& GetIdcToUmaMap(UmaEnumIdLookupType type) {
+@@ -602,13 +606,14 @@ const std::map<int, int>& GetIdcToUmaMap(UmaEnumIdLookupType type) {
         {IDC_CONTENT_CONTEXT_GLIC, 162},
         {IDC_CONTENT_CONTEXT_VIDEO_FRAME, 163},
         {IDC_CONTENT_CONTEXT_LISTEN_TO_THIS_PAGE, 164},
@@ -125,7 +133,7 @@ index 556579d8e4..27e224a671 100644
    // LINT.ThenChange(//tools/metrics/histograms/metadata/ui/enums.xml:RenderViewContextMenuItem)
  
    // LINT.IfChange(ContextMenuOptionDesktop)
-@@ -647,13 +651,14 @@ const std::map<int, int>& GetIdcToUmaMap(UmaEnumIdLookupType type) {
+@@ -647,13 +652,14 @@ const std::map<int, int>& GetIdcToUmaMap(UmaEnumIdLookupType type) {
         {IDC_CONTENT_CONTEXT_SEARCHWEBFORNEWTAB, 29},
         {IDC_CONTENT_CONTEXT_OPENLINKSPLITVIEW, 31},
         {IDC_CONTENT_CONTEXT_GLICSHAREIMAGE, 32},
@@ -141,7 +149,7 @@ index 556579d8e4..27e224a671 100644
    // LINT.ThenChange(//tools/metrics/histograms/metadata/ui/enums.xml:ContextMenuOptionDesktop)
  
    return *(type == UmaEnumIdLookupType::GeneralEnumId ? kGeneralMap
-@@ -716,6 +721,7 @@ int FindUMAEnumValueForCommand(int id, UmaEnumIdLookupType type) {
+@@ -716,6 +722,7 @@ int FindUMAEnumValueForCommand(int id, UmaEnumIdLookupType type) {
  // Returns true if the command id is for opening a link.
  bool IsCommandForOpenLink(int id) {
    return id == IDC_CONTENT_CONTEXT_OPENLINKNEWTAB ||
@@ -149,12 +157,13 @@ index 556579d8e4..27e224a671 100644
           id == IDC_CONTENT_CONTEXT_OPENLINKNEWWINDOW ||
           id == IDC_CONTENT_CONTEXT_OPENLINKOFFTHERECORD ||
           id == IDC_CONTENT_CONTEXT_OPENLINKSPLITVIEW ||
-@@ -1798,6 +1804,14 @@ void RenderViewContextMenu::AppendLinkItems() {
+@@ -1798,6 +1805,15 @@ void RenderViewContextMenu::AppendLinkItems() {
                   : IDS_CONTENT_CONTEXT_OPENLINKNEWTAB);
      }
  
-+    Browser* const browser = GetBrowser();
-+    if (show_open_in_new_tab && browser && browser->is_type_normal() &&
++    Browser* const seoul_preview_browser = GetBrowser();
++    if (show_open_in_new_tab && seoul_preview_browser &&
++        seoul_preview_browser->is_type_normal() &&
 +        !GetProfile()->IsOffTheRecord() &&
 +        params_.link_url.SchemeIsHTTPOrHTTPS()) {
 +      menu_model_.AddItemWithStringId(IDC_CONTENT_CONTEXT_OPENLINKPREVIEW,
@@ -164,7 +173,7 @@ index 556579d8e4..27e224a671 100644
      if (show_open_in_new_window) {
        menu_model_.AddItemWithStringId(IDC_CONTENT_CONTEXT_OPENLINKNEWWINDOW,
                                        IDS_CONTENT_CONTEXT_OPENLINKNEWWINDOW);
-@@ -3005,6 +3019,13 @@ bool RenderViewContextMenu::IsCommandIdEnabled(int id) const {
+@@ -3005,6 +3021,13 @@ bool RenderViewContextMenu::IsCommandIdEnabled(int id) const {
        return navigation_allowed && params_.link_url.is_valid() &&
               IsOpenLinkAllowedByDlp(params_.link_url);
  
@@ -178,7 +187,7 @@ index 556579d8e4..27e224a671 100644
      case IDC_CONTENT_CONTEXT_OPENLINKSPLITVIEW:
        return navigation_allowed && params_.link_url.is_valid() &&
               params_.link_url.IsStandard() &&
-@@ -3321,6 +3342,15 @@ void RenderViewContextMenu::ExecuteCommand(int id, int event_flags) {
+@@ -3321,6 +3344,16 @@ void RenderViewContextMenu::ExecuteCommand(int id, int event_flags) {
            /*started_from_context_menu=*/true);
        break;
  
@@ -186,7 +195,8 @@ index 556579d8e4..27e224a671 100644
 +      if (seoul::SeoulRuntimeService* runtime =
 +              seoul::SeoulRuntimeServiceFactory::GetForProfile(GetProfile())) {
 +        if (seoul::PreviewHostService* preview = runtime->preview_host()) {
-+          preview->OpenFromLink(source_web_contents_, params_.link_url);
++          std::ignore =
++              preview->OpenFromLink(source_web_contents_, params_.link_url);
 +        }
 +      }
 +      break;
