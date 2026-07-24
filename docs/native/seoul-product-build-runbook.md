@@ -2,17 +2,14 @@
 
 This runbook builds the actual Seoul product: unmodified Chromium at the pinned
 revision, plus the Seoul-owned native source materialized into the checkout, the
-single reversible integration patch applied, the Seoul targets compiled, and the
-Seoul unit tests and browser tests run. It supersedes the baseline-only
+ordered reversible integration patches applied, the Seoul targets compiled, and
+the Seoul unit tests and browser tests run. It supersedes the baseline-only
 `remote-build-runbook.md` (which builds unmodified Chromium and applies no
 patch).
 
-Status of this runbook on the authoring host: NOT executable here. This machine
-has 8 GiB RAM and no capable toolchain; the build-host gate
-(`native/scripts/build-host-check.sh`) refuses to run gen/build. Everything up
-to and including the materialize + patch + static round-trip HAS been exercised
-here (see the readiness report); compilation and test execution require a
-capable host and have not been performed.
+Current execution evidence is maintained in
+`docs/release/seoul-product-readiness.md`; this runbook intentionally contains
+no host-specific status snapshot.
 
 ## Capable-host requirements
 
@@ -20,6 +17,8 @@ More than RAM and disk are required. A host must have:
 
 - Apple silicon (arm64) for the current target.
 - Full Xcode (not just Command Line Tools) and a compatible macOS SDK.
+- Python 3.10 or newer. Set `SEOUL_PYTHON3` to its absolute executable path
+  when the system `python3` is older.
 - The correct active developer directory (`xcode-select -p`).
 - The pinned `depot_tools` at the locked revision (see `native/chromium.lock.json`).
 - A fast local filesystem with ample free space for a Chromium build.
@@ -56,12 +55,14 @@ Each step maps to a repository script. Absolute paths assume the repo at
 
 4. Patch application
    `native/scripts/patches.sh apply`
-   Applies the ordered series from `native/patches/manifest.json` (currently one
-   patch, `0001-seoul-native-core`) with `git apply` in ascending order. The
-   patch wires the Seoul services into `//chrome/browser`, registers the
+   Applies the ordered series from `native/patches/manifest.json` with
+   `git apply` in ascending order. `0001-seoul-native-core` wires the Seoul
+   services into `//chrome/browser`, registers the
    organization service at profile init, registers Seoul projection/shell against
    the vertical tab strip after `RootTabCollectionNode::Init()`, exposes the
    production `GetSeoulRootNode()` accessor, and forwards collapse-state changes.
+   `0002-seoul-product-defaults` enables the vertical workspace shell for fresh
+   profiles and updates the upstream default-state unit tests.
 
 5. GN generation
    `native/scripts/gen.sh`
@@ -95,8 +96,9 @@ Each step maps to a repository script. Absolute paths assume the repo at
    `autoninja -C out/SeoulBaseline chrome seoul/browser`.
 
 8. Unit-test build
-   `autoninja -C out/SeoulBaseline seoul/browser:seoul_unittests`
-   Builds every Seoul pure-model unit-test target in one group. The semantic,
+   `native/scripts/test.sh unit`
+   Builds every Seoul pure-model unit-test target explicitly, then runs every
+   produced binary and fails on the first nonzero exit. The semantic,
    SAUI, tools, and product targets include the CROSS-LANGUAGE PROTOCOL
    CONFORMANCE suites (`semantic_wire_unittest.cc`,
    `saui_protocol_fixtures_unittest.cc`, `tool_descriptor_wire_unittest.cc`,
@@ -108,16 +110,19 @@ Each step maps to a repository script. Absolute paths assume the repo at
    enums and native wire names drift.
 
 9. Browser-test build
-   `autoninja -C out/SeoulBaseline browser_tests`
-   The Seoul browser-test sources are wired into `//chrome/test:browser_tests`
-   through the integration patch (this wiring is an open item; the current
-   browser-test bodies are placeholders and must be authored against the build -
-   see the readiness report).
+   `native/scripts/test.sh browser`
+   The runner builds the focused `seoul_browser_tests` executable and executes
+   Seoul's exact filter, one isolated test process at a time. The same source
+   sets remain wired into `//chrome/test:browser_tests` through the integration
+   patch for upstream-style coverage, but routine Seoul development does not
+   compile thousands of unrelated Chromium cases. The cases exercise the
+   runtime, command adapter, projection, default shell, Preview, and Canvas
+   WebUI against a real browser.
 
-10. Test execution
-    `out/SeoulBaseline/seoul_saui_unittests` (and each `seoul_*_unittests`), or
-    run the aggregate via the gn-generated runners. Then the Seoul browser tests
-    via `browser_tests --gtest_filter=Seoul*`.
+10. Full native execution
+    `native/scripts/test.sh all` reproduces both prior stages. Run individual
+    `out/SeoulBaseline/seoul_*_unittests` binaries only while diagnosing a
+    focused failure.
 
 11. Launch
     `native/scripts/run.sh` launches the built browser for manual validation.

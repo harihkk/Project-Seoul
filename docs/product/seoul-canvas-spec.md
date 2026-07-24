@@ -1,6 +1,7 @@
 # Seoul Canvas Specification
 
-Status: Source complete; not compiled or runtime-verified on the authoring host.
+Status: Current compile and runtime evidence is maintained in the product
+readiness report.
 
 The Seoul Canvas is the persistent voice, conversational, and visual side panel
 that renders validated SAUI surfaces. This spec describes the typed boundary the

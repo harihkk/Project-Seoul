@@ -1,6 +1,7 @@
 # Seoul Context Threads Specification
 
-Status: Source complete; not compiled or runtime-verified on the authoring host.
+Status: Current compile and runtime evidence is maintained in the product
+readiness report.
 
 A Context Thread holds only user-approved working context. This spec describes
 the source in `native/seoul/browser/context/`. The design guarantee is

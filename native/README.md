@@ -20,7 +20,8 @@ source and no build output**.
   `src/seoul/`. It is the source of truth; the checkout copy is disposable.
 - **Unavoidable upstream Chromium edits are minimal, ordered, reversible patches**
   under `patches/chromium/`, described by `patches/manifest.json` and applied by
-  `scripts/patches.sh`. The series is currently empty.
+  `scripts/patches.sh`. The current two-patch series separates mechanical native
+  integration from Seoul's intentional fresh-profile product defaults.
 - **Upstream vertical tabs and split view must be EXTENDED before any replacement
   is considered.** The pinned revision already ships both (see
   `../docs/native/chromium-baseline.md`); Seoul builds on them.
@@ -52,21 +53,20 @@ source and no build output**.
 - `SEOUL_NINJA_JOBS` - explicit Ninja job count (validated positive integer). When
   unset, a conservative memory-aware default is used (about one job per 4 GiB of
   RAM, floored at 2). There is no unconditional hard-coded value.
+- `SEOUL_PYTHON3` - absolute path to Python 3.10 or newer when the host's
+  `python3` is older. The scripts put its directory first for Ninja actions.
 - `SEOUL_MIN_RAM_GIB` (default 16) and `SEOUL_MIN_BUILD_FREE_GIB` (default 150) -
   the build-host minimums enforced by `build-host-check.sh`.
 
 ## Status
 
-The lock is resolved and the external checkout is complete and `gclient validate`
-clean (see `../docs/native/chromium-baseline.md`). Full Xcode is present on the
-current machine. **The build is intentionally deferred to a stronger host**: this
-machine has 8 GiB RAM (below the 16 GiB build minimum) and limited free disk, so
-`build-host-check.sh` fails here and `gen.sh`/`build.sh` refuse to run.
-
-GN generation, compilation, launch, smoke testing, and runtime vertical/split
-validation have **not** been performed on any machine. The component-build args in
-`gn/macos-arm64-baseline.gn` are development settings, not the shipping
-configuration.
+The checkout is pinned and complete, the materialized overlay and ordered patch
+series round-trip cleanly, and the development component build is exercised on
+the current capable host. Exact build, test, runtime, and remaining release
+evidence lives in `../docs/release/seoul-product-readiness.md`; this README does
+not duplicate a dated status snapshot. The component-build args in
+`gn/macos-arm64-baseline.gn` are for development and are not a distributable
+shipping configuration.
 
 ## Reproduce (on a capable host)
 
@@ -75,8 +75,8 @@ native/scripts/doctor.sh            # checkout readiness
 native/scripts/fetch.sh             # clone depot_tools + initial checkout (external)
 native/scripts/sync.sh              # pin to the lock + sync deps + hooks
 native/scripts/verify-checkout.sh   # read-only verification against the lock
-native/scripts/materialize.sh apply # overlay Seoul source (empty product code now)
-native/scripts/patches.sh verify    # validate + apply-check the patch series (empty)
+native/scripts/materialize.sh apply # overlay the Seoul product source
+native/scripts/patches.sh verify    # validate + round-trip the ordered patch series
 native/scripts/build-host-check.sh  # BUILD gate (RAM/disk/Xcode/checkout)
 native/scripts/gen.sh               # gn gen out/SeoulBaseline
 native/scripts/build.sh             # build chrome (SEOUL_NINJA_JOBS configurable)

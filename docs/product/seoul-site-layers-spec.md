@@ -49,11 +49,12 @@ Layer ids are stable lowercase slugs. They must start with a letter and may then
 contain lowercase letters, digits, `_`, and `-`; missing or malformed ids are
 rejected before storage or import so Scenes can safely reference layers.
 
-`IsValidOriginPattern` accepts only `https://host[:port]` or `*.host`. A
-`https://` pattern may carry an optional numeric port in 1 to 65535. The host is
+`IsValidOriginPattern` accepts only `http(s)://host[:port]` or `*.host`. An
+exact web-origin pattern may carry an optional numeric port in 1 to 65535. The host is
 length-bounded, drawn from letters, digits, `-`, and `.`, with no consecutive
-dots and no leading or trailing dot. Any other form (including plain `http://`)
-is rejected with `kInvalidOrigin`.
+dots and no leading or trailing dot. Any other form (including a scheme-less
+hostname) is rejected with `kInvalidOrigin`. Exact origins remain protocol-aware, while a
+host wildcard intentionally covers HTTP and HTTPS on the default port.
 
 ## Document-scoped versus selector-scoped rules
 

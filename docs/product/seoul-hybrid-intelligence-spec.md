@@ -1,6 +1,7 @@
 # Seoul Hybrid Intelligence Specification
 
-Status: Source complete; not compiled or runtime-verified on the authoring host.
+Status: Current compile and runtime evidence is maintained in the product
+readiness report.
 
 Seoul's intelligence layer is provider-neutral and deterministic-first. This spec
 describes the source in `native/seoul/browser/intelligence/`. Core logic never

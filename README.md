@@ -4,10 +4,10 @@ Project Seoul is the voice-first, visual, programmable personal Chromium-based
 browser. This repository holds the tracked Seoul-owned native source, the
 reversible Chromium integration patch series over a pinned Chromium revision,
 the canonical cross-language protocol, and the runnable design labs. The source
-is authored and unit-tested at the source level; it is **not yet compiled or
-runtime-verified** (the authoring host cannot build Chromium). See
-`docs/release/seoul-product-readiness.md` for the exact per-feature status and
-the overall verdict.
+has been compiled into a real Chromium application on macOS arm64, the native
+unit suites have run, and the isolated product launch/Canvas paths are exercised.
+See `docs/release/seoul-product-readiness.md` for the exact current commands,
+counts, remaining release gates, and overall verdict.
 
 The repository contains:
 
@@ -52,10 +52,10 @@ The canonical `protocol/` directory is mirrored into the checkout at
 `src/seoul/protocol/` by the same materialization step.
 The modified checkout is disposable and is never the source of truth.
 
-**Not yet done / not verified on any machine:** GN generation, C++ compilation,
-unit-test and browser-test execution, launch, runtime behavior, performance,
-packaging, signing, and notarization. The component-build development settings in
-`native/gn/` are for local iteration and are **not** the shipping configuration.
+The checked development build is a component build for fast, low-risk iteration.
+Distribution packaging, product branding, signing, notarization, and a
+non-component release build remain separate release gates; the readiness report
+does not conflate those with a passing functional development build.
 
 See: `docs/product/seoul-product-definition.md` (what Seoul is),
 `docs/product/seoul-product-thesis.md` (who it is for and why),
@@ -68,6 +68,8 @@ capable Mac), `docs/product/seoul-competitive-review.md`, and
 - macOS on Apple Silicon (`arm64`)
 - Node.js >= 23.6 (built-in TypeScript type stripping; `v26.0.0` verified)
 - npm (`11.12.1` verified)
+- Python >= 3.10 for Chromium generators. If the system `python3` is older, set
+  `SEOUL_PYTHON3` to the absolute path of a newer executable.
 
 ## Install
 
@@ -76,9 +78,9 @@ npm install
 ```
 
 This installs the development dependencies pinned in `package-lock.json`:
-`typescript`, `esbuild`, and `puppeteer-core` (used only by the native launch
-smoke test against a locally built Chromium; nothing downloads a browser and
-nothing is installed at runtime).
+`typescript`, `esbuild`, and `puppeteer-core` (used by the isolated Canvas and
+native browser smoke tests; nothing downloads a browser and nothing is installed
+at runtime).
 
 ## Checks and tests
 
@@ -88,6 +90,10 @@ npm run check   # static gates: scripts, json, patch manifest, boundary,
                 # native syntax, protocol drift
 npm test        # protocol conformance + Canvas Design Lab tests
 npm run ci      # both, as CI runs them
+
+# On a capable macOS host with the materialized/patched checkout:
+npm run test:native          # build + run all 24 Seoul unit binaries
+npm run test:native:browser  # build + run the exact Seoul browser-test filter
 ```
 
 ## Canvas Design Lab

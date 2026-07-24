@@ -1,6 +1,7 @@
 # Seoul Adaptive UI (SAUI) Specification
 
-Status: Source complete; not compiled or runtime-verified on the authoring host.
+Status: Current compile and runtime evidence is maintained in the product
+readiness report.
 
 SAUI is the Seoul-owned declarative surface layer. A model emits data conforming
 to a fixed schema; a trusted Seoul renderer builds the interface. No component

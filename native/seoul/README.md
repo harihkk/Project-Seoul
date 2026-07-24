@@ -27,10 +27,13 @@ Project Seoul, re-materialize, and re-apply. The checkout is disposable.
 
 ## Layout
 
-Each subdirectory carries a `README.md` describing its contract. Directories are
-intentionally empty of product source in this milestone: this milestone hardens
-the architecture, it does not implement product code. Do not add placeholder
-source to fill them.
+The product implementation lives primarily under `browser/`: native services,
+Views shell, Canvas WebUI, Mojo boundary, protocol codecs, provider adapters,
+task execution, and their unit/browser tests. The top-level `webui/`,
+`resources/`, and `config/` directories are reserved for cross-feature assets;
+feature-owned resources stay beside their implementation (for example,
+`browser/canvas/resources/`). Empty reserved directories must remain empty
+rather than accumulating placeholder files.
 
 - `browser/`   Seoul-owned C++ that integrates with the Chromium browser process.
 - `webui/`     Seoul-owned WebUI (HTML/TS/CSS) surfaces served from the browser.

@@ -1,6 +1,7 @@
 # Seoul Workflow Specification
 
-Status: Source complete; not compiled or runtime-verified on the authoring host.
+Status: Current compile and runtime evidence is maintained in the product
+readiness report.
 
 A Seoul workflow is a versioned typed task graph over registered tools, not a
 recorded click macro. This spec describes the source in

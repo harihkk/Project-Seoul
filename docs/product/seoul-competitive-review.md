@@ -221,10 +221,11 @@ advantages. Each is a hypothesis to test once Seoul compiles and runs.
 ## 5. What must be measured before any superiority claim
 
 Do not state that Seoul is first or best on any of the above until these exist:
-- A running build (the source is not compiled; see the readiness report).
+- A running build with its current verification recorded in the readiness
+  report.
 - Operator evaluation numbers on held-out goals (valid-plan rate, correct tool
   selection, verified-completion rate, unnecessary-cloud-call rate, latency,
-  memory, cost) per `docs/quality/seoul-operator-evaluation.md`.
+   memory, cost) per `docs/quality/seoul-operator-evaluation.md`.
 - Adaptive-UI conformance and malicious-payload-rejection results per
   `docs/quality/seoul-adaptive-ui-tests.md`.
 - End-to-end fixture outcomes per `docs/quality/seoul-end-to-end-tests.md`.
@@ -251,7 +252,7 @@ request to copy competitor styling:
 5. **Latency claims need percentile budgets.** Seoul will not adopt a vendor's
    single marketing number. It needs measured p50/p95 first-partial, final
    transcript, plan-visible, first-surface, and action-confirmed latency on the
-   8 GiB floor device and the target build host.
+   floor device and the target build host.
 6. **No domain router in UI or storage.** New information sources register typed
    capabilities and semantic result roles. Library, Canvas, and voice never gain
    enum cases or keyword branches for a business domain.

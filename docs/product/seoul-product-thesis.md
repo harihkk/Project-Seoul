@@ -1,10 +1,9 @@
 # Seoul product thesis
 
-Status: source complete for the subsystems described here; not compiled or
-runtime-verified on the authoring host. This document states what Seoul is for
-and what would make a user switch. It does not claim Seoul is first or best at
-anything; every measurable claim is marked as a claim to be tested, with the
-evidence that would be required.
+Status: This document states what Seoul is for and what would make a user
+switch. Current compile, runtime, and release evidence is maintained in
+`docs/release/seoul-product-readiness.md`. It does not claim Seoul is first or
+best at anything; every measurable claim is marked as a claim to be tested.
 
 ## Target users
 
@@ -97,8 +96,8 @@ None of these may be asserted until the listed evidence exists:
 
 ## Evidence required before making any comparative claim
 
-1. A compiled, runnable build (the source is not compiled; see the readiness
-   report for the verdict).
+1. A compiled, runnable build with current commands and results recorded in the
+   readiness report.
 2. The operator-evaluation and adaptive-UI test suites run with recorded
    numbers.
 3. End-to-end fixtures executed as browser tests on a capable host.

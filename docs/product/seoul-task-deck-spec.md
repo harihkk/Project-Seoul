@@ -1,6 +1,7 @@
 # Seoul Task Deck and Operator Specification
 
-Status: Source complete; not compiled or runtime-verified on the authoring host.
+Status: Current compile and runtime evidence is maintained in the product
+readiness report.
 
 The task layer is Seoul's general-purpose operator: a tool registry, typed plans
 with validation, a bounded execution state machine, action receipts, and a Task

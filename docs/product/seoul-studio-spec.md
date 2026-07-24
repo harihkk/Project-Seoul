@@ -1,7 +1,8 @@
 # Seoul Studio Specification
 
-Status: Read-only runtime index source-connected; not compiled or
-runtime-verified. Editing and application paths are not implemented.
+Status: The read-only runtime index is implemented. Editing and application
+paths remain outside the current functional build; exact evidence is in the
+product readiness report.
 
 Studio is the Canvas area for inspecting and eventually editing the systems
 that shape how Seoul behaves: reasoning routes, Scenes, Themes, Site Layers,

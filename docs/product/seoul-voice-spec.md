@@ -1,7 +1,7 @@
 # Seoul Voice Specification
 
-Status: Realtime voice source path authored; not compiled or runtime-verified on
-the authoring host.
+Status: Current compile and runtime evidence, including the unverified
+hardware/audio boundary, is maintained in the product readiness report.
 
 The voice layer gives Seoul one conversational session shared by realtime voice,
 typed text, and Canvas interaction. The product target is GPT-Live style

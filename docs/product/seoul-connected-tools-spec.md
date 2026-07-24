@@ -1,6 +1,7 @@
 # Seoul Connected Tools Specification
 
-Status: Source complete; not compiled or runtime-verified on the authoring host.
+Status: Current compile and runtime evidence is maintained in the product
+readiness report.
 
 Connected tools let Seoul reach explicitly connected external services (mail,
 calendar, files) through the same Tool Registry the general planner uses. This

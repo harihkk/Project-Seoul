@@ -211,4 +211,5 @@ deserialization, deterministic serialization, explicit bounds
 - Restoration is idempotent: `EnsureDefaultWorkspace` never creates a second
   default; `LoadSnapshot` replaces state atomically; crash recovery restores
   metadata only and cannot fabricate a live tab.
-- No measured benchmark numbers are claimed (nothing has been compiled or run).
+- No organization-specific benchmark numbers are claimed; measured build and
+  smoke evidence is tracked in the readiness report.

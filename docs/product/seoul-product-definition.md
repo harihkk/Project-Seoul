@@ -1,9 +1,7 @@
 # Seoul product definition
 
-Status: source complete for the subsystems below; not compiled or
-runtime-verified on the authoring host (an 8 GiB machine cannot build
-Chromium). Per-feature status and the overall verdict are in
-`docs/release/seoul-product-readiness.md`.
+Status: This is the product contract. Current compile, test, runtime, and
+release evidence is maintained in `docs/release/seoul-product-readiness.md`.
 
 ## What Seoul is
 
@@ -105,13 +103,12 @@ permitted tools.
 
 ## What exists today vs what remains
 
-Source complete and unit-tested at the source level: the twelve subsystems
-above, plus the previously landed organization, projection, command, shell,
-and first-party Lit Canvas layers, including Studio's source-connected
-read-only runtime index. Not done: native compilation, linking and
-test execution, native Views for the remaining dialogs/chooser, real STT/TTS and local
-model runtime adapters, cloud provider adapters, and Studio editing/activation
-paths. The single reversible
-Chromium integration patch wires the native services into the browser and
-applies and reverses cleanly against the pinned checkout. See the readiness
-report for the exact per-feature status and the verdict.
+The implemented native subsystems, organization/projection/command/shell
+layers, and first-party Lit Canvas are compiled and covered by the native test
+suites recorded in the readiness report. Studio is currently a read-only
+runtime index. Remaining product and release work includes the unimplemented
+Studio editing/activation paths, real-device STT/TTS and configured-model
+evaluation, distribution branding, a non-component release build, signing, and
+notarization. The ordered Chromium patch series applies and reverses cleanly
+against the pinned checkout. See the readiness report for the exact per-feature
+status and verdict.
