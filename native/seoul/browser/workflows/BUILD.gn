@@ -31,6 +31,7 @@ test("seoul_workflows_unittests") {
   deps = [
     ":workflows_core",
     "//base",
+    "//base/test:run_all_unittests",
     "//base/test:test_support",
     "//seoul/browser/tasks:tasks_core",
     "//seoul/browser/tools:tools_core",

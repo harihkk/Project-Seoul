@@ -14,10 +14,6 @@ namespace seoul {
 
 namespace {
 
-// The credential-store account under which the cloud reasoning key lives.
-// The secret itself never passes through the registry.
-constexpr char kCloudCredentialAccount[] = "cloud_reasoning";
-
 // A real JSON Schema (draft-style) describing the plan the reasoning provider
 // must return. This is what a structured-output endpoint validates against;
 // it mirrors what PlanFromValue accepts. Providers that enforce json_schema
@@ -128,7 +124,7 @@ bool ProviderRegistry::ConfigureCloud(const std::string& model_id,
   cloud_enabled_ = enabled;
   CloudModelConfig config;
   config.model_id = model_id;
-  config.credential_account = kCloudCredentialAccount;
+  config.credential_account = kCloudReasoningCredentialAccount;
   cloud_provider_ = std::make_unique<CloudModelProvider>(
       std::move(config), cloud_transport_, credentials_);
   return true;
@@ -136,6 +132,15 @@ bool ProviderRegistry::ConfigureCloud(const std::string& model_id,
 
 void ProviderRegistry::SetCloudEnabled(bool enabled) {
   cloud_enabled_ = enabled;
+}
+
+void ProviderRegistry::ClearCloud() {
+  if (cloud_provider_) {
+    cloud_provider_->Cancel();
+  }
+  cloud_provider_.reset();
+  cloud_model_.clear();
+  cloud_enabled_ = false;
 }
 
 void ProviderRegistry::CheckLocalHealth(
@@ -209,7 +214,8 @@ ProviderStateSnapshot ProviderRegistry::Snapshot() const {
   snapshot.local_model = local_model_;
   snapshot.local_models_discovered = local_models_discovered_;
   snapshot.cloud_configured =
-      credentials_ && credentials_->Get(kCloudCredentialAccount).has_value();
+      credentials_ &&
+      credentials_->Get(kCloudReasoningCredentialAccount).has_value();
   snapshot.cloud_enabled = cloud_enabled_;
   snapshot.cloud_model = cloud_model_;
   snapshot.last_error = last_error_;
@@ -218,7 +224,7 @@ ProviderStateSnapshot ProviderRegistry::Snapshot() const {
 
 bool ProviderRegistry::cloud_available() const {
   return cloud_provider_ && cloud_enabled_ && credentials_ &&
-         credentials_->Get(kCloudCredentialAccount).has_value();
+         credentials_->Get(kCloudReasoningCredentialAccount).has_value();
 }
 
 bool ProviderRegistry::HasUsableProvider() const {

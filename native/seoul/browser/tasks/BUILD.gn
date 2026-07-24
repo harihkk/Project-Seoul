@@ -35,6 +35,7 @@ test("seoul_tasks_unittests") {
   deps = [
     ":tasks_core",
     "//base",
+    "//base/test:run_all_unittests",
     "//base/test:test_support",
     "//seoul/browser/tools:tools_core",
     "//testing/gtest",

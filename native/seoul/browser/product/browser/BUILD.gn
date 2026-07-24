@@ -19,6 +19,8 @@ source_set("product_chromium") {
     "seoul_runtime_service.h",
     "seoul_runtime_service_factory.cc",
     "seoul_runtime_service_factory.h",
+    "site_layer_applicator.cc",
+    "site_layer_applicator.h",
   ]
 
   # The macOS Keychain store is Objective-C++ and only builds on Mac; the rest
@@ -63,8 +65,8 @@ source_set("product_chromium") {
     "//seoul/browser/organization",
     "//seoul/browser/organization:organization_model",
     "//seoul/browser/policy:policy_core",
-    "//seoul/browser/preview:preview_core",
     "//seoul/browser/preview:preview_chromium",
+    "//seoul/browser/preview:preview_core",
     "//seoul/browser/scenes:scenes_core",
     "//seoul/browser/semantic:semantic_core",
     "//seoul/browser/shell:shell_chromium",
@@ -81,6 +83,7 @@ source_set("product_chromium") {
 
 source_set("product_browser_tests") {
   testonly = true
+  defines = [ "HAS_OUT_OF_PROC_TEST_RUNNER" ]
   sources = [ "seoul_runtime_browsertest.cc" ]
   deps = [
     ":product_chromium",
@@ -89,11 +92,32 @@ source_set("product_browser_tests") {
     "//chrome/test:test_support",
     "//content/public/browser",
     "//content/test:test_support",
+    "//net:test_support",
+    "//seoul/browser/canvas",
     "//seoul/browser/preview:preview_chromium",
     "//seoul/browser/preview:preview_core",
     "//seoul/browser/product:product_core",
     "//seoul/browser/tools:tools_core",
     "//testing/gtest",
     "//url",
+  ]
+}
+
+# Focused integration binary for Seoul. Keeping these cases in a dedicated
+# executable avoids compiling Chromium's thousands of unrelated browser tests
+# during normal Seoul development, while the source sets remain compatible
+# with //chrome/test:browser_tests for upstream-style coverage.
+test("seoul_browser_tests") {
+  testonly = true
+  defines = [ "HAS_OUT_OF_PROC_TEST_RUNNER" ]
+  deps = [
+    ":product_browser_tests",
+    "//chrome:packed_resources",
+    "//chrome/test:browser_tests_runner",
+    "//chrome/test:test_support",
+    "//chrome/test:test_support_ui",
+    "//seoul/browser/commands:command_browser_tests",
+    "//seoul/browser/projection:projection_browser_tests",
+    "//seoul/browser/shell:shell_browser_tests",
   ]
 }

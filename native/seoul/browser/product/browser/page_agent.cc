@@ -9,7 +9,9 @@
 #include "base/strings/utf_string_conversions.h"
 #include "base/time/time.h"
 #include "content/public/browser/render_frame_host.h"
+#include "content/public/browser/navigation_handle.h"
 #include "content/public/browser/web_contents.h"
+#include "content/public/browser/web_contents_observer.h"
 #include "ui/accessibility/ax_action_data.h"
 #include "ui/accessibility/ax_enum_util.h"
 #include "ui/accessibility/ax_enums.mojom.h"
@@ -19,6 +21,36 @@
 #include "url/gurl.h"
 
 namespace seoul {
+
+class PageAgentTabObserver : public content::WebContentsObserver {
+ public:
+  PageAgentTabObserver(content::WebContents* contents,
+                       base::RepeatingClosure invalidate)
+      : content::WebContentsObserver(contents),
+        invalidate_(std::move(invalidate)) {}
+  ~PageAgentTabObserver() override = default;
+
+  bool IsAttachedTo(content::WebContents* contents) const {
+    return web_contents() == contents;
+  }
+
+  void DidFinishNavigation(
+      content::NavigationHandle* navigation_handle) override {
+    if (navigation_handle && navigation_handle->HasCommitted() &&
+        navigation_handle->IsInPrimaryMainFrame() &&
+        !navigation_handle->IsSameDocument()) {
+      invalidate_.Run();
+    }
+  }
+
+  void WebContentsDestroyed() override {
+    invalidate_.Run();
+    Observe(nullptr);
+  }
+
+ private:
+  base::RepeatingClosure invalidate_;
+};
 
 namespace {
 
@@ -94,6 +126,19 @@ void PageAgent::Observe(
   if (!contents) {
     std::move(callback).Run(std::nullopt);
     return;
+  }
+  auto observer = navigation_observers_.find(tab);
+  if (observer != navigation_observers_.end() &&
+      !observer->second->IsAttachedTo(contents)) {
+    navigation_observers_.erase(observer);
+    observer = navigation_observers_.end();
+  }
+  if (observer == navigation_observers_.end()) {
+    navigation_observers_.emplace(
+        tab, std::make_unique<PageAgentTabObserver>(
+                 contents,
+                 base::BindRepeating(&PageAgent::InvalidateTab,
+                                     weak_factory_.GetWeakPtr(), tab)));
   }
   // A fresh observation expires every prior handle for this tab. Capture the
   // generation this request belongs to; the async snapshot below must be

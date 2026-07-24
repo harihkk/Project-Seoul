@@ -30,6 +30,7 @@ test("seoul_runtime_unittests") {
   deps = [
     ":runtime",
     "//base",
+    "//base/test:run_all_unittests",
     "//base/test:test_support",
     "//seoul/browser/connectors:connectors_core",
     "//seoul/browser/connectors:connectors_test_support",

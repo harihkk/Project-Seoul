@@ -8,6 +8,7 @@
 
 #include "base/strings/string_util.h"
 #include "seoul/browser/site_layers/site_layer_compiler.h"
+#include "url/gurl.h"
 
 namespace seoul {
 
@@ -17,6 +18,7 @@ constexpr int kSiteLayerRegistrySchemaVersion = 1;
 
 struct OriginPatternParts {
   bool wildcard = false;
+  std::string scheme;
   std::string host;
   std::string port;
 };
@@ -35,10 +37,15 @@ std::optional<OriginPatternParts> ParseOriginPattern(
     }
     parts.wildcard = true;
     host = origin.substr(2);
-  } else if (base::StartsWith(origin, "https://")) {
-    host = origin.substr(8);
   } else {
-    return std::nullopt;
+    const GURL url(origin);
+    if (!url.is_valid() || !url.SchemeIsHTTPOrHTTPS()) {
+      return std::nullopt;
+    }
+    parts.scheme = url.scheme();
+    parts.host = base::ToLowerASCII(url.host());
+    parts.port = url.port();
+    return parts;
   }
   const size_t colon = host.find(':');
   if (colon != std::string::npos) {
@@ -167,7 +174,8 @@ bool SiteLayerMatchesOrigin(const SiteLayer& layer, const std::string& origin) {
   if (pattern->wildcard) {
     return page->port.empty() && HostMatchesWildcard(page->host, pattern->host);
   }
-  return page->host == pattern->host && page->port == pattern->port;
+  return page->scheme == pattern->scheme && page->host == pattern->host &&
+         page->port == pattern->port;
 }
 
 }  // namespace seoul

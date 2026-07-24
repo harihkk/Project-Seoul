@@ -57,10 +57,11 @@ CommandResult<CommandStatus> CommandExecutor::ValidateCommand(
   if (shutting_down_) {
     return base::unexpected(CommandError::kShutdown);
   }
-  if (lifecycle_ && lifecycle_->lifecycle_degraded()) {
+  if (lifecycle_ && lifecycle_->queue_overflow()) {
     return base::unexpected(CommandError::kLifecycleQueueDegraded);
   }
-  if (lifecycle_ && lifecycle_->reconciliation_required() &&
+  if (lifecycle_ &&
+      (lifecycle_->is_reconciling() || lifecycle_->reconciliation_required()) &&
       !IsModelOnlyKind(command.kind)) {
     return base::unexpected(CommandError::kReconciliationRequired);
   }

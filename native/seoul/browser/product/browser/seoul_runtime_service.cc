@@ -2,6 +2,7 @@
 
 #include "seoul/browser/product/browser/seoul_runtime_service.h"
 
+#include <tuple>
 #include <utility>
 
 #include "base/functional/bind.h"
@@ -22,11 +23,12 @@
 #include "seoul/browser/lifecycle/persistence_scheduler.h"
 #include "seoul/browser/organization/organization_model.h"
 #include "seoul/browser/organization/seoul_organization_service.h"
+#include "seoul/browser/preview/preview_host_service.h"
 #include "seoul/browser/product/browser/browser_capabilities.h"
 #include "seoul/browser/product/browser/keychain_credential_store.h"
 #include "seoul/browser/product/browser/network_http_transport.h"
 #include "seoul/browser/product/browser/page_agent.h"
-#include "seoul/browser/preview/preview_host_service.h"
+#include "seoul/browser/product/browser/site_layer_applicator.h"
 #include "seoul/browser/scenes/scene_registry.h"
 #include "seoul/browser/shell/shell_service.h"
 #include "seoul/browser/site_layers/site_layer_registry.h"
@@ -84,8 +86,8 @@ SeoulRuntimeService::SeoulRuntimeService(
           base::BindRepeating(&Now),
           base::BindRepeating(&SeoulRuntimeService::SchedulePersist,
                               base::Unretained(this)))),
-      runtime_(MakeSceneResolvers(organization, themes_.get(),
-                                  site_layers_.get())) {
+      runtime_(
+          MakeSceneResolvers(organization, themes_.get(), site_layers_.get())) {
   // Concrete transports: the general one for cloud/connectors, a
   // loopback-only one for the local reasoning provider.
   scoped_refptr<network::SharedURLLoaderFactory> factory =
@@ -99,13 +101,10 @@ SeoulRuntimeService::SeoulRuntimeService(
       profile_->GetBaseName().MaybeAsASCII());
   page_agent_ = std::make_unique<PageAgent>(web_contents_resolver_);
 
-  runtime_.RegisterBuiltinCapabilities();
-
   provider_registry_ = std::make_unique<ProviderRegistry>(
       local_transport_.get(), cloud_transport_.get(), credentials_.get());
   preview_manager_ = std::make_unique<PreviewManager>(
-      base::BindRepeating(&Now),
-      base::BindRepeating(&PreviewId::GenerateNew));
+      base::BindRepeating(&Now), base::BindRepeating(&PreviewId::GenerateNew));
   preview_host_service_ = std::make_unique<PreviewHostService>(
       profile_, preview_manager_.get(),
       organization_ ? organization_->lifecycle_coordinator() : nullptr);
@@ -127,14 +126,11 @@ SeoulRuntimeService::SeoulRuntimeService(
       live_window_observation_.Observe(live_state);
     }
   }
-  task_service_ =
-      std::make_unique<TaskService>(&runtime_.capabilities(), &executors_,
-                                    planner_.get(), base::BindRepeating(&Now),
-                                    agent_permissions_.get(),
-                                    base::BindRepeating(
-                                        &SeoulRuntimeService::
-                                            ResolveAgentPermissionRequest,
-                                        base::Unretained(this)));
+  task_service_ = std::make_unique<TaskService>(
+      &runtime_.capabilities(), &executors_, planner_.get(),
+      base::BindRepeating(&Now), agent_permissions_.get(),
+      base::BindRepeating(&SeoulRuntimeService::ResolveAgentPermissionRequest,
+                          base::Unretained(this)));
   task_service_->AddObserver(this);
   voice_controller_ = std::make_unique<VoiceRuntimeController>(
       task_service_.get(), speech_to_text_.get(), text_to_speech_.get(),
@@ -152,6 +148,10 @@ SeoulRuntimeService::SeoulRuntimeService(
 
   RegisterBuiltinExecutors();
   LoadState();
+  // Applicators may already exist because live-window state is replayed during
+  // construction, while the registry is restored only by LoadState(). Apply
+  // the restored layers now rather than waiting for a later tab event.
+  RefreshSiteLayers();
   persistence_scheduler_ = std::make_unique<PersistenceScheduler>(
       base::BindRepeating(&SeoulRuntimeService::PersistState,
                           base::Unretained(this)),
@@ -159,6 +159,11 @@ SeoulRuntimeService::SeoulRuntimeService(
 }
 
 SeoulRuntimeService::~SeoulRuntimeService() = default;
+
+LiveWindowStateProvider* SeoulRuntimeService::live_window_state_provider()
+    const {
+  return organization_ ? organization_->live_window_state_provider() : nullptr;
+}
 
 void SeoulRuntimeService::OnLiveWindowSnapshotChanged(
     const LiveWindowSnapshot& snapshot) {
@@ -172,11 +177,9 @@ void SeoulRuntimeService::OnLiveWindowSnapshotChanged(
     }
   }
 
-  auto [it, inserted] =
-      live_tabs_by_window_.try_emplace(snapshot.window, current_tabs);
-  if (inserted) {
-    return;
-  }
+  auto it =
+      live_tabs_by_window_.try_emplace(snapshot.window, std::set<LiveTabKey>())
+          .first;
   for (const LiveTabKey& previous : it->second) {
     if (!current_tabs.contains(previous)) {
       if (agent_permissions_) {
@@ -185,13 +188,42 @@ void SeoulRuntimeService::OnLiveWindowSnapshotChanged(
       if (preview_host_service_) {
         preview_host_service_->DismissForParent(previous);
       }
+      site_layer_applicators_.erase(previous);
     }
+  }
+  for (const LiveTabKey& current : current_tabs) {
+    content::WebContents* contents = web_contents_resolver_.Run(current);
+    if (!contents) {
+      site_layer_applicators_.erase(current);
+      continue;
+    }
+    auto applicator = site_layer_applicators_.find(current);
+    if (applicator != site_layer_applicators_.end() &&
+        !applicator->second->IsAttachedTo(contents)) {
+      site_layer_applicators_.erase(applicator);
+      applicator = site_layer_applicators_.end();
+    }
+    if (applicator == site_layer_applicators_.end()) {
+      applicator =
+          site_layer_applicators_
+              .emplace(current,
+                       std::make_unique<SiteLayerApplicator>(
+                           contents, site_layers_.get()))
+              .first;
+    }
+    applicator->second->Refresh(/*scene_id=*/std::string());
   }
   it->second = std::move(current_tabs);
 }
 
 void SeoulRuntimeService::OnLiveWindowRemoved(LiveWindowKey window) {
-  live_tabs_by_window_.erase(window);
+  auto it = live_tabs_by_window_.find(window);
+  if (it != live_tabs_by_window_.end()) {
+    for (const LiveTabKey& tab : it->second) {
+      site_layer_applicators_.erase(tab);
+    }
+    live_tabs_by_window_.erase(it);
+  }
   if (preview_host_service_) {
     preview_host_service_->DismissForWindow(window);
   }
@@ -213,8 +245,7 @@ void SeoulRuntimeService::OnTaskFinished(const TaskId& task_id) {
   OnTaskUpdated(task_id);
 }
 
-void SeoulRuntimeService::PublishShellTaskSummary(
-    const LiveWindowKey& window) {
+void SeoulRuntimeService::PublishShellTaskSummary(const LiveWindowKey& window) {
   if (!window.is_valid() || !organization_ || !task_service_) {
     return;
   }
@@ -430,6 +461,29 @@ void SeoulRuntimeService::InvalidateWindowBinding(
   }
 }
 
+std::optional<LiveTabDescriptor> SeoulRuntimeService::ActiveTabDescriptor(
+    const LiveWindowKey& window) const {
+  if (shutting_down_ || !organization_ || !window.is_valid()) {
+    return std::nullopt;
+  }
+  LiveWindowStateProvider* live_state =
+      organization_->live_window_state_provider();
+  if (!live_state) {
+    return std::nullopt;
+  }
+  const std::optional<LiveWindowSnapshot> snapshot =
+      live_state->GetSnapshot(window);
+  if (!snapshot.has_value() || !snapshot->active_tab.is_valid()) {
+    return std::nullopt;
+  }
+  for (const LiveTabDescriptor& descriptor : snapshot->tabs) {
+    if (descriptor.tab == snapshot->active_tab) {
+      return descriptor;
+    }
+  }
+  return std::nullopt;
+}
+
 void SeoulRuntimeService::OnWindowBindingClosed(
     WindowRuntimeBindingToken token,
     BrowserWindowInterface* browser) {
@@ -513,6 +567,130 @@ void SeoulRuntimeService::CreateRealtimeVoiceSession(
 RealtimeVoiceAgentSnapshot SeoulRuntimeService::RealtimeVoiceSnapshot() const {
   return realtime_voice_agent_ ? realtime_voice_agent_->Snapshot()
                                : RealtimeVoiceAgentSnapshot();
+}
+
+SiteLayerStatusResult SeoulRuntimeService::UpsertSiteLayer(SiteLayer layer) {
+  if (shutting_down_ || !site_layers_) {
+    return base::unexpected(SiteLayerError::kUnknownLayer);
+  }
+  SiteLayerStatusResult result = site_layers_->Upsert(std::move(layer));
+  if (!result.has_value()) {
+    return result;
+  }
+  RefreshSiteLayers();
+  SchedulePersist();
+  return base::ok();
+}
+
+SiteLayerStatusResult SeoulRuntimeService::RemoveSiteLayer(
+    const std::string& layer_id) {
+  if (shutting_down_ || !site_layers_) {
+    return base::unexpected(SiteLayerError::kUnknownLayer);
+  }
+  SiteLayerStatusResult result = site_layers_->Remove(layer_id);
+  if (!result.has_value()) {
+    return result;
+  }
+  RefreshSiteLayers();
+  SchedulePersist();
+  return base::ok();
+}
+
+void SeoulRuntimeService::RefreshSiteLayers() {
+  if (shutting_down_) {
+    return;
+  }
+  for (auto& [tab, applicator] : site_layer_applicators_) {
+    if (applicator) {
+      applicator->Refresh(/*scene_id=*/std::string());
+    }
+  }
+}
+
+bool SeoulRuntimeService::ConfigureLocalProvider(
+    const std::string& endpoint_url,
+    const std::string& model_id) {
+  if (shutting_down_ || !provider_registry_ ||
+      !provider_registry_->ConfigureLocal(endpoint_url, model_id)) {
+    return false;
+  }
+  SchedulePersist();
+  return true;
+}
+
+void SeoulRuntimeService::ClearLocalProvider() {
+  if (shutting_down_ || !provider_registry_) {
+    return;
+  }
+  provider_registry_->ClearLocal();
+  SchedulePersist();
+}
+
+bool SeoulRuntimeService::ConfigureCloudProvider(
+    const std::string& model_id,
+    bool enabled,
+    const std::string& reasoning_secret,
+    const std::string& voice_secret) {
+  if (shutting_down_ || !provider_registry_ || !credentials_ ||
+      model_id.empty()) {
+    return false;
+  }
+
+  const std::optional<std::string> previous_reasoning =
+      credentials_->Get(kCloudReasoningCredentialAccount);
+  const std::optional<std::string> previous_voice =
+      credentials_->Get(kRealtimeVoiceCredentialAccount);
+  auto restore = [&](const char* account,
+                     const std::optional<std::string>& previous) {
+    if (previous.has_value()) {
+      std::ignore = credentials_->Set(account, *previous);
+    } else {
+      std::ignore = credentials_->Delete(account);
+    }
+  };
+
+  if (!reasoning_secret.empty() &&
+      !credentials_->Set(kCloudReasoningCredentialAccount,
+                         reasoning_secret)) {
+    return false;
+  }
+  if (!voice_secret.empty() &&
+      !credentials_->Set(kRealtimeVoiceCredentialAccount, voice_secret)) {
+    restore(kCloudReasoningCredentialAccount, previous_reasoning);
+    return false;
+  }
+  if (!provider_registry_->ConfigureCloud(model_id, enabled)) {
+    restore(kCloudReasoningCredentialAccount, previous_reasoning);
+    restore(kRealtimeVoiceCredentialAccount, previous_voice);
+    return false;
+  }
+  SchedulePersist();
+  return true;
+}
+
+bool SeoulRuntimeService::ClearCloudProviderAndCredentials() {
+  if (shutting_down_ || !provider_registry_ || !credentials_) {
+    return false;
+  }
+  const std::optional<std::string> previous_reasoning =
+      credentials_->Get(kCloudReasoningCredentialAccount);
+  const std::optional<std::string> previous_voice =
+      credentials_->Get(kRealtimeVoiceCredentialAccount);
+  if (previous_reasoning.has_value() &&
+      !credentials_->Delete(kCloudReasoningCredentialAccount)) {
+    return false;
+  }
+  if (previous_voice.has_value() &&
+      !credentials_->Delete(kRealtimeVoiceCredentialAccount)) {
+    if (previous_reasoning.has_value()) {
+      std::ignore = credentials_->Set(kCloudReasoningCredentialAccount,
+                                      *previous_reasoning);
+    }
+    return false;
+  }
+  provider_registry_->ClearCloud();
+  SchedulePersist();
+  return true;
 }
 
 bool SeoulRuntimeService::SetCredential(const std::string& account_key,
@@ -612,6 +790,7 @@ void SeoulRuntimeService::Shutdown() {
   shutting_down_ = true;
   live_window_observation_.Reset();
   live_tabs_by_window_.clear();
+  site_layer_applicators_.clear();
   window_bindings_.clear();
   // Reverse dependency order: tasks depend on providers/executors; workflows
   // depend on tasks; the runtime registries are torn down last.
@@ -661,10 +840,12 @@ void SeoulRuntimeService::Shutdown() {
   cloud_transport_.reset();
 }
 
-
 SeoulRuntimeService::WindowBindingRecord::WindowBindingRecord() = default;
-SeoulRuntimeService::WindowBindingRecord::WindowBindingRecord(WindowBindingRecord&&) = default;
-SeoulRuntimeService::WindowBindingRecord& SeoulRuntimeService::WindowBindingRecord::operator=(WindowBindingRecord&&) = default;
+SeoulRuntimeService::WindowBindingRecord::WindowBindingRecord(
+    WindowBindingRecord&&) = default;
+SeoulRuntimeService::WindowBindingRecord&
+SeoulRuntimeService::WindowBindingRecord::operator=(WindowBindingRecord&&) =
+    default;
 SeoulRuntimeService::WindowBindingRecord::~WindowBindingRecord() = default;
 
 }  // namespace seoul

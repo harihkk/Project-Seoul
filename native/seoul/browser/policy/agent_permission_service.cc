@@ -28,6 +28,13 @@ bool ValidServiceScope(const std::string& scope) {
   return true;
 }
 
+bool SameOptionalOrigin(const url::Origin& lhs, const url::Origin& rhs) {
+  if (lhs.opaque() || rhs.opaque()) {
+    return lhs.opaque() && rhs.opaque();
+  }
+  return lhs == rhs;
+}
+
 std::string ScopeLabel(const AgentPermissionRequest& request) {
   if (IsHttpOrigin(request.source_origin)) {
     return request.source_origin.Serialize();
@@ -66,15 +73,13 @@ bool AgentPermissionService::IsValidRequest(
       !IsHttpOrigin(request.destination_origin)) {
     return false;
   }
-  const bool page_capability =
-      request.capability.root_namespace() == "page";
+  const bool page_capability = request.capability.root_namespace() == "page";
   if (page_capability || request.tab.is_valid()) {
     if (!request.tab.is_valid() || request.frame_scope != "main" ||
         !IsHttpOrigin(request.source_origin)) {
       return false;
     }
-  } else if (!request.frame_scope.empty() ||
-             !request.source_origin.opaque()) {
+  } else if (!request.frame_scope.empty() || !request.source_origin.opaque()) {
     return false;
   }
   if (request.approval == ApprovalPolicy::kFirstUsePerScope &&
@@ -85,15 +90,15 @@ bool AgentPermissionService::IsValidRequest(
   return true;
 }
 
-bool AgentPermissionService::ScopeMatches(
-    const AgentPermissionRequest& request,
-    const Grant& grant) const {
+bool AgentPermissionService::ScopeMatches(const AgentPermissionRequest& request,
+                                          const Grant& grant) const {
   const AgentPermissionRequest& stored = grant.request;
   return request.capability == stored.capability &&
          request.window == stored.window && request.tab == stored.tab &&
          request.frame_scope == stored.frame_scope &&
-         request.source_origin == stored.source_origin &&
-         request.destination_origin == stored.destination_origin &&
+         SameOptionalOrigin(request.source_origin, stored.source_origin) &&
+         SameOptionalOrigin(request.destination_origin,
+                            stored.destination_origin) &&
          request.service_scope == stored.service_scope;
 }
 

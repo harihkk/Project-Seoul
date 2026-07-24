@@ -76,6 +76,7 @@ test("seoul_command_core_unittests") {
   deps = [
     ":command_core",
     "//base",
+    "//base/test:run_all_unittests",
     "//base/test:test_support",
     "//seoul/browser/lifecycle:lifecycle_core",
     "//seoul/browser/organization:organization_model",
@@ -86,6 +87,7 @@ test("seoul_command_core_unittests") {
 
 source_set("command_browser_tests") {
   testonly = true
+  defines = [ "HAS_OUT_OF_PROC_TEST_RUNNER" ]
   sources = [ "chromium_mutation_adapter_browsertest.cc" ]
   deps = [
     ":command_chromium",

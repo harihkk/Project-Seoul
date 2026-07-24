@@ -207,6 +207,23 @@ NextAction TaskExecution::Advance() {
     return Stopped(budget_reason);
   }
 
+  bool has_running_step = false;
+  int running_parallel_group = 0;
+  for (const PlanStep& step : plan_.steps) {
+    if (step_status(step.id) != StepStatus::kRunning) {
+      continue;
+    }
+    has_running_step = true;
+    if (running_parallel_group == 0) {
+      running_parallel_group = step.parallel_group;
+    }
+    if (step.parallel_group == 0 ||
+        step.parallel_group != running_parallel_group) {
+      running_parallel_group = 0;
+      break;
+    }
+  }
+
   for (const PlanStep& step : plan_.steps) {
     StepState* step_state = FindState(step.id);
     // Restart completed loop-group steps when iterations remain and every
@@ -240,6 +257,13 @@ NextAction TaskExecution::Advance() {
     }
 
     if (step_state->status != StepStatus::kPending) {
+      continue;
+    }
+    // An ordered plan is sequential by default. Only read-only steps in the
+    // same explicit nonzero parallel group may be offered while a peer is
+    // already running.
+    if (has_running_step && (running_parallel_group == 0 ||
+                             step.parallel_group != running_parallel_group)) {
       continue;
     }
     bool should_skip = false;
@@ -284,6 +308,10 @@ NextAction TaskExecution::Advance() {
   if (state_ == TaskState::kFailed) {
     action.kind = NextAction::Kind::kStopped;
     action.failure = failure_reason_;
+    return action;
+  }
+  if (has_running_step) {
+    action.kind = NextAction::Kind::kWait;
     return action;
   }
   // Nothing runnable but not everything terminal: blocked on an unmet guard

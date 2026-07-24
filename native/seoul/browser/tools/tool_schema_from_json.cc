@@ -19,9 +19,8 @@ JsonSchemaImportFailure::~JsonSchemaImportFailure() = default;
 
 namespace {
 
-base::unexpected<JsonSchemaImportFailure> Failure(
-    JsonSchemaImportError error,
-    const std::string& path) {
+base::unexpected<JsonSchemaImportFailure> Failure(JsonSchemaImportError error,
+                                                  const std::string& path) {
   JsonSchemaImportFailure failure;
   failure.error = error;
   failure.path = path;
@@ -113,8 +112,7 @@ FieldResult FieldFromSchema(const std::string& name,
   if (*type == "string") {
     if (const base::ListValue* enum_values = schema.FindList("enum")) {
       field.kind = SchemaFieldKind::kEnum;
-      if (enum_values->empty() ||
-          enum_values->size() > kMaxSchemaEnumValues) {
+      if (enum_values->empty() || enum_values->size() > kMaxSchemaEnumValues) {
         return Failure(JsonSchemaImportError::kInvalidEnum, path);
       }
       for (const base::Value& value : *enum_values) {
@@ -160,8 +158,7 @@ FieldResult FieldFromSchema(const std::string& name,
   if (*type == "array") {
     const base::DictValue* items = schema.FindDict("items");
     if (!items) {
-      return Failure(JsonSchemaImportError::kMalformedSchema,
-                     path + ".items");
+      return Failure(JsonSchemaImportError::kMalformedSchema, path + ".items");
     }
     field.kind = SchemaFieldKind::kList;
     auto item_field =
@@ -177,9 +174,6 @@ FieldResult FieldFromSchema(const std::string& name,
     auto children = FieldsFromObjectSchema(schema, path, depth + 1);
     if (!children.has_value()) {
       return base::unexpected(children.error());
-    }
-    if (children->empty()) {
-      return Failure(JsonSchemaImportError::kMalformedSchema, path);
     }
     field.children = std::move(children.value());
     return field;

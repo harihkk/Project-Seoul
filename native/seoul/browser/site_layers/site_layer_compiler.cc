@@ -7,6 +7,8 @@
 
 #include "base/strings/string_number_conversions.h"
 #include "base/strings/string_util.h"
+#include "url/gurl.h"
+#include "url/origin.h"
 
 namespace seoul {
 
@@ -347,21 +349,48 @@ bool IsValidOriginPattern(const std::string& origin) {
   std::string host;
   if (base::StartsWith(origin, "*.")) {
     host = origin.substr(2);
-  } else if (base::StartsWith(origin, "https://")) {
-    host = origin.substr(8);
-    // Strip an optional port.
-    const size_t colon = host.find(':');
-    if (colon != std::string::npos) {
-      const std::string port = host.substr(colon + 1);
-      host = host.substr(0, colon);
-      int port_number = 0;
-      if (!base::StringToInt(port, &port_number) || port_number <= 0 ||
-          port_number > 65535) {
+  } else {
+    for (const unsigned char character : origin) {
+      if (character <= 0x20 || character == 0x7f) {
         return false;
       }
     }
-  } else {
-    return false;
+    const size_t scheme_end = origin.find("://");
+    if (scheme_end == std::string::npos) {
+      return false;
+    }
+    const std::string authority = origin.substr(scheme_end + 3);
+    if (authority.empty() ||
+        authority.find_first_of("/?#@") != std::string::npos) {
+      return false;
+    }
+    if (authority.front() == '[') {
+      const size_t closing_bracket = authority.find(']');
+      if (closing_bracket == std::string::npos ||
+          (closing_bracket + 1 < authority.size() &&
+           authority[closing_bracket + 1] != ':')) {
+        return false;
+      }
+    } else {
+      const size_t colon = authority.rfind(':');
+      const std::string raw_host = authority.substr(0, colon);
+      if (raw_host.empty() || raw_host.front() == '.' ||
+          raw_host.back() == '.' ||
+          raw_host.find("..") != std::string::npos) {
+        return false;
+      }
+    }
+    const GURL url(origin);
+    const url::Origin parsed = url::Origin::Create(url);
+    if (!url.is_valid() || !url.SchemeIsHTTPOrHTTPS() || parsed.opaque() ||
+        url.has_username() || url.has_password() || url.has_query() ||
+        url.has_ref() || url.path() != "/") {
+      return false;
+    }
+    if (url.has_port() && url.IntPort() <= 0) {
+      return false;
+    }
+    return true;
   }
   if (host.empty() || host.size() > 253) {
     return false;

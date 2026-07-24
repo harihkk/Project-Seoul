@@ -1,7 +1,7 @@
 # Project Seoul Site Layers.
 # Declarative per-site customization compiled to safe scoped CSS. No arbitrary
 # JavaScript; selectors and values are validated against a safe subset. Pure
-# model: //base only.
+# model: //base plus Chromium's canonical URL parser.
 
 import("//testing/test.gni")
 
@@ -15,7 +15,10 @@ source_set("site_layers_core") {
     "site_layer_types.h",
   ]
 
-  deps = [ "//base" ]
+  deps = [
+    "//base",
+    "//url",
+  ]
 }
 
 test("seoul_site_layers_unittests") {
@@ -27,6 +30,7 @@ test("seoul_site_layers_unittests") {
   deps = [
     ":site_layers_core",
     "//base",
+    "//base/test:run_all_unittests",
     "//base/test:test_support",
     "//testing/gtest",
   ]

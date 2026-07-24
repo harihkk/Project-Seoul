@@ -22,6 +22,7 @@ test("seoul_library_unittests") {
   deps = [
     ":library_core",
     "//base",
+    "//base/test:run_all_unittests",
     "//base/test:test_support",
     "//testing/gtest",
   ]

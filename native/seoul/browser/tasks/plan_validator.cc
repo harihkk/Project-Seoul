@@ -94,21 +94,23 @@ PlanValidationResult ValidatePlan(const Plan& plan,
     return Violation(PlanError::kTooManySteps, "");
   }
 
-  std::set<std::string> seen_ids;
-  std::set<std::string> earlier_ids;
-
+  std::set<std::string> all_ids;
   for (const PlanStep& step : plan.steps) {
     if (!ValidStepId(step.id)) {
       return Violation(PlanError::kInvalidStepId, step.id);
     }
-    if (!seen_ids.insert(step.id).second) {
+    if (!all_ids.insert(step.id).second) {
       return Violation(PlanError::kDuplicateStepId, step.id);
     }
+  }
 
+  std::set<std::string> earlier_ids;
+
+  for (const PlanStep& step : plan.steps) {
     if (step.guard.has_value()) {
       if (earlier_ids.find(step.guard->depends_on_step) == earlier_ids.end()) {
         return Violation(
-            seen_ids.find(step.guard->depends_on_step) != seen_ids.end()
+            all_ids.find(step.guard->depends_on_step) != all_ids.end()
                 ? PlanError::kGuardForwardReference
                 : PlanError::kGuardUnknownStep,
             step.id);

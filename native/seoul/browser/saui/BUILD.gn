@@ -54,6 +54,7 @@ test("seoul_saui_unittests") {
   deps = [
     ":saui_core",
     "//base",
+    "//base/test:run_all_unittests",
     "//base/test:test_support",
     "//seoul/browser/data:data_core",
     "//seoul/browser/semantic:semantic_core",

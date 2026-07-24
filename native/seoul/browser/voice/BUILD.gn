@@ -43,6 +43,7 @@ test("seoul_voice_unittests") {
     ":voice_core",
     ":voice_test_support",
     "//base",
+    "//base/test:run_all_unittests",
     "//base/test:test_support",
     "//testing/gtest",
   ]

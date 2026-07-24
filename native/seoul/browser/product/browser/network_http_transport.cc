@@ -2,12 +2,14 @@
 
 #include "seoul/browser/product/browser/network_http_transport.h"
 
+#include <algorithm>
 #include <utility>
 
 #include "base/functional/bind.h"
 #include "net/base/net_errors.h"
 #include "net/base/url_util.h"
 #include "net/http/http_response_headers.h"
+#include "net/http/http_util.h"
 #include "net/traffic_annotation/network_traffic_annotation.h"
 #include "services/network/public/cpp/resource_request.h"
 #include "services/network/public/cpp/shared_url_loader_factory.h"
@@ -22,7 +24,8 @@ namespace {
 
 // Streaming bodies are consumed incrementally; this bounds the total bytes a
 // single response may deliver so a runaway stream cannot grow memory.
-constexpr size_t kMaxResponseBytes = 32 * 1024 * 1024;
+constexpr size_t kAbsoluteMaxResponseBytes = 32 * 1024 * 1024;
+constexpr size_t kMaxRequestBodyBytes = 32 * 1024 * 1024;
 
 // Requests without server activity fail after this long. Streaming responses
 // reset the clock on every chunk via SimpleURLLoader's own timeout handling.
@@ -58,9 +61,11 @@ class NetworkHttpTransport::StreamReader
     : public network::SimpleURLLoaderStreamConsumer {
  public:
   StreamReader(std::unique_ptr<network::SimpleURLLoader> loader,
+               size_t max_response_bytes,
                HttpStreamCallbacks callbacks,
                base::OnceCallback<void(int, std::string)> done)
       : loader_(std::move(loader)),
+        max_response_bytes_(max_response_bytes),
         callbacks_(std::move(callbacks)),
         done_(std::move(done)) {}
 
@@ -74,7 +79,7 @@ class NetworkHttpTransport::StreamReader
   void OnDataReceived(std::string_view piece,
                       base::OnceClosure resume) override {
     received_ += piece.size();
-    if (received_ > kMaxResponseBytes) {
+    if (received_ > max_response_bytes_) {
       // Abandon the oversized stream; OnComplete reports the failure.
       loader_.reset();
       if (done_) {
@@ -114,6 +119,7 @@ class NetworkHttpTransport::StreamReader
 
  private:
   std::unique_ptr<network::SimpleURLLoader> loader_;
+  const size_t max_response_bytes_;
   HttpStreamCallbacks callbacks_;
   base::OnceCallback<void(int, std::string)> done_;
   size_t received_ = 0;
@@ -132,13 +138,36 @@ int NetworkHttpTransport::Start(const HttpRequest& request,
   const bool scheme_ok = url.is_valid() && url.SchemeIsHTTPOrHTTPS();
   const bool loopback_ok =
       mode_ != Mode::kLoopbackOnly || (url.is_valid() && net::IsLocalhost(url));
-  if (!scheme_ok || !loopback_ok || !url_loader_factory_) {
+  const bool method_ok = net::HttpUtil::IsValidHeaderName(request.method);
+  const bool body_ok = request.body.size() <= kMaxRequestBodyBytes;
+  bool headers_ok = true;
+  for (const HttpHeader& header : request.headers) {
+    if (!net::HttpUtil::IsValidHeaderName(header.name) ||
+        !net::HttpUtil::IsValidHeaderValue(header.value)) {
+      headers_ok = false;
+      break;
+    }
+  }
+  if (!scheme_ok || !loopback_ok || !method_ok || !headers_ok || !body_ok ||
+      !url_loader_factory_) {
     // Reject before any socket exists; the completion still fires exactly
     // once so callers have one code path.
     if (callbacks.on_complete) {
-      std::move(callbacks.on_complete)
-          .Run(0, loopback_ok ? "invalid request URL"
-                              : "endpoint is not a loopback address");
+      std::string error = "invalid request";
+      if (!loopback_ok) {
+        error = "endpoint is not a loopback address";
+      } else if (!scheme_ok) {
+        error = "invalid request URL";
+      } else if (!method_ok) {
+        error = "invalid request method";
+      } else if (!headers_ok) {
+        error = "invalid request header";
+      } else if (!body_ok) {
+        error = "request body exceeded the size bound";
+      } else if (!url_loader_factory_) {
+        error = "network service is unavailable";
+      }
+      std::move(callbacks.on_complete).Run(0, std::move(error));
     }
     return 0;
   }
@@ -166,8 +195,12 @@ int NetworkHttpTransport::Start(const HttpRequest& request,
   loader->SetAllowHttpErrorResults(true);
 
   const int handle = next_handle_++;
+  const size_t max_response_bytes =
+      request.max_response_bytes == 0
+          ? kAbsoluteMaxResponseBytes
+          : std::min(request.max_response_bytes, kAbsoluteMaxResponseBytes);
   auto reader = std::make_unique<StreamReader>(
-      std::move(loader), std::move(callbacks),
+      std::move(loader), max_response_bytes, std::move(callbacks),
       base::BindOnce(&NetworkHttpTransport::OnRequestDone,
                      weak_factory_.GetWeakPtr(), handle));
   StreamReader* raw = reader.get();

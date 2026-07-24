@@ -74,6 +74,7 @@ test("seoul_projection_core_unittests") {
   deps = [
     ":projection_core",
     "//base",
+    "//base/test:run_all_unittests",
     "//base/test:test_support",
     "//seoul/browser/commands:command_core",
     "//seoul/browser/lifecycle",
@@ -88,6 +89,7 @@ test("seoul_projection_core_unittests") {
 # integration patch.
 source_set("projection_browser_tests") {
   testonly = true
+  defines = [ "HAS_OUT_OF_PROC_TEST_RUNNER" ]
   sources = [ "vertical_presentation_browsertest.cc" ]
   deps = [
     ":projection_chromium",

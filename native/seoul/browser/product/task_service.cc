@@ -179,9 +179,9 @@ void TaskService::OnReplanned(TaskId task_id, PlannerResult result) {
     failed_plan.steps.push_back(std::move(unavailable));
     task->execution = std::make_unique<TaskExecution>(
         task_id, std::move(failed_plan),
-        base::BindRepeating([](ToolRegistry* registry, const ToolId& id) {
-          return registry->Find(id);
-        }, registry_.get()),
+        base::BindRepeating([](ToolRegistry* registry,
+                               const ToolId& id) { return registry->Find(id); },
+                            registry_.get()),
         clock_);
     task->execution->Start();
     task->pending_approval_step = "input_replanning";
@@ -193,9 +193,9 @@ void TaskService::OnReplanned(TaskId task_id, PlannerResult result) {
   task->plan_origin = result.origin;
   task->execution = std::make_unique<TaskExecution>(
       task_id, std::move(result.plan),
-      base::BindRepeating([](ToolRegistry* registry, const ToolId& id) {
-        return registry->Find(id);
-      }, registry_.get()),
+      base::BindRepeating([](ToolRegistry* registry,
+                             const ToolId& id) { return registry->Find(id); },
+                          registry_.get()),
       clock_);
   task->execution->Start();
   NotifyUpdated(task_id);
@@ -311,13 +311,12 @@ void TaskService::PumpOnce(const TaskId& task_id) {
         }
         task->pending_approval_step = next.step_id;
         task->pending_user_input = false;
-        task->pending_approval_prompt = task->pending_permission_request
-                                            ? permissions_->Describe(
-                                                  *task->pending_permission_request)
-                                            : step && !step->prompt.empty()
-                                                  ? step->prompt
-                                                  : std::string("Approve step ") +
-                                                        next.step_id + "?";
+        task->pending_approval_prompt =
+            task->pending_permission_request
+                ? permissions_->Describe(*task->pending_permission_request)
+            : step && !step->prompt.empty()
+                ? step->prompt
+                : std::string("Approve step ") + next.step_id + "?";
         NotifyUpdated(task_id);
         for (TaskServiceObserver& observer : observers_) {
           observer.OnTaskNeedsApproval(task_id, next.step_id,
@@ -332,6 +331,8 @@ void TaskService::PumpOnce(const TaskId& task_id) {
         NotifyUpdated(task_id);
         return;
       }
+      case NextAction::Kind::kWait:
+        return;
       case NextAction::Kind::kCompleted:
       case NextAction::Kind::kStopped: {
         if (task->active_dispatch_count > 0) {
@@ -524,10 +525,10 @@ void TaskService::Replan(const TaskId& task_id) {
   // Refresh the live registry through the same configured reasoning route as
   // the original task. Replanning never silently downgrades a model-backed
   // task to lexical deterministic matching.
-  planner_->BuildPlan(
-      task->planning_goal, task->context, task->use_model, task->prefer_local,
-      base::BindOnce(&TaskService::OnReplanned,
-                     weak_factory_.GetWeakPtr(), task_id));
+  planner_->BuildPlan(task->planning_goal, task->context, task->use_model,
+                      task->prefer_local,
+                      base::BindOnce(&TaskService::OnReplanned,
+                                     weak_factory_.GetWeakPtr(), task_id));
 }
 
 bool TaskService::Approve(const TaskId& task_id,
@@ -556,8 +557,7 @@ bool TaskService::ProvideInput(const TaskId& task_id,
                                const std::string& step_id,
                                base::DictValue input) {
   ActiveTask* task = FindTask(task_id);
-  if (!task || !task->execution ||
-      task->pending_approval_step != step_id) {
+  if (!task || !task->execution || task->pending_approval_step != step_id) {
     return false;
   }
   const PlanStep* pending = nullptr;
@@ -572,9 +572,9 @@ bool TaskService::ProvideInput(const TaskId& task_id,
       !ValidTaskInput(input, &serialized)) {
     return false;
   }
-  const std::string context =
-      task->planning_goal + "\n\nUser-provided input for the pending step " +
-      step_id + ": " + serialized;
+  const std::string context = task->planning_goal +
+                              "\n\nUser-provided input for the pending step " +
+                              step_id + ": " + serialized;
   if (context.size() > kMaxPlanningContextBytes ||
       task->replans_used >= task->execution->plan().budgets.max_replans) {
     return false;
@@ -592,10 +592,10 @@ bool TaskService::ProvideInput(const TaskId& task_id,
   task->pending_approval_prompt.clear();
   task->pending_user_input = false;
   NotifyUpdated(task_id);
-  planner_->BuildPlan(
-      task->planning_goal, task->context, task->use_model, task->prefer_local,
-      base::BindOnce(&TaskService::OnReplanned,
-                     weak_factory_.GetWeakPtr(), task_id));
+  planner_->BuildPlan(task->planning_goal, task->context, task->use_model,
+                      task->prefer_local,
+                      base::BindOnce(&TaskService::OnReplanned,
+                                     weak_factory_.GetWeakPtr(), task_id));
   return true;
 }
 

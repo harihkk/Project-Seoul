@@ -26,6 +26,7 @@ test("seoul_themes_unittests") {
   deps = [
     ":themes_core",
     "//base",
+    "//base/test:run_all_unittests",
     "//base/test:test_support",
     "//testing/gtest",
   ]

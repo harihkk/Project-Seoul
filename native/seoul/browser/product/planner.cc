@@ -18,6 +18,17 @@ namespace seoul {
 
 namespace {
 
+bool IsStopWord(std::string_view token) {
+  // These function words carry no capability intent. Leaving them in lets a
+  // verbose description win because it says "in the current window", even
+  // when the goal's explicit operation is "list tabs".
+  static constexpr std::string_view kStopWords[] = {
+      "an", "and", "as", "at", "be", "by",   "for", "from", "in", "into",
+      "is", "it",  "of", "on", "or", "that", "the", "this", "to", "with",
+  };
+  return std::ranges::find(kStopWords, token) != std::end(kStopWords);
+}
+
 // Lowercased word tokens of length >= 2. Generic lexical tokenization; the
 // vocabulary comes entirely from the goal and the registered descriptors.
 std::vector<std::string> Tokenize(std::string_view text) {
@@ -28,13 +39,13 @@ std::vector<std::string> Tokenize(std::string_view text) {
       current.push_back(
           static_cast<char>(std::tolower(static_cast<unsigned char>(c))));
     } else if (!current.empty()) {
-      if (current.size() >= 2) {
+      if (current.size() >= 2 && !IsStopWord(current)) {
         tokens.push_back(current);
       }
       current.clear();
     }
   }
-  if (current.size() >= 2) {
+  if (current.size() >= 2 && !IsStopWord(current)) {
     tokens.push_back(current);
   }
   return tokens;
@@ -91,7 +102,7 @@ std::string FirstUrlInGoal(const std::string& goal) {
 // it). Other required kinds are left unset and surface as validation
 // failures rather than fabricated values.
 base::DictValue SynthesizeArgs(const ToolSchema& schema,
-                                 const std::string& goal) {
+                               const std::string& goal) {
   base::DictValue args;
   for (const SchemaField& field : schema.fields) {
     if (!field.required) {
@@ -220,18 +231,34 @@ PlannerResult Planner::BuildDeterministic(
   const std::set<std::string> goal_tokens(goal_token_list.begin(),
                                           goal_token_list.end());
   const ToolDescriptor* best = nullptr;
+  base::DictValue best_args;
   double best_score = 0.0;
+  bool had_relevant_but_unsatisfied_candidate = false;
   for (const ToolDescriptor* descriptor : capabilities) {
     const double score = ScoreCapability(goal_tokens, *descriptor);
+    if (score <= 0.0) {
+      continue;
+    }
+    base::DictValue args = SynthesizeArgs(descriptor->input_schema, goal);
+    // A high lexical match is not actionable when its required arguments
+    // cannot be obtained from the goal. Keep looking for the next valid
+    // capability instead of rejecting the entire deterministic plan.
+    if (!ValidateArgs(descriptor->input_schema, args).has_value()) {
+      had_relevant_but_unsatisfied_candidate = true;
+      continue;
+    }
     if (score > best_score) {
       best_score = score;
       best = descriptor;
+      best_args = std::move(args);
     }
   }
   if (!best || best_score <= 0.0) {
-    result.failure =
-        "No available capability matches the request; connect a capability "
-        "that covers it.";
+    result.failure = had_relevant_but_unsatisfied_candidate
+                         ? "A relevant capability was found, but the request "
+                           "did not include its required arguments."
+                         : "No available capability matches the request; "
+                           "connect a capability that covers it.";
     return result;
   }
 
@@ -241,7 +268,7 @@ PlannerResult Planner::BuildDeterministic(
   step.id = "step_1";
   step.kind = PlanStepKind::kToolCall;
   step.tool = best->id;
-  step.args = SynthesizeArgs(best->input_schema, goal);
+  step.args = std::move(best_args);
   plan.steps.push_back(std::move(step));
   EnforceApprovalPolicy(plan, registry_.get());
 

@@ -26,6 +26,7 @@ test("seoul_scenes_unittests") {
   deps = [
     ":scenes_core",
     "//base",
+    "//base/test:run_all_unittests",
     "//base/test:test_support",
     "//seoul/browser/tools:tools_core",
     "//testing/gtest",

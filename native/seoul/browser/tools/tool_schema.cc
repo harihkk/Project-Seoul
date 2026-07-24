@@ -68,8 +68,10 @@ bool WellFormedFields(const std::vector<SchemaField>& fields, size_t depth) {
         }
         break;
       case SchemaFieldKind::kObject:
-        if (field.children.empty() ||
-            !WellFormedFields(field.children, depth + 1)) {
+        // An empty object schema is a valid strict empty object. This is
+        // useful for opaque output envelopes while preserving the runtime's
+        // undeclared-key rejection when validation is requested.
+        if (!WellFormedFields(field.children, depth + 1)) {
           return false;
         }
         break;

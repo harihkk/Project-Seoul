@@ -59,8 +59,8 @@ source_set("shell_chromium") {
 
   deps = [
     "//base",
-    "//chrome/browser/ui/views/tabs/vertical",
     "//chrome/browser/ui/side_panel",
+    "//chrome/browser/ui/views/tabs/vertical",
     "//components/constrained_window",
     "//components/sessions:session_id",
     "//components/vector_icons",
@@ -86,6 +86,7 @@ test("seoul_shell_core_unittests") {
   deps = [
     ":shell_core",
     "//base",
+    "//base/test:run_all_unittests",
     "//base/test:test_support",
     "//seoul/browser/organization:organization_model",
     "//testing/gtest",
@@ -95,10 +96,12 @@ test("seoul_shell_core_unittests") {
 
 source_set("shell_browser_tests") {
   testonly = true
+  defines = [ "HAS_OUT_OF_PROC_TEST_RUNNER" ]
   sources = [ "shell_browsertest.cc" ]
   deps = [
     ":shell_chromium",
     "//chrome/browser:browser_public_dependencies",
+    "//chrome/browser/profiles:profile",
     "//chrome/browser/ui/tabs",
     "//chrome/test:test_support",
     "//content/test:test_support",

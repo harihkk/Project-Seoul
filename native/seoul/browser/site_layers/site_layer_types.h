@@ -80,7 +80,9 @@ struct SiteLayer {
   int schema_version = kSiteLayerSchemaVersion;
   std::string id;
   std::string name;
-  std::string origin_pattern;  // "https://example.com" or "*.example.com"
+  // Exact web origin ("https://example.com", "http://localhost:3000") or a
+  // scheme-agnostic host wildcard ("*.example.com").
+  std::string origin_pattern;
   std::string scene_scope;     // optional Scene id
   bool enabled = true;
   std::vector<SiteAdjustment> adjustments;

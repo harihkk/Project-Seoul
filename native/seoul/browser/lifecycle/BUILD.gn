@@ -52,8 +52,8 @@ source_set("lifecycle") {
     "//chrome/browser/ui/browser_window",
     "//chrome/browser/ui/tabs",
     "//chrome/browser/ui/tabs:tab_strip",
-    "//components/sessions:session_id",
     "//components/sessions",
+    "//components/sessions:session_id",
     "//components/split_tabs",
     "//components/tabs:public",
     "//content/public/browser",
@@ -75,6 +75,7 @@ test("seoul_lifecycle_core_unittests") {
   deps = [
     ":lifecycle_core",
     "//base",
+    "//base/test:run_all_unittests",
     "//base/test:test_support",
     "//seoul/browser/organization:organization_model",
     "//testing/gtest",
@@ -87,6 +88,7 @@ test("seoul_lifecycle_state_unittests") {
   deps = [
     ":lifecycle",
     "//base",
+    "//base/test:run_all_unittests",
     "//base/test:test_support",
     "//testing/gtest",
   ]

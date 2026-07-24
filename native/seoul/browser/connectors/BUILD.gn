@@ -55,6 +55,7 @@ test("seoul_connectors_unittests") {
     ":connectors_core",
     ":connectors_test_support",
     "//base",
+    "//base/test:run_all_unittests",
     "//base/test:test_support",
     "//seoul/browser/data:data_core",
     "//seoul/browser/semantic:semantic_core",

@@ -76,6 +76,7 @@ test("seoul_organization_unittests") {
   deps = [
     ":organization_model",
     "//base",
+    "//base/test:run_all_unittests",
     "//base/test:test_support",
     "//testing/gtest",
   ]

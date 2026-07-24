@@ -42,6 +42,7 @@ struct NextAction {
     kRunStep,
     kAwaitApproval,
     kAwaitInput,
+    kWait,
     kCompleted,
     kStopped,
   };
@@ -115,8 +116,7 @@ class TaskExecution {
   // submitting" completes the rest of the plan.
   NextAction RecordApproval(const std::string& step_id, bool approved);
   // Typed user input for a kUserInput step.
-  NextAction RecordUserInput(const std::string& step_id,
-                             base::DictValue input);
+  NextAction RecordUserInput(const std::string& step_id, base::DictValue input);
   // Observation + verification for a running step; returns the decision.
   ExecutionDecision RecordStepOutcome(const std::string& step_id,
                                       const StepOutcome& outcome);

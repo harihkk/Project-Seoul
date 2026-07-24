@@ -23,6 +23,7 @@ test("seoul_data_unittests") {
   deps = [
     ":data_core",
     "//base",
+    "//base/test:run_all_unittests",
     "//base/test:test_support",
     "//testing/gtest",
   ]

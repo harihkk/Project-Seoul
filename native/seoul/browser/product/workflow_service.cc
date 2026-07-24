@@ -60,9 +60,10 @@ std::vector<WorkflowId> WorkflowService::All() const {
   return out;
 }
 
-WorkflowStatusResult WorkflowService::AddNode(const WorkflowId& id,
-                                              WorkflowNode node,
-                                              const std::string& after_node_id) {
+WorkflowStatusResult WorkflowService::AddNode(
+    const WorkflowId& id,
+    WorkflowNode node,
+    const std::string& after_node_id) {
   auto it = workflows_.find(id);
   if (it == workflows_.end()) {
     return base::unexpected(WorkflowError::kUnknownNode);
@@ -118,6 +119,10 @@ std::optional<WorkflowId> WorkflowService::SaveTaskAsWorkflow(
     const TaskId& task_id,
     const std::string& name) {
   if (name.empty() || workflows_.size() >= kMaxWorkflows) {
+    return std::nullopt;
+  }
+  const std::optional<TaskSnapshot> snapshot = tasks_->Snapshot(task_id);
+  if (!snapshot.has_value() || snapshot->state != TaskState::kCompleted) {
     return std::nullopt;
   }
   const std::optional<Plan> plan = tasks_->PlanOf(task_id);

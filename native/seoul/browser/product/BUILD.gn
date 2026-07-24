@@ -11,10 +11,10 @@ source_set("product_core") {
   sources = [
     "capability_executor.cc",
     "capability_executor.h",
-    "plan_json.cc",
-    "plan_json.h",
     "page_field_safety.cc",
     "page_field_safety.h",
+    "plan_json.cc",
+    "plan_json.h",
     "planner.cc",
     "planner.h",
     "provider_registry.cc",
@@ -73,6 +73,7 @@ test("seoul_product_unittests") {
   deps = [
     ":product_core",
     "//base",
+    "//base/test:run_all_unittests",
     "//base/test:test_support",
     "//seoul/browser/context:context_core",
     "//seoul/browser/intelligence:intelligence_core",

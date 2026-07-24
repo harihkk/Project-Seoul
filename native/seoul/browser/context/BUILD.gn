@@ -19,6 +19,7 @@ test("seoul_context_unittests") {
   deps = [
     ":context_core",
     "//base",
+    "//base/test:run_all_unittests",
     "//base/test:test_support",
     "//testing/gtest",
   ]

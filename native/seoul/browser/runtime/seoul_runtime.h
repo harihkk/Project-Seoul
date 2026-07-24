@@ -41,10 +41,6 @@ class SeoulRuntime {
   SeoulRuntime& operator=(const SeoulRuntime&) = delete;
   ~SeoulRuntime();
 
-  // Registers the built-in browser/information/file capabilities into the
-  // capability graph. Idempotent-safe to call once at construction.
-  void RegisterBuiltinCapabilities();
-
   ToolRegistry& capabilities() { return capabilities_; }
   ConnectorRegistry& connectors() { return connectors_; }
   const ConnectorRegistry& connectors() const { return connectors_; }
@@ -60,6 +56,10 @@ class SeoulRuntime {
   void Shutdown();
 
  private:
+  // Construction-only: callers cannot accidentally perform a second,
+  // partially ignored registration pass.
+  void RegisterBuiltinCapabilities();
+
   ToolRegistry capabilities_;
   ConnectorRegistry connectors_;
   SceneRegistry scenes_;

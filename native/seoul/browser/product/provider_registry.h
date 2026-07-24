@@ -34,6 +34,8 @@
 
 namespace seoul {
 
+inline constexpr char kCloudReasoningCredentialAccount[] = "cloud_reasoning";
+
 struct ProviderStateSnapshot {
   ProviderStateSnapshot();
   ProviderStateSnapshot(const ProviderStateSnapshot&);
@@ -72,6 +74,7 @@ class ProviderRegistry {
   void ClearLocal();
   bool ConfigureCloud(const std::string& model_id, bool enabled);
   void SetCloudEnabled(bool enabled);
+  void ClearCloud();
 
   // Health check against the local endpoint (GET <endpoint>/models). Also
   // refreshes the discovered model list. The callback reports reachability.

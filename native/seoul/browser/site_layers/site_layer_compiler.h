@@ -21,7 +21,8 @@ namespace seoul {
 // escapes, no braces or at-signs.
 bool IsSafeSelector(const std::string& selector);
 
-// True when `origin` is "https://host[:port]" or "*.host" (host label glob).
+// True when `origin` is "http(s)://host[:port]" or "*.host" (host label
+// glob). Other schemes and origins containing paths/credentials are rejected.
 bool IsValidOriginPattern(const std::string& origin);
 
 // Stable layer id used by registries and Scenes. Lowercase slug with digits,

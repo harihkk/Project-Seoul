@@ -7,6 +7,7 @@
 #ifndef SEOUL_BROWSER_INTELLIGENCE_HTTP_TRANSPORT_H_
 #define SEOUL_BROWSER_INTELLIGENCE_HTTP_TRANSPORT_H_
 
+#include <cstddef>
 #include <string>
 #include <vector>
 
@@ -43,6 +44,9 @@ struct HttpRequest {
   std::vector<HttpHeader> headers;
   std::string body;  // JSON request body
   bool expect_event_stream = false;  // server-sent events response
+  // Callers can select a tighter response limit for small control-plane
+  // requests. The concrete transport still enforces its absolute ceiling.
+  size_t max_response_bytes = 32 * 1024 * 1024;
 };
 
 // Streaming callbacks. `on_chunk` delivers raw response bytes as they arrive

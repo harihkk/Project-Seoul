@@ -14,6 +14,22 @@ namespace seoul {
 namespace {
 
 constexpr char kDefaultVoice[] = "marin";
+constexpr size_t kMaxRealtimeSessionResponseBytes = 1024 * 1024;
+constexpr size_t kMaxCredentialBytes = 16 * 1024;
+constexpr size_t kMaxSafetyIdentifierBytes = 256;
+constexpr size_t kMaxClientSecretBytes = 16 * 1024;
+
+bool IsValidSafetyIdentifier(std::string_view value) {
+  if (value.size() > kMaxSafetyIdentifierBytes) {
+    return false;
+  }
+  for (const unsigned char character : value) {
+    if (character < 0x21 || character > 0x7e) {
+      return false;
+    }
+  }
+  return true;
+}
 
 // The provider host is assembled from fragments rather than written as one
 // literal so its brand name never appears verbatim in Seoul's source; the
@@ -90,11 +106,21 @@ void RealtimeVoiceAgent::CreateSession(
     std::move(callback).Run(base::unexpected(last_error_));
     return;
   }
+  if (!IsValidSafetyIdentifier(safety_identifier)) {
+    last_error_ = "Realtime safety identifier is invalid.";
+    std::move(callback).Run(base::unexpected(last_error_));
+    return;
+  }
   std::optional<std::string> key =
       credentials_->Get(kRealtimeVoiceCredentialAccount);
   if (!key.has_value() || key->empty()) {
     last_error_ =
         "Realtime voice key is missing from the OS credential store.";
+    std::move(callback).Run(base::unexpected(last_error_));
+    return;
+  }
+  if (key->size() > kMaxCredentialBytes) {
+    last_error_ = "Realtime voice credential is invalid.";
     std::move(callback).Run(base::unexpected(last_error_));
     return;
   }
@@ -112,12 +138,24 @@ void RealtimeVoiceAgent::CreateSession(
   base::DictValue body;
   body.Set("session", BuildSessionConfig());
   request.body = JsonString(std::move(body));
+  request.max_response_bytes = kMaxRealtimeSessionResponseBytes;
 
   auto response_body = std::make_unique<std::string>();
   std::string* response_body_ptr = response_body.get();
   HttpStreamCallbacks callbacks;
   callbacks.on_chunk = base::BindRepeating(
-      [](std::string* out, std::string_view chunk) { out->append(chunk); },
+      [](std::string* out, std::string_view chunk) {
+        if (out->size() > kMaxRealtimeSessionResponseBytes) {
+          return;
+        }
+        const size_t remaining =
+            kMaxRealtimeSessionResponseBytes - out->size();
+        if (chunk.size() > remaining) {
+          out->resize(kMaxRealtimeSessionResponseBytes + 1);
+          return;
+        }
+        out->append(chunk);
+      },
       response_body_ptr);
   callbacks.on_complete = base::BindOnce(
       &RealtimeVoiceAgent::OnCreateSessionResponse,
@@ -231,6 +269,11 @@ void RealtimeVoiceAgent::OnCreateSessionResponse(
     std::move(callback).Run(base::unexpected(last_error_));
     return;
   }
+  if (body && body->size() > kMaxRealtimeSessionResponseBytes) {
+    last_error_ = "Realtime session response exceeded the size bound.";
+    std::move(callback).Run(base::unexpected(last_error_));
+    return;
+  }
   if (http_status < 200 || http_status >= 300) {
     last_error_ = ErrorSummary(http_status, body ? *body : std::string());
     std::move(callback).Run(base::unexpected(last_error_));
@@ -251,7 +294,7 @@ void RealtimeVoiceAgent::OnCreateSessionResponse(
   if (!value || value->empty()) {
     value = root.FindString("value");
   }
-  if (!value || value->empty()) {
+  if (!value || value->empty() || value->size() > kMaxClientSecretBytes) {
     last_error_ = "Realtime session did not include a client secret.";
     std::move(callback).Run(base::unexpected(last_error_));
     return;

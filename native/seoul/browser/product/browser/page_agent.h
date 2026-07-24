@@ -11,6 +11,7 @@
 
 #include <cstdint>
 #include <map>
+#include <memory>
 #include <optional>
 #include <string>
 #include <vector>
@@ -26,6 +27,8 @@ class WebContents;
 }
 
 namespace seoul {
+
+class PageAgentTabObserver;
 
 // A bounded semantic observation of one document: identity plus visible
 // accessible elements. No raw HTML, no coordinates.
@@ -154,6 +157,8 @@ class PageAgent {
 
   WebContentsResolver resolver_;
   std::map<LiveTabKey, TabGeneration> tabs_;
+  std::map<LiveTabKey, std::unique_ptr<PageAgentTabObserver>>
+      navigation_observers_;
   base::WeakPtrFactory<PageAgent> weak_factory_{this};
 };
 

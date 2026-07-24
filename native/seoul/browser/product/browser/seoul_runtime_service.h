@@ -38,8 +38,9 @@
 #include "seoul/browser/lifecycle/lifecycle_identity.h"
 #include "seoul/browser/lifecycle/live_window_state.h"
 #include "seoul/browser/policy/agent_permission_service.h"
-#include "seoul/browser/product/capability_executor.h"
+#include "seoul/browser/preview/preview_manager.h"
 #include "seoul/browser/product/browser/page_agent.h"
+#include "seoul/browser/product/capability_executor.h"
 #include "seoul/browser/product/planner.h"
 #include "seoul/browser/product/provider_registry.h"
 #include "seoul/browser/product/realtime_voice_agent.h"
@@ -49,8 +50,8 @@
 #include "seoul/browser/product/thread_service.h"
 #include "seoul/browser/product/voice_runtime_controller.h"
 #include "seoul/browser/product/workflow_service.h"
-#include "seoul/browser/preview/preview_manager.h"
 #include "seoul/browser/runtime/seoul_runtime.h"
+#include "seoul/browser/site_layers/site_layer_types.h"
 #include "seoul/browser/tools/tool_registry.h"
 
 class PrefService;
@@ -72,14 +73,15 @@ class CredentialStore;
 class HttpTransport;
 class SceneRegistry;
 class SiteLayerRegistry;
+class SiteLayerApplicator;
 class ThemeRegistry;
 class LibraryService;
 class PersistenceScheduler;
 class PreviewHostService;
 
 // Single dict pref holding the bounded product state (pinned surfaces, Library,
-// threads, workflows, Scenes, Themes, Site Layers, provider settings). Secrets are
-// excluded by construction.
+// threads, workflows, Scenes, Themes, Site Layers, provider settings). Secrets
+// are excluded by construction.
 inline constexpr char kProductRuntimePref[] = "seoul.product.v1";
 
 using WindowRuntimeBindingToken = base::UnguessableToken;
@@ -120,6 +122,12 @@ class SeoulRuntimeService : public KeyedService,
   PreviewManager* previews() { return preview_manager_.get(); }
   PreviewHostService* preview_host() { return preview_host_service_.get(); }
   ToolRegistry& capabilities() { return runtime_.capabilities(); }
+  // Exact runtime invariant used by diagnostics and integration tests: an
+  // available descriptor is runnable only when the matching version has a
+  // concrete executor.
+  bool HasCapabilityExecutor(const ToolId& id, int version) const {
+    return executors_.Find(id, version) != nullptr;
+  }
   SceneRegistry* scenes() { return &runtime_.scenes(); }
   ThemeRegistry* themes() { return themes_.get(); }
   PageAgent* page_agent() { return page_agent_.get(); }
@@ -129,6 +137,7 @@ class SeoulRuntimeService : public KeyedService,
   AgentPermissionService* agent_permissions() {
     return agent_permissions_.get();
   }
+  LiveWindowStateProvider* live_window_state_provider() const;
 
   // The permission context for a user-initiated turn in `window`, built from
   // provider availability and the connected connector providers.
@@ -142,6 +151,8 @@ class SeoulRuntimeService : public KeyedService,
   std::optional<LiveWindowKey> ResolveWindowBinding(
       const WindowRuntimeBindingToken& token) const;
   void InvalidateWindowBinding(const WindowRuntimeBindingToken& token);
+  std::optional<LiveTabDescriptor> ActiveTabDescriptor(
+      const LiveWindowKey& window) const;
 
   // Entry point for a text goal from Canvas/voice: plans and runs a task in
   // `window`, returning the task id. The final semantic result flows to the
@@ -154,6 +165,24 @@ class SeoulRuntimeService : public KeyedService,
       const std::string& safety_identifier,
       RealtimeVoiceAgent::CreateSessionCallback callback);
   RealtimeVoiceAgentSnapshot RealtimeVoiceSnapshot() const;
+
+  // Validated Site Layer mutations. Successful changes persist through the
+  // profile owner and are applied immediately to every matching live page.
+  SiteLayerStatusResult UpsertSiteLayer(SiteLayer layer);
+  SiteLayerStatusResult RemoveSiteLayer(const std::string& layer_id);
+  void RefreshSiteLayers();
+
+  // Studio provider settings. Local endpoints remain loopback-only; cloud and
+  // realtime secrets are written only to the OS credential store and are
+  // never persisted in the product pref or returned to Canvas.
+  bool ConfigureLocalProvider(const std::string& endpoint_url,
+                              const std::string& model_id);
+  void ClearLocalProvider();
+  bool ConfigureCloudProvider(const std::string& model_id,
+                              bool enabled,
+                              const std::string& reasoning_secret,
+                              const std::string& voice_secret);
+  bool ClearCloudProviderAndCredentials();
 
   // Runs one already-chosen capability with an explicit typed payload as a
   // single-step task. A surface action that declared a tool_call executes
@@ -176,8 +205,7 @@ class SeoulRuntimeService : public KeyedService,
  private:
   // LiveWindowStateObserver. Revocation follows the browser lifecycle rather
   // than any particular Canvas document or surface binding.
-  void OnLiveWindowSnapshotChanged(
-      const LiveWindowSnapshot& snapshot) override;
+  void OnLiveWindowSnapshotChanged(const LiveWindowSnapshot& snapshot) override;
   void OnLiveWindowRemoved(LiveWindowKey window) override;
   // TaskServiceObserver: publishes only bounded state counts into the native
   // shell. Detailed goals, prompts, receipts, and results stay in TaskService.
@@ -251,6 +279,8 @@ class SeoulRuntimeService : public KeyedService,
 
   std::map<WindowRuntimeBindingToken, WindowBindingRecord> window_bindings_;
   std::map<LiveWindowKey, std::set<LiveTabKey>> live_tabs_by_window_;
+  std::map<LiveTabKey, std::unique_ptr<SiteLayerApplicator>>
+      site_layer_applicators_;
   base::ScopedObservation<LiveWindowStateProvider, LiveWindowStateObserver>
       live_window_observation_{this};
   bool shutting_down_ = false;
