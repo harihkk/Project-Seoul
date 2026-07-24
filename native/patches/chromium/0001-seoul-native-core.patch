@@ -636,3 +636,42 @@ index 4b2eaadc7f..1703f64104 100644
    # Determine if there is a Lit and/or Polymer dependency. This information is
    # used for determining the default template for html_to_wrapper() as well as
    # the default tsconfig file for ts_library().
+diff --git a/chrome/chrome_paks.gni b/chrome/chrome_paks.gni
+index a6db77c726..deea879efa 100644
+--- a/chrome/chrome_paks.gni
++++ b/chrome/chrome_paks.gni
+@@ -152,6 +152,7 @@ template("chrome_extra_paks") {
+       "$root_gen_dir/content/quota_internals_resources.pak",
+       "$root_gen_dir/mojo/public/js/mojo_bindings_resources.pak",
+       "$root_gen_dir/net/net_resources.pak",
++      "$root_gen_dir/seoul/seoul_canvas_resources.pak",
+       "$root_gen_dir/third_party/blink/public/resources/blink_resources.pak",
+       "$root_gen_dir/third_party/blink/public/resources/inspector_overlay_resources.pak",
+       "$root_gen_dir/third_party/blink/public/strings/permission_element_generated_strings.pak",
+@@ -188,6 +189,7 @@ template("chrome_extra_paks") {
+       "//content/browser/resources",
+       "//mojo/public/js:resources",
+       "//net:net_resources",
++      "//seoul/browser/canvas/resources",
+       "//third_party/blink/public:devtools_inspector_resources",
+       "//third_party/blink/public:resources",
+       "//third_party/blink/public/strings:permission_element_generated_strings",
+diff --git a/chrome/browser/chrome_browser_interface_binders_webui_parts_desktop.cc b/chrome/browser/chrome_browser_interface_binders_webui_parts_desktop.cc
+index 84b5bdb527..a95f64c9b4 100644
+--- a/chrome/browser/chrome_browser_interface_binders_webui_parts_desktop.cc
++++ b/chrome/browser/chrome_browser_interface_binders_webui_parts_desktop.cc
+@@ -132,6 +132,7 @@
+ #include "mojo/public/cpp/bindings/binder_map.h"
+ #include "mojo/public/cpp/bindings/pending_receiver.h"
+ #include "mojo/public/cpp/bindings/self_owned_receiver.h"
++#include "seoul/browser/canvas/seoul_canvas_ui.h"
+ #include "ui/webui/color_change_listener/color_change_handler.h"
+ #include "ui/webui/resources/cr_components/app_management/app_management.mojom.h"
+ #include "ui/webui/resources/cr_components/color_change_listener/color_change_listener.mojom.h"
+@@ -637,4 +638,6 @@ void PopulateChromeWebUIFrameInterfaceBrokersTrustedPartsDesktop(
+ void PopulateChromeWebUIFrameInterfaceBrokersTrustedPartsDesktop(
+     content::WebUIBrowserInterfaceBrokerRegistry& registry) {
++  registry.ForWebUI<seoul::SeoulCanvasUI>()
++      .Add<seoul::canvas::mojom::PageHandlerFactory>();
+   // Note: The MetricsReporterService & ColorChangeListener are available to all
+   // WebUIs in the registry

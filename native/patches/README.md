@@ -14,8 +14,14 @@ Files:
   `baseRevision` must equal the pinned revision in `../chromium.lock.json`.
 - `chromium/` - the actual `.patch` files referenced by the manifest.
 
-**This baseline contains zero Chromium patches.** When a Chromium modification
-becomes unavoidable it must be:
+The current series contains two patches:
+
+- `0001-seoul-native-core.patch` wires Seoul's native services, Canvas, shell,
+  Preview, resources, and browser tests into the pinned Chromium tree.
+- `0002-seoul-product-defaults.patch` makes the vertical workspace shell the
+  fresh-profile default and updates the relevant upstream controller tests.
+
+Every Chromium modification must remain:
 
 - **Minimal** - the smallest change that achieves the goal; never a broad refactor.
 - **Documented** - the manifest entry records description, rationale, and the

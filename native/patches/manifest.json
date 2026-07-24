@@ -2,7 +2,7 @@
   "schemaVersion": 1,
   "baseRevision": "6a7b3dbec3b2ca25877c2553b5473b2f277ef644",
   "patchDir": "native/patches/chromium",
-  "description": "Single coherent Chromium integration patch for Project Seoul native core V1. Materialize native/seoul/ first, then apply. Wires organization and lifecycle circular-implementation targets into //chrome/browser and registers the profile-keyed factory once.",
+  "description": "Ordered Chromium integration patches for the Project Seoul native product. Materialize native/seoul/ first, then apply. The series wires the native services and product surfaces into Chromium and makes Seoul's vertical workspace shell the fresh-profile default.",
   "entrySchema": {
     "id": "unique stable identifier (kebab-case)",
     "description": "what the patch does",
@@ -21,7 +21,7 @@
   "patches": [
     {
       "id": "seoul-native-core",
-      "description": "Wire Seoul organization, lifecycle, command, projection, shell, product-runtime, and canvas targets into //chrome/browser (deps + allow_circular_includes_from); register SeoulOrganizationServiceFactory and SeoulRuntimeServiceFactory once at profile-service init; register Seoul projection and shell against VerticalTabStripRegionView only AFTER RootTabCollectionNode::Init() and unregister them at the start of ResetTabStrip; expose a production GetSeoulRootNode() accessor (no testing-only accessor in production); forward collapse-state changes to the shell; register the SeoulCanvasUIConfig (chrome://seoul-canvas), package its resources, register one regular-profile kSeoulCanvas side-panel entry per window, and pass the browser binding to the Shell so its launcher opens that exact entry; add a localized, DLP-gated Preview Link command to the regular-profile link context menu and route its exact source WebContents to PreviewHostService; and wire the Seoul in-process browser-test source_sets into //chrome/test:browser_tests.",
+      "description": "Wire Seoul organization, lifecycle, command, projection, shell, product-runtime, and canvas targets into //chrome/browser (deps + allow_circular_includes_from); register SeoulOrganizationServiceFactory and SeoulRuntimeServiceFactory once at profile-service init; register Seoul projection and shell against VerticalTabStripRegionView only AFTER RootTabCollectionNode::Init() and unregister them at the start of ResetTabStrip; expose a production GetSeoulRootNode() accessor (no testing-only accessor in production); forward collapse-state changes to the shell; register the SeoulCanvasUIConfig (chrome://seoul-canvas), expose its typed Mojo factory only to that trusted controller, generate and merge its resources into Chromium's runtime resources.pak, register one regular-profile kSeoulCanvas side-panel entry per window, and pass the browser binding to the Shell so its launcher opens that exact entry; add a localized, DLP-gated Preview Link command to the regular-profile link context menu and route its exact source WebContents to PreviewHostService; and wire the Seoul in-process browser-test source_sets into //chrome/test:browser_tests.",
       "rationale": "Chromium-facing Seoul glue includes //chrome/browser headers and must use the browser_public_dependencies circular-implementation pattern. A single patch avoids duplicate lifecycle linkage (organization already depends on lifecycle transitively), keeps factory registration in one place, and adds Preview at Chromium's existing typed link-command seam instead of intercepting or guessing page gestures.",
       "baseRevision": "6a7b3dbec3b2ca25877c2553b5473b2f277ef644",
       "order": 1,
@@ -29,7 +29,9 @@
       "affectedPaths": [
         "chrome/app/chrome_command_ids.h",
         "chrome/app/generated_resources.grd",
+        "chrome/chrome_paks.gni",
         "chrome/browser/BUILD.gn",
+        "chrome/browser/chrome_browser_interface_binders_webui_parts_desktop.cc",
         "chrome/browser/profiles/chrome_browser_main_extra_parts_profiles.cc",
         "chrome/browser/renderer_context_menu/render_view_context_menu.cc",
         "chrome/browser/resources/BUILD.gn",
@@ -48,9 +50,29 @@
         "ui/webui/resources/tools/build_webui.gni"
       ],
       "dependencies": [],
-      "sha256": "80fea6e1fbb5f9d828e939c866230a07aaa484dd488ec9a59a7b38ed16a53754",
+      "sha256": "868d3854973988d0f507b8b0bc4f57df62b195125c843b64bec1514a048e8c47",
       "applyVerify": "materialize.sh apply; git -C $SEOUL_CHROMIUM_ROOT/src apply --check native/patches/chromium/0001-seoul-native-core.patch",
       "reverseVerify": "git -C $SEOUL_CHROMIUM_ROOT/src apply -R native/patches/chromium/0001-seoul-native-core.patch",
+      "reviewable": true
+    },
+    {
+      "id": "seoul-product-defaults",
+      "description": "Enable Chromium's vertical-tabs infrastructure and its fresh-profile preferences by default so every normal Seoul window starts on the product's vertical workspace shell without a hidden command-line flag or onboarding toggle; update the upstream controller tests to assert and explicitly isolate the new defaults.",
+      "rationale": "Seoul's shell is registered on VerticalTabStripRegionView. Leaving upstream's feature and preference defaults off would ship a working implementation that fresh users never see. A separate, reviewable defaults patch keeps this intentional product fork policy distinct from the mechanical integration patch and preserves the user's ability to switch layouts later.",
+      "baseRevision": "6a7b3dbec3b2ca25877c2553b5473b2f277ef644",
+      "order": 2,
+      "file": "0002-seoul-product-defaults.patch",
+      "affectedPaths": [
+        "chrome/browser/ui/tabs/features.cc",
+        "chrome/browser/ui/tabs/tab_strip_prefs.cc",
+        "chrome/browser/ui/tabs/vertical_tab_strip_state_controller_unittest.cc"
+      ],
+      "dependencies": [
+        "seoul-native-core"
+      ],
+      "sha256": "dc31706257dab68d613296c9daa9eede9dac5232e7dbcbf93dda1191828f1466",
+      "applyVerify": "git -C $SEOUL_CHROMIUM_ROOT/src apply --check native/patches/chromium/0002-seoul-product-defaults.patch after applying 0001-seoul-native-core.patch",
+      "reverseVerify": "git -C $SEOUL_CHROMIUM_ROOT/src apply -R native/patches/chromium/0002-seoul-product-defaults.patch",
       "reviewable": true
     }
   ]
