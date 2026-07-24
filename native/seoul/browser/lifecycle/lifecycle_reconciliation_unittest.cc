@@ -51,10 +51,12 @@ class ReconciliationTest : public testing::Test {
   }
   // Simulate state loaded from prefs before reconciliation.
   void PreloadMembership(int t) {
-    model_.EnsureDefaultWorkspace();
-    model_.AddTabMembership(model_.default_workspace(),
-                            LiveTabKey::FromSessionId(t).value(),
-                            TabRole::kPinned);
+    CHECK(model_.EnsureDefaultWorkspace().has_value());
+    CHECK(model_
+              .AddTabMembership(model_.default_workspace(),
+                                LiveTabKey::FromSessionId(t).value(),
+                                TabRole::kPinned)
+              .has_value());
   }
 
   base::Time now_ = base::Time::UnixEpoch() + base::Seconds(1000);
@@ -131,7 +133,10 @@ TEST_F(ReconciliationTest, InterruptedReconciliationKeepsConsistentState) {
   coordinator_.OnNormalizedEvent(RestoredTab(1, 50));
   // No completion event arrives (interrupted).
   EXPECT_TRUE(coordinator_.is_reconciling());
-  EXPECT_TRUE(HasTab(50));
+  // An unmatched restored tab is not fabricated into durable organization
+  // state, even when reconciliation is interrupted.
+  EXPECT_FALSE(HasTab(50));
+  EXPECT_EQ(0u, MembershipCount());
   EXPECT_EQ(1u, coordinator_.known_window_count());
 }
 

@@ -15,12 +15,15 @@ namespace {
 
 OrganizationSnapshot BuildPopulatedSnapshot() {
   OrganizationModel model;
-  model.EnsureDefaultWorkspace();
+  CHECK(model.EnsureDefaultWorkspace().has_value());
   WorkspaceId work = model.CreateWorkspace("Work").value();
-  model.AddTabMembership(work, "tab-a", TabRole::kPinned);
-  model.AddTabMembership(work, "tab-b", TabRole::kRetained);
-  model.CreateSplitGroup(work, {"tab-a", "tab-b"}, 0.5, "token");
-  model.CreateOrUpdateEssential(EssentialId(), "Mail", "https://mail.test/");
+  CHECK(model.AddTabMembership(work, "tab-a", TabRole::kPinned).has_value());
+  CHECK(model.AddTabMembership(work, "tab-b", TabRole::kRetained).has_value());
+  CHECK(model.CreateSplitGroup(work, {"tab-a", "tab-b"}, 0.5, "token")
+            .has_value());
+  CHECK(
+      model.CreateOrUpdateEssential(EssentialId(), "Mail", "https://mail.test/")
+          .has_value());
   return model.ToSnapshot();
 }
 

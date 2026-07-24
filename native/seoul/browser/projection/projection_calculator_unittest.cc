@@ -29,16 +29,21 @@ LiveWindowTabState MakeLive(const std::vector<std::pair<int, int>>& tabs) {
 TEST(ProjectionCalculatorTest, ProjectsSingleWorkspaceTabs) {
   OrganizationModel model(base::BindLambdaForTesting(
       []() { return base::Time::FromSecondsSinceUnixEpoch(100); }));
-  model.EnsureDefaultWorkspace();
+  ASSERT_TRUE(model.EnsureDefaultWorkspace().has_value());
   const WorkspaceId ws = model.default_workspace();
-  model.AddTabMembership(ws, Tab(10).value(), TabRole::kRetained);
-  model.AddTabMembership(ws, Tab(20).value(), TabRole::kTemporary);
+  ASSERT_TRUE(model.AddTabMembership(ws, Tab(10).value(), TabRole::kRetained)
+                  .has_value());
+  ASSERT_TRUE(model.AddTabMembership(ws, Tab(20).value(), TabRole::kTemporary)
+                  .has_value());
 
   LiveWindowTabState live = MakeLive({{10, 0}, {20, 1}, {30, 2}});
-  model.AddTabMembership(ws, Tab(30).value(), TabRole::kRetained);
+  ASSERT_TRUE(model.AddTabMembership(ws, Tab(30).value(), TabRole::kRetained)
+                  .has_value());
   const WorkspaceId other = model.CreateWorkspace("other").value();
-  model.MoveTabToWorkspace(model.FindMembershipIdByTabKey(Tab(30).value()),
-                           other);
+  ASSERT_TRUE(model
+                  .MoveTabToWorkspace(
+                      model.FindMembershipIdByTabKey(Tab(30).value()), other)
+                  .has_value());
 
   WindowProjection projection = ProjectionCalculator::Compute(
       model, live, ws, ProjectionGeneration(1), false);
@@ -48,7 +53,7 @@ TEST(ProjectionCalculatorTest, ProjectsSingleWorkspaceTabs) {
 
 TEST(ProjectionCalculatorTest, EmptyWorkspaceState) {
   OrganizationModel model;
-  model.EnsureDefaultWorkspace();
+  ASSERT_TRUE(model.EnsureDefaultWorkspace().has_value());
   LiveWindowTabState live = MakeLive({});
   WindowProjection projection = ProjectionCalculator::Compute(
       model, live, model.default_workspace(), ProjectionGeneration(1), false);
@@ -58,7 +63,7 @@ TEST(ProjectionCalculatorTest, EmptyWorkspaceState) {
 
 TEST(ProjectionCalculatorTest, FailOpenShowsAllTabs) {
   OrganizationModel model;
-  model.EnsureDefaultWorkspace();
+  ASSERT_TRUE(model.EnsureDefaultWorkspace().has_value());
   LiveWindowTabState live = MakeLive({{10, 0}, {20, 1}});
   WindowProjection projection = ProjectionCalculator::Compute(
       model, live, model.default_workspace(), ProjectionGeneration(1), true);

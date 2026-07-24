@@ -6,6 +6,7 @@
 #include <utility>
 
 #include "base/functional/bind.h"
+#include "base/test/bind.h"
 #include "base/test/task_environment.h"
 #include "base/time/time.h"
 #include "seoul/browser/tools/tool_schema.h"
@@ -176,18 +177,18 @@ TEST(TaskServicePlanningStateTest, PublishesWhileModelPlanningIsInFlight) {
   base::OnceCallback<void(std::optional<base::DictValue>, PlanOrigin)>
       pending_plan;
   Planner planner(
-      registry,
-      base::BindLambdaForTesting(
-          [&pending_plan](
-              const std::string& prompt, bool prefer_local,
-              base::OnceCallback<void(std::optional<base::DictValue>,
-                                      PlanOrigin)> callback) {
-            (void)prompt;
-            (void)prefer_local;
-            pending_plan = std::move(callback);
-          }));
-  TaskService service(&registry, &executors, &planner,
-                      base::BindRepeating([] { return base::Time::UnixEpoch(); }));
+      registry, base::BindLambdaForTesting(
+                    [&pending_plan](
+                        const std::string& prompt, bool prefer_local,
+                        base::OnceCallback<void(std::optional<base::DictValue>,
+                                                PlanOrigin)> callback) {
+                      (void)prompt;
+                      (void)prefer_local;
+                      pending_plan = std::move(callback);
+                    }));
+  TaskService service(&registry, &executors, &planner, base::BindRepeating([] {
+    return base::Time::UnixEpoch();
+  }));
   RecordingObserver observer;
   service.AddObserver(&observer);
 
@@ -319,7 +320,8 @@ TEST_F(TaskServiceTest, UserInputIsBoundedAndReplannedIntoExecution) {
   EXPECT_EQ(snapshot->receipts[0].observed_summary, "user input collected");
 }
 
-TEST(TaskServicePermissionTest, ExactGrantSuppressesOnlyMatchingFirstUsePrompt) {
+TEST(TaskServicePermissionTest,
+     ExactGrantSuppressesOnlyMatchingFirstUsePrompt) {
   base::test::TaskEnvironment environment{
       base::test::TaskEnvironment::TimeSource::MOCK_TIME};
   ToolRegistry registry;
@@ -334,26 +336,25 @@ TEST(TaskServicePermissionTest, ExactGrantSuppressesOnlyMatchingFirstUsePrompt) 
   ASSERT_TRUE(executors.Register(std::move(executor)));
   Planner planner(registry, ModelPlanRequester());
   base::Time now = base::Time::UnixEpoch() + base::Days(1);
-  const auto clock = base::BindRepeating(
-      [](base::Time* now) { return *now; }, &now);
+  const auto clock =
+      base::BindRepeating([](base::Time* now) { return *now; }, &now);
   AgentPermissionService permissions(clock);
-  TaskService service(
-      &registry, &executors, &planner, clock, &permissions,
-      base::BindRepeating(
-          [](const LiveWindowKey& window, const ToolDescriptor& descriptor,
-             const base::DictValue& args) {
-            AgentPermissionRequest request;
-            request.capability = descriptor.id;
-            request.approval = descriptor.approval;
-            request.risk = descriptor.risk;
-            request.sensitivity = descriptor.sensitivity;
-            request.window = window;
-            request.tab = LiveTabKey::FromSessionId(2);
-            request.frame_scope = "main";
-            request.source_origin =
-                url::Origin::Create(GURL("https://scope.test/path"));
-            return request;
-          }));
+  TaskService service(&registry, &executors, &planner, clock, &permissions,
+                      base::BindRepeating([](const LiveWindowKey& window,
+                                             const ToolDescriptor& descriptor,
+                                             const base::DictValue& args) {
+                        AgentPermissionRequest request;
+                        request.capability = descriptor.id;
+                        request.approval = descriptor.approval;
+                        request.risk = descriptor.risk;
+                        request.sensitivity = descriptor.sensitivity;
+                        request.window = window;
+                        request.tab = LiveTabKey::FromSessionId(2);
+                        request.frame_scope = "main";
+                        request.source_origin = url::Origin::Create(
+                            GURL("https://scope.test/path"));
+                        return request;
+                      }));
 
   auto plan = [] {
     Plan value;
@@ -383,9 +384,9 @@ TEST(TaskServicePermissionTest, ExactGrantSuppressesOnlyMatchingFirstUsePrompt) 
   EXPECT_EQ(permissions.grant_count(), 1u);
 
   // The exact same window/tab/frame/origin grant auto-approves the next read.
-  const TaskId second = service.StartTaskWithPlan(
-      "read again", plan(), PlanOrigin::kDeterministic, first_window,
-      AllowAll());
+  const TaskId second = service.StartTaskWithPlan("read again", plan(),
+                                                  PlanOrigin::kDeterministic,
+                                                  first_window, AllowAll());
   ASSERT_TRUE(second.is_valid());
   environment.RunUntilIdle();
   EXPECT_EQ(raw->executions(), 2);
@@ -427,13 +428,8 @@ TEST_F(TaskServiceTest, TimedOutMutationIsUnknownOutcomeAndNeverReplayed) {
   EXPECT_EQ(raw->cancels(), 1);
   const std::optional<TaskSnapshot> snapshot = service_.Snapshot(id);
   ASSERT_TRUE(snapshot.has_value());
-  bool saw_unknown = false;
-  for (const ActionReceipt& receipt : snapshot->receipts) {
-    if (receipt.status == StepStatus::kOutcomeUnknown) {
-      saw_unknown = true;
-    }
-  }
-  EXPECT_TRUE(saw_unknown);
+  ASSERT_EQ(snapshot->receipts.size(), 1u);
+  EXPECT_EQ(snapshot->receipts[0].status, StepStatus::kOutcomeUnknown);
   // Never replayed: exactly one execution ever happened.
   EXPECT_EQ(raw->executions(), 1);
   EXPECT_EQ(snapshot->replans_used, 0);

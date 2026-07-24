@@ -125,7 +125,8 @@ TEST(ProductEndToEndTest, GoalRunsThroughCapabilityToSurfaceAndWorkflow) {
     return base::Time::UnixEpoch();
   }));
   SurfaceService surfaces;
-  WorkflowService workflows(&tasks);
+  WorkflowService workflows(
+      &tasks, base::BindRepeating([] { return base::Time::UnixEpoch(); }));
 
   TaskCollector collector;
   tasks.AddObserver(&collector);

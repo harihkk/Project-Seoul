@@ -169,8 +169,11 @@ TEST_F(SplitsTest, CrossWorkspaceSplitRejected) {
   coordinator_.OnNormalizedEvent(Window(1));
   coordinator_.OnNormalizedEvent(Insert(1, 10));  // default workspace
   const WorkspaceId other = model_.CreateWorkspace("Other").value();
-  model_.AddTabMembership(other, LiveTabKey::FromSessionId(11).value(),
-                          TabRole::kRetained);
+  ASSERT_TRUE(model_
+                  .AddTabMembership(other,
+                                    LiveTabKey::FromSessionId(11).value(),
+                                    TabRole::kRetained)
+                  .has_value());
   coordinator_.OnNormalizedEvent(SplitAdded("split-abc", 10, 11, 0.5));
   EXPECT_EQ(0u, SplitCount());
 }

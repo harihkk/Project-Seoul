@@ -29,7 +29,11 @@ TEST(AgentPermissionServiceTest, FirstUseGrantIsExactAndExpires) {
   EXPECT_EQ(service.Evaluate(request).kind,
             AgentPermissionDecisionKind::kNeedsApproval);
   ASSERT_TRUE(service.GrantFirstUse(request, base::Minutes(10)));
-  EXPECT_EQ(service.Evaluate(request).kind,
+  // A separately resolved request has distinct opaque "not applicable"
+  // origins. Those absent optional scopes must compare equal; otherwise every
+  // first-use grant prompts again despite an identical live page scope.
+  AgentPermissionRequest same_scope = PageRead("https://a.test/other");
+  EXPECT_EQ(service.Evaluate(same_scope).kind,
             AgentPermissionDecisionKind::kAllowed);
 
   AgentPermissionRequest other_tab = request;
@@ -57,8 +61,7 @@ TEST(AgentPermissionServiceTest, DestinationPairIsPartOfExactScope) {
   ASSERT_TRUE(service.GrantFirstUse(request));
   EXPECT_EQ(service.Evaluate(request).kind,
             AgentPermissionDecisionKind::kAllowed);
-  request.destination_origin =
-      url::Origin::Create(GURL("https://other.test"));
+  request.destination_origin = url::Origin::Create(GURL("https://other.test"));
   EXPECT_EQ(service.Evaluate(request).kind,
             AgentPermissionDecisionKind::kNeedsApproval);
 }

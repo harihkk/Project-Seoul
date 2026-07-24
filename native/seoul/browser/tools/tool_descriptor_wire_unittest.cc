@@ -4,6 +4,7 @@
 
 #include "seoul/browser/tools/tool_descriptor_wire.h"
 
+#include <array>
 #include <string>
 
 #include "base/files/file_enumerator.h"
@@ -26,19 +27,18 @@ base::FilePath FixtureDir() {
 base::Value ReadJson(const base::FilePath& path) {
   std::string contents;
   CHECK(base::ReadFileToString(path, &contents)) << "missing " << path;
-  std::optional<base::Value> parsed = base::JSONReader::Read(contents, base::JSON_PARSE_RFC);
+  std::optional<base::Value> parsed =
+      base::JSONReader::Read(contents, base::JSON_PARSE_RFC);
   CHECK(parsed.has_value()) << "unparseable " << path;
   return std::move(parsed.value());
 }
 
 TEST(ToolDescriptorWireTest, EveryCapabilityFixtureParsesAndRoundTrips) {
   base::FileEnumerator files(FixtureDir().AppendASCII("capability"),
-                             /*recursive=*/false,
-                             base::FileEnumerator::FILES,
+                             /*recursive=*/false, base::FileEnumerator::FILES,
                              FILE_PATH_LITERAL("*.json"));
   size_t seen = 0;
-  for (base::FilePath path = files.Next(); !path.empty();
-       path = files.Next()) {
+  for (base::FilePath path = files.Next(); !path.empty(); path = files.Next()) {
     SCOPED_TRACE(path.BaseName().value());
     seen++;
     auto descriptor = ParseToolDescriptor(ReadJson(path));
@@ -66,7 +66,7 @@ TEST(ToolDescriptorWireTest, SchemaExerciseCoversEveryFieldKind) {
   ASSERT_TRUE(descriptor.has_value()) << descriptor.error();
   const ToolSchema& input = descriptor->input_schema;
   ASSERT_EQ(input.fields.size(), 8u);
-  bool saw[8] = {};
+  std::array<bool, 8> saw = {};
   for (const SchemaField& field : input.fields) {
     if (field.name == "query") {
       saw[0] = field.kind == SchemaFieldKind::kString && field.required;
@@ -77,20 +77,22 @@ TEST(ToolDescriptorWireTest, SchemaExerciseCoversEveryFieldKind) {
     } else if (field.name == "strict") {
       saw[3] = field.kind == SchemaFieldKind::kBoolean;
     } else if (field.name == "mode") {
-      saw[4] = field.kind == SchemaFieldKind::kEnum &&
-               field.enum_values.size() == 2;
+      saw[4] =
+          field.kind == SchemaFieldKind::kEnum && field.enum_values.size() == 2;
     } else if (field.name == "source") {
       saw[5] = field.kind == SchemaFieldKind::kUrl;
     } else if (field.name == "stations") {
-      saw[6] = field.kind == SchemaFieldKind::kList &&
-               field.children.size() == 1;
+      saw[6] =
+          field.kind == SchemaFieldKind::kList && field.children.size() == 1;
     } else if (field.name == "window") {
-      saw[7] = field.kind == SchemaFieldKind::kObject &&
-               field.children.size() == 2;
+      saw[7] =
+          field.kind == SchemaFieldKind::kObject && field.children.size() == 2;
     }
   }
-  for (size_t i = 0; i < 8; i++) {
-    EXPECT_TRUE(saw[i]) << "field kind case " << i << " not covered";
+  size_t index = 0;
+  for (const bool covered : saw) {
+    EXPECT_TRUE(covered) << "field kind case " << index << " not covered";
+    ++index;
   }
 }
 

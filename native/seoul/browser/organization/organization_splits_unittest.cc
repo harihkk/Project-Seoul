@@ -14,12 +14,15 @@ namespace {
 class SplitsTest : public testing::Test {
  protected:
   SplitsTest() {
-    EXPECT_TRUE(model_.EnsureDefaultWorkspace().has_value());
+    CHECK(model_.EnsureDefaultWorkspace().has_value());
     ws_ = model_.default_workspace();
     other_ = model_.CreateWorkspace("Other").value();
-    model_.AddTabMembership(ws_, "tab-a", TabRole::kRetained);
-    model_.AddTabMembership(ws_, "tab-b", TabRole::kRetained);
-    model_.AddTabMembership(other_, "tab-c", TabRole::kRetained);
+    CHECK(
+        model_.AddTabMembership(ws_, "tab-a", TabRole::kRetained).has_value());
+    CHECK(
+        model_.AddTabMembership(ws_, "tab-b", TabRole::kRetained).has_value());
+    CHECK(model_.AddTabMembership(other_, "tab-c", TabRole::kRetained)
+              .has_value());
   }
 
   OrganizationModel model_;
@@ -111,7 +114,9 @@ TEST_F(SplitsTest, MovingParticipatingTabDissolvesSplit) {
 }
 
 TEST_F(SplitsTest, SplitSurvivesSnapshotRoundTrip) {
-  model_.CreateSplitGroup(ws_, {"tab-a", "tab-b"}, 0.5, "token-keep");
+  ASSERT_TRUE(
+      model_.CreateSplitGroup(ws_, {"tab-a", "tab-b"}, 0.5, "token-keep")
+          .has_value());
   OrganizationSnapshot snap = model_.ToSnapshot();
 
   OrganizationModel other;

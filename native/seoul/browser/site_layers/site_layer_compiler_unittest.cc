@@ -52,13 +52,18 @@ TEST(SiteLayerSelectorTest, RejectsInjectionAttempts) {
 TEST(SiteLayerOriginTest, ValidatesOriginPatterns) {
   EXPECT_TRUE(IsValidOriginPattern("https://example.com"));
   EXPECT_TRUE(IsValidOriginPattern("https://sub.example.com:8443"));
+  EXPECT_TRUE(IsValidOriginPattern("http://localhost:3000"));
+  EXPECT_TRUE(IsValidOriginPattern("http://[::1]:3000"));
+  EXPECT_TRUE(IsValidOriginPattern("https://EXAMPLE.com:443"));
   EXPECT_TRUE(IsValidOriginPattern("*.example.com"));
-  EXPECT_FALSE(IsValidOriginPattern("http://example.com"));    // not https
+  EXPECT_FALSE(IsValidOriginPattern("ftp://example.com"));     // not web
   EXPECT_FALSE(IsValidOriginPattern("example.com"));           // no scheme
   EXPECT_FALSE(IsValidOriginPattern("https://exam ple.com"));  // space
   EXPECT_FALSE(IsValidOriginPattern("https://"));              // empty host
   EXPECT_FALSE(IsValidOriginPattern("https://a..b.com"));      // double dot
   EXPECT_FALSE(IsValidOriginPattern("https://host:0"));        // bad port
+  EXPECT_FALSE(IsValidOriginPattern("https://example.com/path"));
+  EXPECT_FALSE(IsValidOriginPattern("https://user@example.com"));
 }
 
 TEST(SiteLayerCompilerTest, CompilesDeterministicScopedCss) {

@@ -52,7 +52,8 @@ TEST_F(OrganizationInvariantsTest, DeleteRoutingTargetWorkspace) {
 TEST_F(OrganizationInvariantsTest, SnapshotAfterDeletionReloads) {
   InitDefault();
   WorkspaceId work = model_.CreateWorkspace("Work").value();
-  model_.AddTabMembership(work, "tab-a", TabRole::kTemporary);
+  ASSERT_TRUE(
+      model_.AddTabMembership(work, "tab-a", TabRole::kTemporary).has_value());
   ASSERT_TRUE(model_.DeleteWorkspace(work).has_value());
   OrganizationSnapshot snap = model_.ToSnapshot();
   OrganizationModel other;
@@ -79,8 +80,10 @@ TEST_F(OrganizationInvariantsTest, RejectArchivedDestinationMove) {
 TEST_F(OrganizationInvariantsTest, RejectArchivedDestinationSplit) {
   InitDefault();
   WorkspaceId work = model_.CreateWorkspace("Work").value();
-  model_.AddTabMembership(work, "tab-a", TabRole::kRetained);
-  model_.AddTabMembership(work, "tab-b", TabRole::kRetained);
+  ASSERT_TRUE(
+      model_.AddTabMembership(work, "tab-a", TabRole::kRetained).has_value());
+  ASSERT_TRUE(
+      model_.AddTabMembership(work, "tab-b", TabRole::kRetained).has_value());
   ASSERT_TRUE(model_.ArchiveWorkspace(work).has_value());
   EXPECT_EQ(
       model_.CreateSplitGroup(work, {"tab-a", "tab-b"}, 0.5, "split-1").error(),
@@ -97,6 +100,9 @@ TEST_F(OrganizationInvariantsTest, ArchiveRestoreAtCapacity) {
                     .has_value());
   }
   ASSERT_TRUE(model_.ArchiveTab(m).has_value());
+  ASSERT_TRUE(
+      model_.AddTabMembership(def, "tab-replacement", TabRole::kTemporary)
+          .has_value());
   EXPECT_EQ(model_.RestoreArchivedTab(m, "tab-a-restored").error(),
             OrganizationError::kLimitExceeded);
 }
@@ -104,7 +110,7 @@ TEST_F(OrganizationInvariantsTest, ArchiveRestoreAtCapacity) {
 TEST_F(OrganizationInvariantsTest, ArchiveRestoreRoleBehavior) {
   WorkspaceId def = InitDefault();
   auto pinned = model_.AddTabMembership(def, "tab-a", TabRole::kPinned).value();
-  model_.PinTab(pinned, "https://example.test/root");
+  ASSERT_TRUE(model_.PinTab(pinned, "https://example.test/root").has_value());
   ASSERT_TRUE(model_.ArchiveTab(pinned).has_value());
   const OrganizationSnapshot snap = model_.ToSnapshot();
   ASSERT_EQ(snap.archived_tabs.size(), 1u);
@@ -120,8 +126,10 @@ TEST_F(OrganizationInvariantsTest, ArchiveRestoreRoleBehavior) {
 
 TEST_F(OrganizationInvariantsTest, DuplicateSplitTokenRejected) {
   WorkspaceId def = InitDefault();
-  model_.AddTabMembership(def, "tab-a", TabRole::kRetained);
-  model_.AddTabMembership(def, "tab-b", TabRole::kRetained);
+  ASSERT_TRUE(
+      model_.AddTabMembership(def, "tab-a", TabRole::kRetained).has_value());
+  ASSERT_TRUE(
+      model_.AddTabMembership(def, "tab-b", TabRole::kRetained).has_value());
   ASSERT_TRUE(model_.CreateSplitGroup(def, {"tab-a", "tab-b"}, 0.5, "token")
                   .has_value());
   EXPECT_EQ(
@@ -131,8 +139,10 @@ TEST_F(OrganizationInvariantsTest, DuplicateSplitTokenRejected) {
 
 TEST_F(OrganizationInvariantsTest, EmptySplitTokenRejected) {
   WorkspaceId def = InitDefault();
-  model_.AddTabMembership(def, "tab-a", TabRole::kRetained);
-  model_.AddTabMembership(def, "tab-b", TabRole::kRetained);
+  ASSERT_TRUE(
+      model_.AddTabMembership(def, "tab-a", TabRole::kRetained).has_value());
+  ASSERT_TRUE(
+      model_.AddTabMembership(def, "tab-b", TabRole::kRetained).has_value());
   EXPECT_EQ(model_.CreateSplitGroup(def, {"tab-a", "tab-b"}, 0.5, "").error(),
             OrganizationError::kInvalidUpstreamSplitToken);
 }
@@ -204,9 +214,12 @@ TEST_F(OrganizationInvariantsTest, InvalidArchiveWorkspaceRejected) {
 TEST_F(OrganizationInvariantsTest, RoundTripDeterministic) {
   InitDefault();
   WorkspaceId work = model_.CreateWorkspace("Work").value();
-  model_.AddTabMembership(work, "tab-a", TabRole::kRetained);
-  model_.AddTabMembership(work, "tab-b", TabRole::kRetained);
-  model_.CreateSplitGroup(work, {"tab-a", "tab-b"}, 0.5, "split-1");
+  ASSERT_TRUE(
+      model_.AddTabMembership(work, "tab-a", TabRole::kRetained).has_value());
+  ASSERT_TRUE(
+      model_.AddTabMembership(work, "tab-b", TabRole::kRetained).has_value());
+  ASSERT_TRUE(model_.CreateSplitGroup(work, {"tab-a", "tab-b"}, 0.5, "split-1")
+                  .has_value());
   const OrganizationSnapshot first = model_.ToSnapshot();
   base::DictValue dict = SerializeSnapshot(first);
   MutationResult<OrganizationSnapshot> parsed = DeserializeSnapshot(dict);

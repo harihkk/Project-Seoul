@@ -120,9 +120,9 @@ TEST_F(LifecycleCoordinatorTest, NewTabAssignedToActiveWorkspace) {
 TEST_F(LifecycleCoordinatorTest,
        ExpectedInsertionUsesExactWindowTabAndRetainedRole) {
   coordinator_.OnNormalizedEvent(WindowDiscovered(1));
-  EXPECT_TRUE(coordinator_.ExpectTabInsertion(
-      LiveWindowKey::FromSessionId(1), LiveTabKey::FromSessionId(10),
-      TabRole::kRetained));
+  EXPECT_TRUE(coordinator_.ExpectTabInsertion(LiveWindowKey::FromSessionId(1),
+                                              LiveTabKey::FromSessionId(10),
+                                              TabRole::kRetained));
   EXPECT_EQ(coordinator_.expected_insertion_count(), 1u);
   coordinator_.OnNormalizedEvent(TabInserted(1, 10));
   ASSERT_NE(MembershipForTab(10), nullptr);
@@ -134,9 +134,9 @@ TEST_F(LifecycleCoordinatorTest,
        MismatchedWindowConsumesExpectationAndUsesSafeDefault) {
   coordinator_.OnNormalizedEvent(WindowDiscovered(1));
   coordinator_.OnNormalizedEvent(WindowDiscovered(2));
-  ASSERT_TRUE(coordinator_.ExpectTabInsertion(
-      LiveWindowKey::FromSessionId(1), LiveTabKey::FromSessionId(10),
-      TabRole::kRetained));
+  ASSERT_TRUE(coordinator_.ExpectTabInsertion(LiveWindowKey::FromSessionId(1),
+                                              LiveTabKey::FromSessionId(10),
+                                              TabRole::kRetained));
   coordinator_.OnNormalizedEvent(TabInserted(2, 10));
   ASSERT_NE(MembershipForTab(10), nullptr);
   EXPECT_EQ(MembershipForTab(10)->role, TabRole::kTemporary);
@@ -193,8 +193,11 @@ TEST_F(LifecycleCoordinatorTest, ActivationSwitchesWindowWorkspace) {
   coordinator_.OnNormalizedEvent(WindowDiscovered(1));
   const WorkspaceId other = model_.CreateWorkspace("Other").value();
   // A tab that lives in `other`, activated in window 1, switches the window.
-  model_.AddTabMembership(other, LiveTabKey::FromSessionId(20).value(),
-                          TabRole::kRetained);
+  ASSERT_TRUE(model_
+                  .AddTabMembership(other,
+                                    LiveTabKey::FromSessionId(20).value(),
+                                    TabRole::kRetained)
+                  .has_value());
   coordinator_.OnNormalizedEvent(ActiveTab(1, 20));
   EXPECT_EQ(other.value(), ActiveWorkspaceKey(1));
 }

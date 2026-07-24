@@ -101,6 +101,54 @@ TEST_F(TaskExecutionTest, HappyPathRunsToCompletionWithReceipts) {
   EXPECT_TRUE(execution->receipts()[1].verification.verified);
 }
 
+TEST_F(TaskExecutionTest, InFlightStepBlocksImplicitlySequentialPeer) {
+  Plan plan;
+  plan.steps.push_back(ToolStep("first", "page.observe.text"));
+  plan.steps.push_back(ToolStep("second", "page.observe.text"));
+  auto execution = Execute(std::move(plan));
+
+  ASSERT_EQ(execution->Start().kind, NextAction::Kind::kRunStep);
+  ASSERT_TRUE(execution->BeginStep("first"));
+  EXPECT_EQ(execution->Advance().kind, NextAction::Kind::kWait);
+  EXPECT_EQ(execution->step_status("second"), StepStatus::kPending);
+
+  ASSERT_EQ(execution->RecordStepOutcome("first", Success("first complete")),
+            ExecutionDecision::kContinue);
+  const NextAction second = execution->Advance();
+  EXPECT_EQ(second.kind, NextAction::Kind::kRunStep);
+  EXPECT_EQ(second.step_id, "second");
+}
+
+TEST_F(TaskExecutionTest, ExplicitParallelGroupOffersOnlyItsPeers) {
+  Plan plan;
+  PlanStep first = ToolStep("first", "page.observe.text");
+  first.parallel_group = 1;
+  PlanStep second = ToolStep("second", "page.observe.text");
+  second.parallel_group = 1;
+  plan.steps.push_back(std::move(first));
+  plan.steps.push_back(std::move(second));
+  plan.steps.push_back(ToolStep("after", "page.observe.text"));
+  auto execution = Execute(std::move(plan));
+
+  ASSERT_EQ(execution->Start().step_id, "first");
+  ASSERT_TRUE(execution->BeginStep("first"));
+  const NextAction peer = execution->Advance();
+  ASSERT_EQ(peer.kind, NextAction::Kind::kRunStep);
+  EXPECT_EQ(peer.step_id, "second");
+  ASSERT_TRUE(execution->BeginStep("second"));
+  EXPECT_EQ(execution->Advance().kind, NextAction::Kind::kWait);
+  EXPECT_EQ(execution->step_status("after"), StepStatus::kPending);
+
+  ASSERT_EQ(execution->RecordStepOutcome("first", Success("first complete")),
+            ExecutionDecision::kContinue);
+  EXPECT_EQ(execution->Advance().kind, NextAction::Kind::kWait);
+  ASSERT_EQ(execution->RecordStepOutcome("second", Success("second complete")),
+            ExecutionDecision::kContinue);
+  const NextAction after = execution->Advance();
+  EXPECT_EQ(after.kind, NextAction::Kind::kRunStep);
+  EXPECT_EQ(after.step_id, "after");
+}
+
 TEST_F(TaskExecutionTest, UnknownOutcomeMutationIsNeverAutoRetried) {
   Plan plan;
   plan.steps.push_back(ToolStep("open", "browser.tabs.open"));
@@ -233,8 +281,7 @@ TEST_F(TaskExecutionTest, CheckpointDoesNotPersistPendingToolApproval) {
   auto restored = TaskExecution::RestoreFromCheckpoint(
       task_id, plan, Resolver(), Clock(), execution.Checkpoint());
   ASSERT_NE(restored, nullptr);
-  EXPECT_EQ(restored->step_status("submit"),
-            StepStatus::kAwaitingApproval);
+  EXPECT_EQ(restored->step_status("submit"), StepStatus::kAwaitingApproval);
   EXPECT_EQ(restored->RecordApproval("submit", true).kind,
             NextAction::Kind::kRunStep);
 }

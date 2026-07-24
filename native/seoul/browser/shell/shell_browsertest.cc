@@ -6,11 +6,16 @@
 // profile-scoped services exist and are wired, the Chromium tab strip remains
 // the owner of tabs (Seoul projects; it does not replace), and the model is
 // reachable through the service. Wired into //chrome/test:browser_tests via
-// the single integration patch.
+// the native-core integration patch.
 
+#include "chrome/browser/profiles/profile.h"
 #include "chrome/browser/ui/browser.h"
+#include "chrome/browser/ui/tabs/features.h"
 #include "chrome/browser/ui/tabs/tab_strip_model.h"
+#include "chrome/browser/ui/tabs/vertical_tab_strip_state_controller.h"
+#include "chrome/common/pref_names.h"
 #include "chrome/test/base/in_process_browser_test.h"
+#include "components/prefs/pref_service.h"
 #include "content/public/test/browser_test.h"
 #include "seoul/browser/organization/organization_model.h"
 #include "seoul/browser/organization/seoul_organization_service.h"
@@ -40,6 +45,20 @@ IN_PROC_BROWSER_TEST_F(SeoulShellBrowserTest, ServicesWiredForRegularProfile) {
   EXPECT_TRUE(svc->shell_service());
   EXPECT_TRUE(svc->command_executor());
   EXPECT_TRUE(svc->lifecycle_coordinator());
+}
+
+// Seoul's defining shell is the default product surface. It must not disappear
+// behind an upstream feature flag or a fresh-profile preference.
+IN_PROC_BROWSER_TEST_F(SeoulShellBrowserTest, VerticalShellIsOnByDefault) {
+  EXPECT_TRUE(tabs::IsVerticalTabsFeatureEnabled());
+  EXPECT_TRUE(browser()->profile()->GetPrefs()->GetBoolean(
+      prefs::kVerticalTabsEnabled));
+  EXPECT_TRUE(browser()->profile()->GetPrefs()->GetBoolean(
+      prefs::kVerticalTabsEnabledFirstTime));
+
+  auto* controller = tabs::VerticalTabStripStateController::From(browser());
+  ASSERT_TRUE(controller);
+  EXPECT_TRUE(controller->ShouldDisplayVerticalTabs());
 }
 
 // Seoul projects the tab strip; it never replaces it. Adding a tab through the

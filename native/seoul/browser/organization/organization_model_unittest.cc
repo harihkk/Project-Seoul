@@ -265,8 +265,12 @@ TEST_F(OrganizationModelTest, ObserversOrderedOncePerCommitNoneOnFailure) {
 TEST_F(OrganizationModelTest, SnapshotRoundTripThroughModel) {
   WorkspaceId def = InitDefault();
   WorkspaceId work = model_.CreateWorkspace("Work").value();
-  model_.AddTabMembership(work, "tab-a", TabRole::kPinned);
-  model_.CreateOrUpdateEssential(EssentialId(), "Mail", "https://mail.test/");
+  ASSERT_TRUE(
+      model_.AddTabMembership(work, "tab-a", TabRole::kPinned).has_value());
+  ASSERT_TRUE(
+      model_
+          .CreateOrUpdateEssential(EssentialId(), "Mail", "https://mail.test/")
+          .has_value());
 
   OrganizationSnapshot snap = model_.ToSnapshot();
 

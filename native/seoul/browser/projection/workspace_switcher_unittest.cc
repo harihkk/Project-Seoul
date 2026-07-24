@@ -101,9 +101,9 @@ void SeedLiveState(LiveWindowStateProvider* provider,
 
 TEST(WorkspaceSwitcherTest, RejectsArchivedWorkspace) {
   OrganizationModel model;
-  model.EnsureDefaultWorkspace();
+  ASSERT_TRUE(model.EnsureDefaultWorkspace().has_value());
   const WorkspaceId archived = model.CreateWorkspace("arch").value();
-  model.ArchiveWorkspace(archived);
+  ASSERT_TRUE(model.ArchiveWorkspace(archived).has_value());
   LifecycleCoordinator coordinator(&model);
   LiveWindowStateProvider live_state;
   FakeResolver resolver;
@@ -125,7 +125,8 @@ TEST(WorkspaceSwitcherTest, CommitsWhenTargetTabAlreadyActive) {
   const WorkspaceId ws_b = model.CreateWorkspace("b").value();
   const LiveWindowKey window = LiveWindowKey::FromSessionId(1);
   const LiveTabKey tab = LiveTabKey::FromSessionId(10);
-  model.SetActiveWorkspaceForWindow(window.value(), ws_a);
+  ASSERT_TRUE(
+      model.SetActiveWorkspaceForWindow(window.value(), ws_a).has_value());
   ASSERT_TRUE(model.AddTabMembership(ws_b, tab.value(), TabRole::kTemporary)
                   .has_value());
   LifecycleCoordinator coordinator(&model);
@@ -152,7 +153,8 @@ TEST(WorkspaceSwitcherTest, ExternalActivationDoesNotDispatchCommand) {
   const WorkspaceId ws_b = model.CreateWorkspace("b").value();
   const LiveWindowKey window = LiveWindowKey::FromSessionId(1);
   const LiveTabKey tab = LiveTabKey::FromSessionId(11);
-  model.SetActiveWorkspaceForWindow(window.value(), ws_a);
+  ASSERT_TRUE(
+      model.SetActiveWorkspaceForWindow(window.value(), ws_a).has_value());
   ASSERT_TRUE(model.AddTabMembership(ws_b, tab.value(), TabRole::kTemporary)
                   .has_value());
   LifecycleCoordinator coordinator(&model);

@@ -86,6 +86,24 @@ TEST_F(ProviderRegistryTest, CloudRequiresCredentialAndEnabledSwitch) {
   EXPECT_FALSE(registry.cloud_available());
 }
 
+TEST_F(ProviderRegistryTest, ClearCloudCancelsAndRemovesRouteSettings) {
+  ProviderRegistry registry(&local_transport_, &cloud_transport_,
+                            &credentials_);
+  ASSERT_TRUE(registry.ConfigureCloud("cloud-model", /*enabled=*/true));
+  ASSERT_TRUE(credentials_.Set(kCloudReasoningCredentialAccount, "secret"));
+  ASSERT_TRUE(registry.cloud_available());
+
+  registry.ClearCloud();
+
+  const ProviderStateSnapshot snapshot = registry.Snapshot();
+  EXPECT_FALSE(snapshot.cloud_enabled);
+  EXPECT_TRUE(snapshot.cloud_model.empty());
+  EXPECT_FALSE(registry.cloud_available());
+  // Registry clearing never silently deletes the OS-owned credential. The
+  // Studio runtime wrapper performs that separate, explicit operation.
+  EXPECT_TRUE(snapshot.cloud_configured);
+}
+
 TEST_F(ProviderRegistryTest, PlanRequesterFallsBackToNulloptWithNoProvider) {
   ProviderRegistry registry(&local_transport_, &cloud_transport_,
                             &credentials_);

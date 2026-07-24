@@ -3,6 +3,8 @@
 
 #include "seoul/browser/tools/tool_registry.h"
 
+#include <utility>
+
 #include "base/test/values_test_util.h"
 #include "base/values.h"
 #include "seoul/browser/tools/tool_schema.h"
@@ -177,6 +179,28 @@ TEST(ToolSchemaTest, MalformedSchemasAreRejectedUpFront) {
   EXPECT_FALSE(IsWellFormedSchema(bad_name));
 }
 
+TEST(ToolSchemaTest, EmptyObjectSchemaRemainsStrict) {
+  ToolSchema schema;
+  SchemaField result_field;
+  result_field.name = "result";
+  result_field.kind = SchemaFieldKind::kObject;
+  result_field.required = true;
+  schema.fields.push_back(std::move(result_field));
+  ASSERT_TRUE(IsWellFormedSchema(schema));
+
+  base::DictValue args;
+  args.Set("result", base::DictValue());
+  EXPECT_TRUE(ValidateArgs(schema, args).has_value());
+
+  base::DictValue unexpected_result;
+  unexpected_result.Set("invented", true);
+  args.Set("result", std::move(unexpected_result));
+  const SchemaValidationResult rejected = ValidateArgs(schema, args);
+  ASSERT_FALSE(rejected.has_value());
+  EXPECT_EQ(rejected.error().kind, SchemaViolationKind::kUnknownField);
+  EXPECT_EQ(rejected.error().field_path, "result.invented");
+}
+
 TEST(ToolRegistryTest, RegisterFindAndDuplicate) {
   ToolRegistry registry;
   ASSERT_TRUE(registry.Register(SearchTool()).has_value());
@@ -260,8 +284,8 @@ TEST(CapabilityGraphTest, UnavailableCapabilitiesAreHiddenFromPlanning) {
   ASSERT_EQ(registry.ListAvailable(context).size(), 1u);
 
   // Provider outage: the capability stays registered but is never offered.
-  ASSERT_TRUE(registry.SetAvailability(
-      id, AvailabilityState::kUnavailable, "provider outage"));
+  ASSERT_TRUE(registry.SetAvailability(id, AvailabilityState::kUnavailable,
+                                       "provider outage"));
   EXPECT_TRUE(registry.ListAvailable(context).empty());
   EXPECT_NE(registry.Find(id), nullptr);  // still resolvable for display
   EXPECT_EQ(registry.GetAvailability(id), AvailabilityState::kUnavailable);
@@ -306,8 +330,7 @@ TEST(CapabilityGraphTest, DynamicUpdateKeepsOwnershipAndValidates) {
   updated.version = 2;
   updated.description = "Searches with pagination support.";
   ASSERT_TRUE(registry.UpdateDescriptor(updated).has_value());
-  EXPECT_EQ(registry.Find(ToolId::FromString("info.search.web"))->version,
-            2);
+  EXPECT_EQ(registry.Find(ToolId::FromString("info.search.web"))->version, 2);
   EXPECT_EQ(registry.size(), 1u);
 
   // Another provider can never take over the id.

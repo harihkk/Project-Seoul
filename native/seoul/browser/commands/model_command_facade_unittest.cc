@@ -15,7 +15,7 @@ class ModelCommandFacadeTest : public testing::Test {
   ModelCommandFacadeTest()
       : model_(base::BindLambdaForTesting([]() { return base::Time(); })),
         facade_(&model_) {
-    model_.EnsureDefaultWorkspace();
+    CHECK(model_.EnsureDefaultWorkspace().has_value());
   }
 
   OrganizationModel model_;

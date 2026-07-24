@@ -88,7 +88,7 @@ class CommandExecutorTest : public testing::Test {
       : model_(base::BindLambdaForTesting([]() { return base::Time(); })),
         coordinator_(&model_),
         executor_(nullptr, &model_, &coordinator_, &resolver_, &adapter_) {
-    model_.EnsureDefaultWorkspace();
+    CHECK(model_.EnsureDefaultWorkspace().has_value());
   }
 
   OrganizationModel model_;
@@ -98,7 +98,7 @@ class CommandExecutorTest : public testing::Test {
   CommandExecutor executor_;
 };
 
-TEST_F(CommandExecutorTest, RejectsReconciliationRequiredBrowserCommand) {
+TEST_F(CommandExecutorTest, RejectsLifecycleQueueOverflow) {
   bool requested = false;
   coordinator_.SetReconciliationRequestCallback(
       base::BindLambdaForTesting([&requested]() { requested = true; }));
@@ -135,6 +135,21 @@ TEST_F(CommandExecutorTest, RejectsReconciliationRequiredBrowserCommand) {
   command.window = LiveWindowKey::FromSessionId(1);
   command.tab = LiveTabKey::FromSessionId(10);
   EXPECT_TRUE(coordinator_.reconciliation_required());
+  EXPECT_EQ(executor_.Submit(command).error(),
+            CommandError::kLifecycleQueueDegraded);
+}
+
+TEST_F(CommandExecutorTest, RejectsBrowserCommandDuringReconciliation) {
+  NormalizedEvent reconciliation_began;
+  reconciliation_began.type = NormalizedEventType::kReconciliationBegan;
+  coordinator_.OnNormalizedEvent(reconciliation_began);
+
+  BrowserCommand command;
+  command.id = CommandId::Next();
+  command.kind = CommandKind::kActivateTab;
+  command.window = LiveWindowKey::FromSessionId(1);
+  command.tab = LiveTabKey::FromSessionId(10);
+  EXPECT_TRUE(coordinator_.is_reconciling());
   EXPECT_EQ(executor_.Submit(command).error(),
             CommandError::kReconciliationRequired);
 }

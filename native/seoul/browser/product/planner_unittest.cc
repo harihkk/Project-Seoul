@@ -87,6 +87,43 @@ TEST(PlannerTest, NoMatchingCapabilityFailsHonestly) {
   EXPECT_FALSE(result.failure.empty());
 }
 
+TEST(PlannerTest, UnsatisfiedTopMatchDoesNotBlockRunnableCapability) {
+  ToolRegistry registry;
+
+  ToolDescriptor open;
+  open.id = ToolId::FromString("browser.tabs.open");
+  open.name = "Open tab";
+  open.description =
+      "Opens a URL in a new tab in the current window and workspace.";
+  open.provider = "seoul";
+  open.risk = RiskCategory::kReversibleMutation;
+  open.sensitivity = DataSensitivity::kOrganization;
+  SchemaField url;
+  url.name = "url";
+  url.kind = SchemaFieldKind::kUrl;
+  url.required = true;
+  open.input_schema.fields.push_back(std::move(url));
+  ASSERT_TRUE(registry.Register(std::move(open)).has_value());
+
+  ToolDescriptor enumerate;
+  enumerate.id = ToolId::FromString("browser.tabs.enumerate");
+  enumerate.name = "List tabs";
+  enumerate.description =
+      "Lists open tabs with stable keys, titles, and workspace roles.";
+  enumerate.provider = "seoul";
+  enumerate.risk = RiskCategory::kReadOnly;
+  enumerate.sensitivity = DataSensitivity::kOrganization;
+  ASSERT_TRUE(registry.Register(std::move(enumerate)).has_value());
+
+  Planner planner(registry, ModelPlanRequester());
+  const PlannerResult result = planner.BuildDeterministic(
+      "list the open tabs in this window", AllowAll());
+  ASSERT_TRUE(result.ok) << result.failure;
+  ASSERT_EQ(result.plan.steps.size(), 1u);
+  EXPECT_EQ(result.plan.steps[0].tool.value(), "browser.tabs.enumerate");
+  EXPECT_TRUE(result.plan.steps[0].args.empty());
+}
+
 TEST(PlannerTest, ApprovalPolicyIsEnforcedOnRiskyCapabilities) {
   ToolRegistry registry;
   ASSERT_TRUE(registry

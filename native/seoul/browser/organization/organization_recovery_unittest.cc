@@ -17,7 +17,7 @@ TEST(OrganizationRecoveryTest, CorruptSnapshotRejectedWithoutMutation) {
 
 TEST(OrganizationRecoveryTest, ValidEmptySnapshotRoundTrips) {
   OrganizationModel model;
-  model.EnsureDefaultWorkspace();
+  ASSERT_TRUE(model.EnsureDefaultWorkspace().has_value());
   base::DictValue dict = SerializeSnapshot(model.ToSnapshot());
   auto parsed = DeserializeSnapshot(dict);
   ASSERT_TRUE(parsed.has_value());

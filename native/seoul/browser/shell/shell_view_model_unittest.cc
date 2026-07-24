@@ -14,7 +14,8 @@ TEST(ShellViewModelTest, EmptyWorkspaceShowsEmptyState) {
   const WorkspaceId ws = model.default_workspace();
   ShellBuildContext context;
   context.window = LiveWindowKey::FromSessionId(1);
-  model.SetActiveWorkspaceForWindow(context.window.value(), ws);
+  ASSERT_TRUE(model.SetActiveWorkspaceForWindow(context.window.value(), ws)
+                  .has_value());
   WindowProjection projection;
   projection.window = context.window;
   projection.active_workspace = ws;
@@ -29,8 +30,11 @@ TEST(ShellViewModelTest, EmptyWorkspaceShowsEmptyState) {
 
 TEST(ShellViewModelTest, EssentialsComeFromOrganizationModel) {
   OrganizationModel model;
-  model.EnsureDefaultWorkspace();
-  model.CreateOrUpdateEssential(EssentialId(), "Mail", "https://mail.example/");
+  ASSERT_TRUE(model.EnsureDefaultWorkspace().has_value());
+  ASSERT_TRUE(model
+                  .CreateOrUpdateEssential(EssentialId(), "Mail",
+                                           "https://mail.example/")
+                  .has_value());
   ShellBuildContext context;
   context.window = LiveWindowKey::FromSessionId(1);
   WindowProjection projection;
@@ -44,9 +48,11 @@ TEST(ShellViewModelTest, EssentialsComeFromOrganizationModel) {
 
 TEST(ShellViewModelTest, EssentialAssociatesWithExistingOriginInWindow) {
   OrganizationModel model;
-  model.EnsureDefaultWorkspace();
-  model.CreateOrUpdateEssential(EssentialId(), "Mail",
-                                "https://mail.example/inbox");
+  ASSERT_TRUE(model.EnsureDefaultWorkspace().has_value());
+  ASSERT_TRUE(model
+                  .CreateOrUpdateEssential(EssentialId(), "Mail",
+                                           "https://mail.example/inbox")
+                  .has_value());
   ShellBuildContext context;
   context.window = LiveWindowKey::FromSessionId(1);
   WindowProjection projection;
@@ -72,9 +78,11 @@ TEST(ShellViewModelTest, EssentialAssociatesWithExistingOriginInWindow) {
 
 TEST(ShellViewModelTest, EssentialAssociatesAcrossWindowsWithoutPathData) {
   OrganizationModel model;
-  model.EnsureDefaultWorkspace();
-  model.CreateOrUpdateEssential(EssentialId(), "Docs",
-                                "https://docs.example/home");
+  ASSERT_TRUE(model.EnsureDefaultWorkspace().has_value());
+  ASSERT_TRUE(model
+                  .CreateOrUpdateEssential(EssentialId(), "Docs",
+                                           "https://docs.example/home")
+                  .has_value());
   ShellBuildContext context;
   context.window = LiveWindowKey::FromSessionId(1);
   LiveWindowSnapshot other;
@@ -141,8 +149,7 @@ TEST(ShellViewModelTest, TaskDeckLabelsAreBoundedAndAttentionFirst) {
   ShellTaskSummary tasks;
   EXPECT_EQ(ShellViewModel::TaskButtonLabel(tasks, ShellMode::kExpanded),
             "Tasks");
-  EXPECT_EQ(ShellViewModel::TaskButtonLabel(tasks, ShellMode::kCollapsed),
-            "○");
+  EXPECT_EQ(ShellViewModel::TaskButtonLabel(tasks, ShellMode::kCollapsed), "○");
   EXPECT_EQ(ShellViewModel::TaskAccessibleName(tasks), "Task Deck, no tasks");
 
   tasks.total = 7;
@@ -152,16 +159,14 @@ TEST(ShellViewModelTest, TaskDeckLabelsAreBoundedAndAttentionFirst) {
   tasks.failed = 1;
   EXPECT_EQ(ShellViewModel::TaskButtonLabel(tasks, ShellMode::kExpanded),
             "Tasks 7");
-  EXPECT_EQ(ShellViewModel::TaskButtonLabel(tasks, ShellMode::kCollapsed),
-            "!");
+  EXPECT_EQ(ShellViewModel::TaskButtonLabel(tasks, ShellMode::kCollapsed), "!");
   EXPECT_EQ(ShellViewModel::TaskAccessibleName(tasks),
             "Task Deck: 2 active, 1 waiting for you, 1 paused, 1 failed");
 
   tasks.active = 0;
   tasks.waiting_for_user = 0;
   tasks.paused = 0;
-  EXPECT_EQ(ShellViewModel::TaskButtonLabel(tasks, ShellMode::kCollapsed),
-            "○");
+  EXPECT_EQ(ShellViewModel::TaskButtonLabel(tasks, ShellMode::kCollapsed), "○");
 }
 
 }  // namespace

@@ -47,7 +47,7 @@ TEST(SiteLayerRegistryTest, RejectsInvalidLayerBeforeStorage) {
   SiteLayer layer = Layer("Bad Id", "https://docs.example.com");
   EXPECT_EQ(registry.Upsert(layer).error(), SiteLayerError::kInvalidId);
 
-  layer = Layer("docs-clean", "http://docs.example.com");
+  layer = Layer("docs-clean", "ftp://docs.example.com");
   EXPECT_EQ(registry.Upsert(layer).error(), SiteLayerError::kInvalidOrigin);
 
   layer = Layer("docs-clean", "https://docs.example.com");
@@ -88,17 +88,28 @@ TEST(SiteLayerRegistryTest, MatchesExactPortsAndWildcardHosts) {
   SiteLayer exact = Layer("local-docs", "https://docs.example.com:8443");
   EXPECT_TRUE(SiteLayerMatchesOrigin(exact, "https://docs.example.com:8443"));
   EXPECT_FALSE(SiteLayerMatchesOrigin(exact, "https://docs.example.com"));
+  EXPECT_FALSE(SiteLayerMatchesOrigin(exact, "http://docs.example.com:8443"));
+
+  SiteLayer local = Layer("local-http", "http://localhost:3000");
+  EXPECT_TRUE(SiteLayerMatchesOrigin(local, "http://localhost:3000"));
+  EXPECT_FALSE(SiteLayerMatchesOrigin(local, "https://localhost:3000"));
+  SiteLayer local_ipv6 = Layer("local-ipv6", "http://[::1]:3000");
+  EXPECT_TRUE(SiteLayerMatchesOrigin(local_ipv6, "http://[::1]:3000"));
+
+  SiteLayer default_port = Layer("default-port", "https://example.com:443");
+  EXPECT_TRUE(SiteLayerMatchesOrigin(default_port, "https://example.com"));
 
   SiteLayer wildcard = Layer("all-docs", "*.example.com");
   EXPECT_TRUE(SiteLayerMatchesOrigin(wildcard, "https://example.com"));
   EXPECT_TRUE(SiteLayerMatchesOrigin(wildcard, "https://docs.example.com"));
+  EXPECT_TRUE(SiteLayerMatchesOrigin(wildcard, "http://docs.example.com"));
   EXPECT_FALSE(SiteLayerMatchesOrigin(wildcard, "https://badexample.com"));
 }
 
 TEST(SiteLayerRegistryTest, InvalidPageOriginFailsClosed) {
   SiteLayerRegistry registry;
   ASSERT_TRUE(registry.Upsert(Layer("docs-clean", "*.example.com")).has_value());
-  EXPECT_EQ(registry.CompileForOrigin("http://docs.example.com", "").error(),
+  EXPECT_EQ(registry.CompileForOrigin("chrome://settings", "").error(),
             SiteLayerError::kInvalidOrigin);
 }
 

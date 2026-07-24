@@ -1,5 +1,6 @@
 // Project Seoul product runtime: thread and workflow services.
 
+#include <memory>
 #include <utility>
 
 #include "base/functional/bind.h"
@@ -18,6 +19,23 @@ base::RepeatingCallback<base::Time()> FixedClock() {
   return base::BindRepeating(
       [] { return base::Time::UnixEpoch() + base::Days(20000); });
 }
+
+class SuccessfulWorkflowExecutor : public CapabilityExecutor {
+ public:
+  ToolId capability_id() const override {
+    return ToolId::FromString("info.read.inventory");
+  }
+
+  void Execute(CapabilityRequest request,
+               CapabilityCallback callback) override {
+    CapabilityOutcome outcome;
+    outcome.step.status = StepStatus::kSucceeded;
+    outcome.step.observed_summary = "inventory read";
+    outcome.step.verification.verified = true;
+    outcome.step.verification.method = "postcondition";
+    std::move(callback).Run(std::move(outcome));
+  }
+};
 
 TEST(ThreadServiceTest, CrudAndAttachDetach) {
   ThreadService service(FixedClock());
@@ -93,6 +111,7 @@ class WorkflowServiceTest : public testing::Test {
     descriptor.input_schema.fields.push_back(std::move(query));
     descriptor.sensitivity = DataSensitivity::kOrganization;
     CHECK(registry_.Register(std::move(descriptor)).has_value());
+    CHECK(executors_.Register(std::make_unique<SuccessfulWorkflowExecutor>()));
   }
 
   base::test::TaskEnvironment environment_;
@@ -125,10 +144,11 @@ TEST_F(WorkflowServiceTest, SaveEditExportImportRoundTrip) {
   second.args.Set("query", "all");
   ASSERT_TRUE(
       workflows_.AddNode(id, std::move(second), std::string()).has_value());
-  WorkflowEdge edge;
-  edge.from = "read_1";
-  edge.to = "read_2";
-  ASSERT_TRUE(workflows_.AddEdge(id, edge).has_value());
+  const WorkflowDefinition* edited = workflows_.Find(id);
+  ASSERT_TRUE(edited);
+  ASSERT_EQ(edited->edges.size(), 1u);
+  EXPECT_EQ(edited->edges[0].from, "read_1");
+  EXPECT_EQ(edited->edges[0].to, "read_2");
 
   const std::optional<base::DictValue> exported = workflows_.Export(id);
   ASSERT_TRUE(exported.has_value());
@@ -167,6 +187,25 @@ TEST_F(WorkflowServiceTest, SaveTaskAsWorkflowUsesTypedPlanOnly) {
   EXPECT_EQ(*definition->nodes[0].args.FindString("query"), "all");
 }
 
+TEST_F(WorkflowServiceTest, RejectsSaveFromIncompleteTask) {
+  Plan plan;
+  plan.goal = "wait for approval";
+  PlanStep step;
+  step.id = "approval";
+  step.kind = PlanStepKind::kApprovalGate;
+  step.prompt = "Continue?";
+  plan.steps.push_back(std::move(step));
+
+  ToolPermissionContext context;
+  context.max_sensitivity = DataSensitivity::kCredentialAdjacent;
+  const TaskId task_id = tasks_.StartTaskWithPlan(
+      "wait for approval", std::move(plan), PlanOrigin::kDeterministic,
+      LiveWindowKey::FromSessionId(7), context);
+  ASSERT_TRUE(task_id.is_valid());
+  EXPECT_FALSE(
+      workflows_.SaveTaskAsWorkflow(task_id, "Incomplete").has_value());
+}
+
 TEST_F(WorkflowServiceTest, PersistsAndRestores) {
   WorkflowDefinition definition;
   definition.name = "Read inventory";
@@ -180,7 +219,7 @@ TEST_F(WorkflowServiceTest, PersistsAndRestores) {
   const WorkflowId id = workflows_.SaveWorkflow(std::move(definition));
   ASSERT_TRUE(id.is_valid());
 
-  WorkflowService restored(&tasks_);
+  WorkflowService restored(&tasks_, FixedClock());
   restored.RestorePersistedState(workflows_.TakePersistedState());
   EXPECT_EQ(restored.size(), 1u);
 }

@@ -62,7 +62,7 @@ test('design lab renders, patches in place, and preserves focus and scroll', asy
     // its margin, and the body wrapper; focus the composer with a selection;
     // record the stack scroll. All must survive the patch, and only the root
     // component's element may be replaced.
-    await page.evaluate(() => {
+    const scrollBefore = await page.evaluate(() => {
       const artifact = document.querySelector('.artifact');
       artifact.__seoulMarker = 'artifact';
       artifact.querySelector('.artifact-margin').__seoulMarker = 'margin';
@@ -73,7 +73,9 @@ test('design lab renders, patches in place, and preserves focus and scroll', asy
       input.setSelectionRange(8, 17);
       const stack = document.querySelector('.stack');
       stack.scrollTo({ top: 40, behavior: 'instant' });
+      return stack.scrollTop;
     });
+    assert.ok(scrollBefore > 0, 'the artifact stack must actually scroll');
 
     const artifactsBefore = await page.$$eval('.artifact', (n) => n.length);
     const clicked = await page.$$eval('.rep-btn', (btns) => {
@@ -104,7 +106,11 @@ test('design lab renders, patches in place, and preserves focus and scroll', asy
     assert.equal(after.bodyMarker, 'body', 'the body wrapper is patched within, not replaced');
     assert.equal(after.activeIsComposer, true, 'focus must survive the patch');
     assert.deepEqual(after.selection, [8, 17], 'text selection must survive the patch');
-    assert.equal(after.stackScroll, 40, 'scroll position must survive the patch');
+    assert.equal(
+      after.stackScroll,
+      scrollBefore,
+      'the browser-normalized scroll position must survive the patch',
+    );
     assert.equal(after.hasChart, false, 'the chart was replaced by the table');
 
     // A different capability appends a second, differently-shaped artifact.

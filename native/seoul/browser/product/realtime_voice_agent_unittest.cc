@@ -14,6 +14,32 @@
 namespace seoul {
 namespace {
 
+class PendingHttpTransport final : public HttpTransport {
+ public:
+  int Start(const HttpRequest& request,
+            HttpStreamCallbacks callbacks) override {
+    ++start_count_;
+    last_request_ = request;
+    callbacks_ = std::move(callbacks);
+    return 41;
+  }
+
+  void Cancel(int request_handle) override {
+    EXPECT_EQ(request_handle, 41);
+    ++cancel_count_;
+    callbacks_ = HttpStreamCallbacks();
+  }
+
+  int start_count() const { return start_count_; }
+  int cancel_count() const { return cancel_count_; }
+
+ private:
+  int start_count_ = 0;
+  int cancel_count_ = 0;
+  HttpRequest last_request_;
+  HttpStreamCallbacks callbacks_;
+};
+
 void CaptureResult(std::optional<RealtimeVoiceAgent::CreateSessionResult>* out,
                    RealtimeVoiceAgent::CreateSessionResult result) {
   *out = std::move(result);
@@ -67,6 +93,7 @@ TEST(RealtimeVoiceAgentTest, MintsClientSecretForSingleVoiceAgentContract) {
   EXPECT_EQ(transport.last_request().method, "POST");
   EXPECT_EQ(transport.last_request().url,
             RealtimeOriginForTesting() + "/v1/realtime/client_secrets");
+  EXPECT_EQ(transport.last_request().max_response_bytes, 1024u * 1024u);
 
   bool sent_auth = false;
   bool sent_safety = false;
@@ -140,6 +167,106 @@ TEST(RealtimeVoiceAgentTest, MalformedSessionResponseFailsClosed) {
   ASSERT_TRUE(result.has_value());
   ASSERT_FALSE(result->has_value());
   EXPECT_NE(result->error().find("client secret"), std::string::npos);
+}
+
+TEST(RealtimeVoiceAgentTest, ProviderErrorIsShortAndActionable) {
+  FakeHttpTransport transport;
+  FakeCredentialStore credentials;
+  ASSERT_TRUE(credentials.Set(kRealtimeVoiceCredentialAccount,
+                              "sk-test-realtime"));
+  transport.SetResponse(
+      {R"({"error":{"message":"This key cannot create realtime sessions."}})"},
+      403);
+
+  RealtimeVoiceAgent agent(&transport, &credentials);
+  std::optional<RealtimeVoiceAgent::CreateSessionResult> result;
+  agent.CreateSession(std::string(),
+                      base::BindOnce(&CaptureResult, base::Unretained(&result)));
+
+  ASSERT_TRUE(result.has_value());
+  ASSERT_FALSE(result->has_value());
+  EXPECT_EQ(result->error(), "This key cannot create realtime sessions.");
+}
+
+TEST(RealtimeVoiceAgentTest, TransportFailureIsReturned) {
+  FakeHttpTransport transport;
+  FakeCredentialStore credentials;
+  ASSERT_TRUE(credentials.Set(kRealtimeVoiceCredentialAccount,
+                              "sk-test-realtime"));
+  transport.SetResponse({}, 0, "network disconnected");
+
+  RealtimeVoiceAgent agent(&transport, &credentials);
+  std::optional<RealtimeVoiceAgent::CreateSessionResult> result;
+  agent.CreateSession(std::string(),
+                      base::BindOnce(&CaptureResult, base::Unretained(&result)));
+
+  ASSERT_TRUE(result.has_value());
+  ASSERT_FALSE(result->has_value());
+  EXPECT_EQ(result->error(), "network disconnected");
+}
+
+TEST(RealtimeVoiceAgentTest, OversizedSessionResponseFailsClosed) {
+  FakeHttpTransport transport;
+  FakeCredentialStore credentials;
+  ASSERT_TRUE(credentials.Set(kRealtimeVoiceCredentialAccount,
+                              "sk-test-realtime"));
+  transport.SetResponse({std::string(1024 * 1024 + 1, 'x')}, 200);
+
+  RealtimeVoiceAgent agent(&transport, &credentials);
+  std::optional<RealtimeVoiceAgent::CreateSessionResult> result;
+  agent.CreateSession(std::string(),
+                      base::BindOnce(&CaptureResult, base::Unretained(&result)));
+
+  ASSERT_TRUE(result.has_value());
+  ASSERT_FALSE(result->has_value());
+  EXPECT_NE(result->error().find("size bound"), std::string::npos);
+}
+
+TEST(RealtimeVoiceAgentTest, InvalidSafetyIdentifierFailsBeforeNetwork) {
+  FakeHttpTransport transport;
+  FakeCredentialStore credentials;
+  ASSERT_TRUE(credentials.Set(kRealtimeVoiceCredentialAccount,
+                              "sk-test-realtime"));
+  RealtimeVoiceAgent agent(&transport, &credentials);
+  std::optional<RealtimeVoiceAgent::CreateSessionResult> result;
+
+  agent.CreateSession(
+      "valid-prefix\r\nInjected: value",
+      base::BindOnce(&CaptureResult, base::Unretained(&result)));
+
+  ASSERT_TRUE(result.has_value());
+  ASSERT_FALSE(result->has_value());
+  EXPECT_EQ(transport.start_count(), 0);
+  EXPECT_NE(result->error().find("identifier"), std::string::npos);
+}
+
+TEST(RealtimeVoiceAgentTest, ConcurrentCreationRejectedAndCancelIsEffective) {
+  PendingHttpTransport transport;
+  FakeCredentialStore credentials;
+  ASSERT_TRUE(credentials.Set(kRealtimeVoiceCredentialAccount,
+                              "sk-test-realtime"));
+  RealtimeVoiceAgent agent(&transport, &credentials);
+  std::optional<RealtimeVoiceAgent::CreateSessionResult> first_result;
+  std::optional<RealtimeVoiceAgent::CreateSessionResult> second_result;
+
+  agent.CreateSession(
+      std::string(),
+      base::BindOnce(&CaptureResult, base::Unretained(&first_result)));
+  EXPECT_TRUE(agent.Snapshot().creating_session);
+  agent.CreateSession(
+      std::string(),
+      base::BindOnce(&CaptureResult, base::Unretained(&second_result)));
+
+  EXPECT_FALSE(first_result.has_value());
+  ASSERT_TRUE(second_result.has_value());
+  EXPECT_FALSE(second_result->has_value());
+  EXPECT_NE(second_result->error().find("already in progress"),
+            std::string::npos);
+  EXPECT_EQ(transport.start_count(), 1);
+
+  agent.Cancel();
+  EXPECT_FALSE(agent.Snapshot().creating_session);
+  EXPECT_EQ(transport.cancel_count(), 1);
 }
 
 TEST(RealtimeVoiceAgentTest, InstructionsRouteVisualAnswersThroughBrowserTask) {

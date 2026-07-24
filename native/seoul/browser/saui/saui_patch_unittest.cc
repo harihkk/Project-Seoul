@@ -176,6 +176,9 @@ TEST(SauiPatchTest, SetBindingsRebindsToExistingEntry) {
   point.time = base::Time::UnixEpoch() + base::Seconds(1);
   point.y = 9.0;
   add_entry.entry.series.points.push_back(point);
+  point.time = base::Time::UnixEpoch() + base::Seconds(2);
+  point.y = 10.0;
+  add_entry.entry.series.points.push_back(point);
   add_entry.entry.has_provenance = true;
   add_entry.entry.provenance.source_name = "fixture";
   add_entry.entry.provenance.retrieved_at =

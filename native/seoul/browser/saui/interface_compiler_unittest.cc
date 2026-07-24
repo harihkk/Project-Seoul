@@ -15,8 +15,8 @@
 #include "base/test/values_test_util.h"
 #include "seoul/browser/saui/saui_catalog.h"
 #include "seoul/browser/saui/saui_document.h"
-#include "seoul/browser/saui/semantic_to_saui.h"
 #include "seoul/browser/saui/saui_validator.h"
+#include "seoul/browser/saui/semantic_to_saui.h"
 #include "seoul/browser/semantic/semantic_validation.h"
 #include "testing/gtest/include/gtest/gtest.h"
 
@@ -41,13 +41,12 @@ void SetFixtureProvenance(SemanticResult* result) {
   result->provenance.base.source_url = "https://source.test/data";
   result->provenance.base.retrieved_at =
       base::Time::UnixEpoch() + base::Days(20000);
-  result->provenance.base.effective_at =
-      result->provenance.base.retrieved_at;
+  result->provenance.base.effective_at = result->provenance.base.retrieved_at;
 }
 
 bool HasReason(const CompiledInterface& compiled, CompilerReason reason) {
-  return std::find(compiled.reasons.begin(), compiled.reasons.end(),
-                   reason) != compiled.reasons.end();
+  return std::find(compiled.reasons.begin(), compiled.reasons.end(), reason) !=
+         compiled.reasons.end();
 }
 
 // The primary component under the root stack.
@@ -62,11 +61,10 @@ const ComponentNode* Primary(const CompiledInterface& compiled) {
 SemanticResult TelemetryTimeSeries() {
   SemanticResult result;
   result.schema.shape = SemanticShape::kTimeSeries;
-  result.schema.fields = {
-      Field("sampled_at", FieldPrimitive::kTimestamp,
-            SemanticRole::kTimestamp, false),
-      Field("queue_depth", FieldPrimitive::kNumber, SemanticRole::kMeasure,
-            false)};
+  result.schema.fields = {Field("sampled_at", FieldPrimitive::kTimestamp,
+                                SemanticRole::kTimestamp, false),
+                          Field("queue_depth", FieldPrimitive::kNumber,
+                                SemanticRole::kMeasure, false)};
   result.schema.fields[1].unit = "jobs";
   result.data = base::test::ParseJson(R"json([
     {"sampled_at": 1000.0, "queue_depth": 12.0},
@@ -84,8 +82,7 @@ SemanticResult LeagueStandings() {
       Field("club_id", FieldPrimitive::kString, SemanticRole::kIdentifier,
             false),
       Field("club", FieldPrimitive::kString, SemanticRole::kName, false),
-      Field("points", FieldPrimitive::kInteger, SemanticRole::kCount,
-            false)};
+      Field("points", FieldPrimitive::kInteger, SemanticRole::kCount, false)};
   result.data = base::test::ParseJson(R"json([
     {"club_id": "n", "club": "North", "points": 31},
     {"club_id": "s", "club": "South", "points": 28},
@@ -122,8 +119,7 @@ SemanticResult ElectionTallies() {
   result.schema.fields = {
       Field("option_id", FieldPrimitive::kString, SemanticRole::kIdentifier,
             false),
-      Field("option", FieldPrimitive::kString, SemanticRole::kCategory,
-            false),
+      Field("option", FieldPrimitive::kString, SemanticRole::kCategory, false),
       Field("votes", FieldPrimitive::kInteger, SemanticRole::kCount, false)};
   result.data = base::test::ParseJson(R"json([
     {"option_id": "a", "option": "Alpha", "votes": 5210},
@@ -145,8 +141,8 @@ TEST(InterfaceCompilerTest, TemporalMeasureBecomesALineChart) {
   const ComponentNode* primary = Primary(compiled.value());
   ASSERT_NE(primary, nullptr);
   EXPECT_EQ(primary->type, ComponentType::kLineChart);
-  EXPECT_TRUE(HasReason(compiled.value(),
-                        CompilerReason::kTemporalMeasureLineChart));
+  EXPECT_TRUE(
+      HasReason(compiled.value(), CompilerReason::kTemporalMeasureLineChart));
   // Chart honesty props were derived from field semantics, not a domain.
   EXPECT_EQ(*primary->props.FindString("units"), "jobs");
   EXPECT_TRUE(ValidateSurface(compiled->surface).has_value());
@@ -158,8 +154,8 @@ TEST(InterfaceCompilerTest, FewComparableEntitiesBecomeAMatrix) {
   const ComponentNode* primary = Primary(compiled.value());
   ASSERT_NE(primary, nullptr);
   EXPECT_EQ(primary->type, ComponentType::kComparisonMatrix);
-  EXPECT_TRUE(HasReason(compiled.value(),
-                        CompilerReason::kComparableEntitiesMatrix));
+  EXPECT_TRUE(
+      HasReason(compiled.value(), CompilerReason::kComparableEntitiesMatrix));
 }
 
 TEST(InterfaceCompilerTest, GeospatialSemanticsBecomeAMap) {
@@ -221,8 +217,7 @@ TEST(InterfaceCompilerTest, UnattributedSeriesFallsBackToTable) {
   const ComponentNode* primary = Primary(compiled.value());
   ASSERT_NE(primary, nullptr);
   EXPECT_EQ(primary->type, ComponentType::kSortableTable);
-  EXPECT_TRUE(HasReason(compiled.value(),
-                        CompilerReason::kChartWouldMislead));
+  EXPECT_TRUE(HasReason(compiled.value(), CompilerReason::kChartWouldMislead));
 }
 
 TEST(InterfaceCompilerTest, RepresentationChangesWithoutRefetch) {
@@ -232,8 +227,7 @@ TEST(InterfaceCompilerTest, RepresentationChangesWithoutRefetch) {
 
   InterfaceIntent as_table;
   as_table.requested_representation = ComponentType::kSortableTable;
-  auto second =
-      CompileInterface(result, as_table, first->surface.id);
+  auto second = CompileInterface(result, as_table, first->surface.id);
   ASSERT_TRUE(second.has_value());
   // Same surface identity (in-place update), same underlying data entries,
   // different representation: no refetch, no re-reasoning.
@@ -252,8 +246,7 @@ TEST(InterfaceCompilerTest, OhlcRolesSelectCandlestick) {
       Field("open_v", FieldPrimitive::kNumber, SemanticRole::kOpen, false),
       Field("high_v", FieldPrimitive::kNumber, SemanticRole::kHigh, false),
       Field("low_v", FieldPrimitive::kNumber, SemanticRole::kLow, false),
-      Field("close_v", FieldPrimitive::kNumber, SemanticRole::kClose,
-            false)};
+      Field("close_v", FieldPrimitive::kNumber, SemanticRole::kClose, false)};
   buckets.data = base::test::ParseJson(R"json([
     {"bucket": 1000.0, "open_v": 4.0, "high_v": 6.0, "low_v": 3.0,
      "close_v": 5.0},
@@ -264,8 +257,7 @@ TEST(InterfaceCompilerTest, OhlcRolesSelectCandlestick) {
   auto compiled = CompileInterface(buckets, InterfaceIntent());
   ASSERT_TRUE(compiled.has_value());
   ASSERT_NE(Primary(compiled.value()), nullptr);
-  EXPECT_EQ(Primary(compiled.value())->type,
-            ComponentType::kCandlestickChart);
+  EXPECT_EQ(Primary(compiled.value())->type, ComponentType::kCandlestickChart);
   EXPECT_TRUE(HasReason(compiled.value(), CompilerReason::kOhlcCandlestick));
 }
 
@@ -289,9 +281,8 @@ TEST(InterfaceCompilerTest, HierarchyAndGraphShapes) {
 
   SemanticResult dependencies;
   dependencies.schema.shape = SemanticShape::kGraph;
-  dependencies.schema.fields = {
-      Field("module", FieldPrimitive::kString, SemanticRole::kIdentifier,
-            false)};
+  dependencies.schema.fields = {Field("module", FieldPrimitive::kString,
+                                      SemanticRole::kIdentifier, false)};
   dependencies.schema.edge_fields = {
       Field("from_module", FieldPrimitive::kString, SemanticRole::kSourceNode,
             false),
@@ -315,8 +306,7 @@ TEST(InterfaceCompilerTest, MissingInputsBecomeASchemaForm) {
   missing.schema.fields = {
       Field("param_id", FieldPrimitive::kString, SemanticRole::kIdentifier,
             false),
-      Field("prompt_text", FieldPrimitive::kString, SemanticRole::kName,
-            false),
+      Field("prompt_text", FieldPrimitive::kString, SemanticRole::kName, false),
       Field("required", FieldPrimitive::kBoolean, SemanticRole::kNone)};
   missing.data = base::test::ParseJson(R"json([
     {"param_id": "destination", "prompt_text": "Where to?",
@@ -327,8 +317,8 @@ TEST(InterfaceCompilerTest, MissingInputsBecomeASchemaForm) {
   auto compiled = CompileInterface(missing, InterfaceIntent());
   ASSERT_TRUE(compiled.has_value());
   EXPECT_EQ(Primary(compiled.value())->type, ComponentType::kSchemaForm);
-  EXPECT_TRUE(HasReason(compiled.value(),
-                        CompilerReason::kFormFromMissingInputs));
+  EXPECT_TRUE(
+      HasReason(compiled.value(), CompilerReason::kFormFromMissingInputs));
 }
 
 TEST(InterfaceCompilerTest, UnknownRolelessRecordFallsBackGenerically) {
@@ -362,8 +352,7 @@ TEST(InterfaceCompilerTest, CompositeStacksItsParts) {
 
   auto compiled = CompileInterface(composite, InterfaceIntent());
   ASSERT_TRUE(compiled.has_value());
-  EXPECT_TRUE(HasReason(compiled.value(),
-                        CompilerReason::kCompositeSections));
+  EXPECT_TRUE(HasReason(compiled.value(), CompilerReason::kCompositeSections));
   // Both parts materialized under the root.
   EXPECT_EQ(compiled->surface.components[0].children.size(), 2u);
   EXPECT_TRUE(ValidateSurface(compiled->surface).has_value());
@@ -373,8 +362,7 @@ TEST(InterfaceCompilerTest, CitationsBecomeASourceList) {
   SemanticResult citations;
   citations.schema.shape = SemanticShape::kCitations;
   citations.schema.fields = {
-      Field("source_url", FieldPrimitive::kString, SemanticRole::kUrl,
-            false),
+      Field("source_url", FieldPrimitive::kString, SemanticRole::kUrl, false),
       Field("source_title", FieldPrimitive::kString, SemanticRole::kName)};
   citations.data = base::test::ParseJson(R"json([
     {"source_url": "https://a.test/one", "source_title": "One"},
@@ -396,8 +384,8 @@ TEST(InterfaceCompilerTest, FieldDirectivesFilterTheData) {
   EXPECT_EQ(rows.table.columns.size(), 2u);
   EXPECT_EQ(rows.table.rows.size(), 2u);
   EXPECT_TRUE(HasReason(compiled.value(), CompilerReason::kFieldsHidden));
-  EXPECT_TRUE(HasReason(compiled.value(),
-                        CompilerReason::kFilteredToComparedEntities));
+  EXPECT_TRUE(
+      HasReason(compiled.value(), CompilerReason::kFilteredToComparedEntities));
 }
 
 TEST(InterfaceCompilerTest, EmptyCollectionRendersAnEmptyState) {
@@ -443,8 +431,7 @@ TEST(InterfaceCompilerTest, SemanticIdsMapCollisionFreeIntoSauiKeys) {
   SemanticResult result;
   result.schema.shape = SemanticShape::kTable;
   result.schema.fields = {
-      Field(long_id, FieldPrimitive::kString, SemanticRole::kDimension,
-            false),
+      Field(long_id, FieldPrimitive::kString, SemanticRole::kDimension, false),
       Field("n", FieldPrimitive::kNumber, SemanticRole::kMeasure, false)};
   base::ListValue rows;
   for (int i = 0; i < 2; ++i) {
@@ -461,7 +448,8 @@ TEST(InterfaceCompilerTest, SemanticIdsMapCollisionFreeIntoSauiKeys) {
   ASSERT_TRUE(ValidateSurface(compiled->surface).has_value());
   const DataEntry& table = compiled->surface.data.at("rows");
   ASSERT_EQ(table.table.columns.size(), 2u);
-  EXPECT_EQ(table.table.columns[0].key, keys.at(long_id));
+  const auto compiled_keys = BuildSauiKeyMap({long_id, "n"});
+  EXPECT_EQ(table.table.columns[0].key, compiled_keys.at(long_id));
 }
 
 TEST(InterfaceCompilerTest, LongCompositePartNamesUseBoundedOrdinalPaths) {
