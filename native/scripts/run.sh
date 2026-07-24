@@ -1,7 +1,6 @@
 #!/usr/bin/env bash
 # Launch the locally built baseline Chromium with a DISPOSABLE temporary profile.
-# Any extra arguments (e.g. an upstream feature flag for the audit) are passed
-# through to Chromium.
+# Any extra arguments are passed through to Chromium.
 set -euo pipefail
 . "$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)/common.sh"
 
@@ -14,7 +13,14 @@ trap cleanup EXIT
 # Local development-only convenience flags. These are NOT production defaults:
 #   --use-mock-keychain                 avoid macOS keychain prompts in a throwaway run
 #   --disable-features=DialMediaRouteProvider  silence cast discovery noise locally
-DEV_FLAGS=(--use-mock-keychain --disable-features=DialMediaRouteProvider)
+#   --no-first-run / --no-default-browser-check keep every disposable-profile
+#        run focused on Seoul instead of Chromium onboarding.
+DEV_FLAGS=(
+  --use-mock-keychain
+  --disable-features=DialMediaRouteProvider
+  --no-first-run
+  --no-default-browser-check
+)
 
 stage "launch baseline Chromium"
 log "binary:  $CHROMIUM_BINARY"

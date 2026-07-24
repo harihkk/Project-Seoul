@@ -1,8 +1,7 @@
 #!/usr/bin/env bash
 # Apply / verify / reverse the ordered Chromium integration patch series described
-# by native/patches/manifest.json. The series currently has one patch
-# (0001-seoul-native-core); apply/reverse operate on every patch in the manifest
-# in order, and verify runs a cumulative apply-then-reverse round trip.
+# by native/patches/manifest.json. Apply/reverse operate on every patch in the
+# manifest in order, and verify runs a cumulative apply-then-reverse round trip.
 #
 #   patches.sh list      print the ordered series
 #   patches.sh verify    validate the manifest; for each patch, git apply --check

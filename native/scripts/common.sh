@@ -18,6 +18,44 @@ die()   { printf '[error] %s\n' "$*" >&2; exit 1; }
 
 need_cmd() { command -v "$1" >/dev/null 2>&1 || die "required command not found: $1"; }
 
+# Chromium's current Python tooling uses syntax introduced in Python 3.10.
+# Resolve one executable once, then put its directory first so Ninja actions
+# that invoke the literal `python3` use the same interpreter. SEOUL_PYTHON3 is
+# the deterministic escape hatch for hosts whose system Python is older.
+python_is_build_compatible() {
+  local executable="${1:-}"
+  [ -x "$executable" ] &&
+    "$executable" -c 'import sys; raise SystemExit(sys.version_info < (3, 10))' \
+      >/dev/null 2>&1
+}
+
+resolve_build_python() {
+  local explicit="${SEOUL_PYTHON3:-}"
+  local candidate=""
+  if [ -n "$explicit" ]; then
+    assert_safe_path "$explicit" "SEOUL_PYTHON3"
+    [ -x "$explicit" ] || die "SEOUL_PYTHON3 is not executable: $explicit"
+    candidate="$(dirname "$explicit")/python3"
+    [ -x "$candidate" ] ||
+      die "SEOUL_PYTHON3 must have a python3 executable in the same directory: $explicit"
+    python_is_build_compatible "$candidate" ||
+      die "SEOUL_PYTHON3 must be Python 3.10 or newer: $explicit"
+    printf '%s\n' "$candidate"
+    return 0
+  fi
+
+  for candidate in \
+    "$(command -v python3 2>/dev/null || true)" \
+    /opt/homebrew/bin/python3 \
+    /usr/local/bin/python3; do
+    if python_is_build_compatible "$candidate"; then
+      printf '%s\n' "$candidate"
+      return 0
+    fi
+  done
+  return 1
+}
+
 # Reject empty, relative, space-containing or shell-unsafe paths.
 assert_safe_path() {
   local p="${1:-}" what="${2:-path}"
@@ -107,7 +145,10 @@ lock_depot_revision()    { lock_field depotTools.revision; }
 # is honored.
 use_depot_tools() {
   [ -d "$DEPOT_TOOLS_DIR" ] || die "depot_tools not present at $DEPOT_TOOLS_DIR (run fetch.sh first)"
-  export PATH="$DEPOT_TOOLS_DIR:$PATH"
+  local build_python
+  build_python="$(resolve_build_python)" ||
+    die "Chromium requires Python 3.10 or newer; install it or set SEOUL_PYTHON3 to its absolute executable path"
+  export PATH="$(dirname "$build_python"):$DEPOT_TOOLS_DIR:$PATH"
   export DEPOT_TOOLS_UPDATE=0
 }
 

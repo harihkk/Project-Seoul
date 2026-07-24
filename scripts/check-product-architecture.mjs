@@ -260,7 +260,14 @@ if (fs.existsSync(permissionHeaderPath)) {
 }
 if (fs.existsSync(permissionSourcePath)) {
   const permissionSource = fs.readFileSync(permissionSourcePath, 'utf8');
-  if (!permissionSource.includes('request.destination_origin == stored.destination_origin')) {
+  const comparesDestinationOriginExactly =
+    permissionSource.includes(
+      'request.destination_origin == stored.destination_origin',
+    ) ||
+    /SameOptionalOrigin\(\s*request\.destination_origin,\s*stored\.destination_origin\s*\)/s.test(
+      permissionSource,
+    );
+  if (!comparesDestinationOriginExactly) {
     problems.push('Agent grants do not bind the exact destination origin.');
   }
   if (!permissionSource.includes('request.risk == RiskCategory::kExternalSideEffect')) {
@@ -756,11 +763,16 @@ if (fs.existsSync(splitChooserPath) && fs.existsSync(shellControllerPath) &&
     'controller->SplitCandidates()',
     'CreateSplitWithPartner',
     'CandidateLabel',
-    'ui::MENU_SOURCE_KEYBOARD',
   ]) {
     if (!splitChooser.includes(required)) {
       problems.push(`Split chooser is missing explicit-partner UI hook "${required}".`);
     }
+  }
+  if (!splitChooser.includes('ui::MENU_SOURCE_KEYBOARD') &&
+      !splitChooser.includes('ui::mojom::MenuSourceType::kKeyboard')) {
+    problems.push(
+      'Split chooser is missing an explicit keyboard menu-source hook.',
+    );
   }
   if (!shellViewModel.includes('BuildSplitCandidates') ||
       !shellViewModel.includes('upstream_split_token')) {

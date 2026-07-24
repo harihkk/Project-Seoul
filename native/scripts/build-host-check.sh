@@ -1,11 +1,12 @@
 #!/usr/bin/env bash
 # Build-host readiness gate (distinct from checkout readiness). HARD-fails unless
 # this host can safely run a full Chromium build. gen.sh and build.sh require this
-# to pass first, so a build cannot accidentally start on an underpowered host such
-# as an 8 GiB Mac. RAM is a hard requirement here, never a warning.
+# to pass first, so a build cannot accidentally start on an underpowered host.
+# RAM is a hard requirement here, never a warning.
 #
 # Configurable minimums (env): SEOUL_MIN_RAM_GIB (default 16),
-# SEOUL_MIN_BUILD_FREE_GIB (default 150).
+# SEOUL_MIN_BUILD_FREE_GIB (default 150), and SEOUL_PYTHON3 (absolute path to
+# Python 3.10+ when the system python3 is older).
 set -euo pipefail
 . "$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)/common.sh"
 
@@ -37,6 +38,14 @@ if [ "$free" -ge "$SEOUL_MIN_BUILD_FREE_GIB" ]; then
   pass "free storage ${free} GiB (>= ${SEOUL_MIN_BUILD_FREE_GIB})"
 else
   bad "free storage ${free} GiB is below the ${SEOUL_MIN_BUILD_FREE_GIB} GiB minimum for a build"
+fi
+
+# Python (HARD)
+build_python="$(resolve_build_python || true)"
+if [ -n "$build_python" ]; then
+  pass "Python $("$build_python" -c 'import platform; print(platform.python_version())') at $build_python"
+else
+  bad "Chromium requires Python 3.10 or newer; install it or set SEOUL_PYTHON3"
 fi
 
 # Xcode + SDK (HARD)

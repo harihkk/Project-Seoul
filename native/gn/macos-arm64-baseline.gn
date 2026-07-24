@@ -10,7 +10,8 @@
 is_debug = false
 
 # Component build: faster incremental links and far lower peak link memory than a
-# static build. Chosen deliberately because this host has limited RAM (8 GiB).
+# static build. This is the development configuration; release packaging must
+# use a separately verified non-component build.
 is_component_build = true
 
 # No debug symbols: smaller output, much lower link memory and disk use.

@@ -1,8 +1,8 @@
 #!/usr/bin/env bash
 # Build only the `chrome` target. Refuses to run unless the build-host gate passes,
-# so a build cannot start on an underpowered host (e.g. an 8 GiB Mac). Job count is
-# configurable (SEOUL_NINJA_JOBS) with a conservative memory-aware default. Records
-# timing and output size. Does not build `all`, unit tests, or browser tests.
+# so a build cannot start on an underpowered host. Job count is configurable
+# (SEOUL_NINJA_JOBS) with a conservative memory-aware default. Records timing
+# and output size. Does not build `all`, unit tests, or browser tests.
 set -euo pipefail
 . "$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)/common.sh"
 

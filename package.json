@@ -19,8 +19,11 @@
     "check:syntax": "bash native/scripts/syntax-check.sh",
     "check:protocol": "node scripts/check-protocol.mjs",
     "test:protocol": "node --test protocol/tests/protocol-conformance.test.mjs",
+    "test:native": "native/scripts/test.sh unit",
+    "test:native:browser": "native/scripts/test.sh browser",
+    "preview:native": "node native/scripts/preview.mjs",
     "build:canvas": "node apps/canvas-prototype/build.mjs",
-    "test:canvas": "cd apps/canvas-prototype && npx tsc --noEmit -p tsconfig.json && cd ../.. && npm run build:canvas && node --test apps/canvas-prototype/tests/generalization.test.mjs apps/canvas-prototype/tests/patch-engine.test.mjs apps/canvas-prototype/tests/render.smoke.mjs",
+    "test:canvas": "cd apps/canvas-prototype && npx tsc --noEmit -p tsconfig.json && cd ../.. && npm run build:canvas && node --test apps/canvas-prototype/tests/generalization.test.mjs apps/canvas-prototype/tests/launch-browser.test.mjs apps/canvas-prototype/tests/patch-engine.test.mjs apps/canvas-prototype/tests/render.smoke.mjs",
     "canvas": "node apps/canvas-prototype/build.mjs && open apps/canvas-prototype/dist/index.html",
     "generate:protocol": "node scripts/generate-protocol-types.mjs && node scripts/generate-component-catalog.mjs",
     "verify:checkout": "native/scripts/verify-checkout.sh"
