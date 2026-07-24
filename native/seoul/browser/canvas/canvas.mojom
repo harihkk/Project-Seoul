@@ -45,6 +45,17 @@ struct RealtimeToolCall {
   string arguments_json;
 };
 
+// One declarative Boost adjustment. The browser maps the string kind to the
+// closed SiteAdjustmentKind enum and validates every selector/value before
+// storing or applying it. No CSS or JavaScript crosses this boundary.
+struct SiteLayerAdjustmentInput {
+  string kind;
+  array<string> selectors;
+  string text_value;
+  double numeric_value;
+  string density;
+};
+
 // Implemented in the browser. The renderer calls these.
 interface PageHandler {
   // The renderer is ready; the browser replies by pushing the current surface
@@ -80,14 +91,65 @@ interface PageHandler {
   // capture bytes and credentials never cross this boundary.
   GetLibrarySnapshot() => (string snapshot_json);
   CreateBoard(string name) => (string snapshot_json);
+  RenameBoard(string board_id, string name) => (string snapshot_json);
   SetBoardArchived(string board_id, bool archived) => (string snapshot_json);
   DeleteBoard(string board_id) => (string snapshot_json);
+  AddBoardElement(string board_id,
+                  string element_id,
+                  string kind,
+                  string title,
+                  string text,
+                  string reference,
+                  string origin,
+                  double x,
+                  double y,
+                  double width,
+                  double height,
+                  int32 z_index) => (string snapshot_json);
+  UpdateBoardElement(string board_id,
+                     string element_id,
+                     string kind,
+                     string title,
+                     string text,
+                     string reference,
+                     string origin,
+                     double x,
+                     double y,
+                     double width,
+                     double height,
+                     int32 z_index) => (string snapshot_json);
+  RemoveBoardElement(string board_id,
+                     string element_id) => (string snapshot_json);
 
-  // Studio is an inspectable projection of the profile runtime's appearance
-  // and reasoning catalogs. The first reachable surface is deliberately
-  // read-only: it exposes bounded configuration metadata, never credentials,
-  // local endpoints, page content, or raw provider errors.
+  // Boosts are the product UI for native Site Layers. The snapshot includes
+  // the bound window's current page identity and the profile's validated
+  // layers. Mutations apply to matching live pages immediately and persist
+  // only after browser-side validation.
+  GetSiteLayerSnapshot() => (string snapshot_json);
+  UpsertSiteLayer(string layer_id,
+                  string name,
+                  string origin_pattern,
+                  string scene_scope,
+                  bool enabled,
+                  array<SiteLayerAdjustmentInput> adjustments)
+      => (string snapshot_json);
+  SetSiteLayerEnabled(string layer_id, bool enabled)
+      => (string snapshot_json);
+  DeleteSiteLayer(string layer_id) => (string snapshot_json);
+
+  // Studio owns provider configuration and an inspectable projection of the
+  // profile runtime. Secrets are write-only: they go directly to the browser's
+  // OS credential store and never return in a snapshot or product preference.
   GetStudioSnapshot() => (string snapshot_json);
+  SaveLocalProvider(string endpoint_url,
+                    string model_id) => (string snapshot_json);
+  ClearLocalProvider() => (string snapshot_json);
+  CheckLocalProvider() => (string snapshot_json);
+  SaveCloudProvider(string model_id,
+                    bool enabled,
+                    string reasoning_secret,
+                    string voice_secret) => (string snapshot_json);
+  ClearCloudProvider() => (string snapshot_json);
 };
 
 // Implemented in the renderer. The browser calls these to drive the Canvas.
@@ -100,6 +162,11 @@ interface Page {
 
   // Live voice/session/status indicators (route: "local" or "cloud").
   SetStatus(string status_json);
+
+  // The bound window's current active-page identity. This is browser-observed
+  // metadata only (no raw HTML and no query strings); it updates as the user
+  // switches or navigates tabs while Canvas remains open.
+  SetPageContext(string context_json);
 
   // A task changed: the full canonical task-snapshot JSON document. Replaces
   // status-string task notifications; the Canvas renders plan, current step,

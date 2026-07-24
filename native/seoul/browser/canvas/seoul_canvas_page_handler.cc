@@ -4,8 +4,10 @@
 
 #include <utility>
 
+#include "base/functional/bind.h"
 #include "base/json/json_reader.h"
 #include "base/json/json_writer.h"
+#include "base/uuid.h"
 #include "chrome/browser/ui/browser_window/public/browser_window_interface.h"
 #include "seoul/browser/library/library_service.h"
 #include "seoul/browser/product/browser/seoul_runtime_service.h"
@@ -14,6 +16,7 @@
 #include "seoul/browser/product/task_surface_bridge.h"
 #include "seoul/browser/product/workflow_service.h"
 #include "seoul/browser/scenes/scene_registry.h"
+#include "seoul/browser/site_layers/site_layer_compiler.h"
 #include "seoul/browser/site_layers/site_layer_registry.h"
 #include "seoul/browser/themes/theme_registry.h"
 
@@ -26,6 +29,10 @@ constexpr size_t kMaxEventValueBytes = 64 * 1024;
 // Bound on a conversational turn accepted from the renderer.
 constexpr size_t kMaxTurnBytes = 8 * 1024;
 constexpr size_t kMaxTaskInputBytes = 2 * 1024;
+constexpr size_t kMaxProviderEndpointBytes = 2048;
+constexpr size_t kMaxProviderModelBytes = 512;
+constexpr size_t kMaxProviderSecretBytes = 64 * 1024;
+constexpr size_t kMaxSiteLayerTextValueBytes = 512;
 
 std::string WriteJson(base::DictValue value) {
   std::string json;
@@ -56,6 +63,89 @@ ComponentEventKind FromMojo(canvas::mojom::ComponentEventKind kind) {
   return ComponentEventKind::kActivate;
 }
 
+std::optional<SiteAdjustmentKind> SiteAdjustmentKindFromWire(
+    const std::string& kind) {
+  if (kind == "accent_color") {
+    return SiteAdjustmentKind::kAccentColor;
+  }
+  if (kind == "background_color") {
+    return SiteAdjustmentKind::kBackgroundColor;
+  }
+  if (kind == "text_color") {
+    return SiteAdjustmentKind::kTextColor;
+  }
+  if (kind == "font_family") {
+    return SiteAdjustmentKind::kFontFamily;
+  }
+  if (kind == "font_size_scale") {
+    return SiteAdjustmentKind::kFontSizeScale;
+  }
+  if (kind == "content_width") {
+    return SiteAdjustmentKind::kContentWidth;
+  }
+  if (kind == "line_spacing") {
+    return SiteAdjustmentKind::kLineSpacing;
+  }
+  if (kind == "density") {
+    return SiteAdjustmentKind::kDensity;
+  }
+  if (kind == "hide") {
+    return SiteAdjustmentKind::kHide;
+  }
+  if (kind == "emphasize") {
+    return SiteAdjustmentKind::kEmphasize;
+  }
+  if (kind == "sticky_header_off") {
+    return SiteAdjustmentKind::kStickyHeaderOff;
+  }
+  if (kind == "reading_mode") {
+    return SiteAdjustmentKind::kReadingMode;
+  }
+  if (kind == "increase_contrast") {
+    return SiteAdjustmentKind::kIncreaseContrast;
+  }
+  if (kind == "reduce_motion") {
+    return SiteAdjustmentKind::kReduceMotion;
+  }
+  return std::nullopt;
+}
+
+std::optional<DensityLevel> DensityFromWire(const std::string& density) {
+  if (density == "compact") {
+    return DensityLevel::kCompact;
+  }
+  if (density == "comfortable" || density.empty()) {
+    return DensityLevel::kComfortable;
+  }
+  if (density == "spacious") {
+    return DensityLevel::kSpacious;
+  }
+  return std::nullopt;
+}
+
+std::optional<SiteAdjustment> SiteAdjustmentFromMojo(
+    const canvas::mojom::SiteLayerAdjustmentInputPtr& input) {
+  if (!input || input->text_value.size() > kMaxSiteLayerTextValueBytes ||
+      input->selectors.size() > kMaxSelectorsPerRule) {
+    return std::nullopt;
+  }
+  const std::optional<SiteAdjustmentKind> kind =
+      SiteAdjustmentKindFromWire(input->kind);
+  const std::optional<DensityLevel> density =
+      DensityFromWire(input->density);
+  if (!kind.has_value() || !density.has_value()) {
+    return std::nullopt;
+  }
+  SiteAdjustment adjustment;
+  adjustment.kind = kind.value();
+  adjustment.selectors = input->selectors;
+  adjustment.color_value = input->text_value;
+  adjustment.font_family = input->text_value;
+  adjustment.numeric_value = input->numeric_value;
+  adjustment.density = density.value();
+  return adjustment;
+}
+
 }  // namespace
 
 SeoulCanvasPageHandler::SeoulCanvasPageHandler(
@@ -72,6 +162,10 @@ SeoulCanvasPageHandler::SeoulCanvasPageHandler(
     window_binding_token_ = runtime_->CreateWindowBinding(browser_window).token;
     runtime_->surfaces()->AddObserver(this);
     runtime_->tasks()->AddObserver(this);
+    if (LiveWindowStateProvider* live_state =
+            runtime_->live_window_state_provider()) {
+      live_window_observation_.Observe(live_state);
+    }
     observing_ = true;
   }
 }
@@ -80,6 +174,7 @@ SeoulCanvasPageHandler::~SeoulCanvasPageHandler() {
   if (runtime_ && !window_binding_token_.is_empty()) {
     runtime_->InvalidateWindowBinding(window_binding_token_);
   }
+  live_window_observation_.Reset();
   if (observing_ && runtime_) {
     runtime_->surfaces()->RemoveObserver(this);
     runtime_->tasks()->RemoveObserver(this);
@@ -104,6 +199,7 @@ void SeoulCanvasPageHandler::RequestInitialState() {
       page_->PushSurface(id.value(), json.value());
     }
   }
+  PushPageContext();
   PushStatus("ready");
 }
 
@@ -423,6 +519,26 @@ void SeoulCanvasPageHandler::CreateBoard(const std::string& name,
   std::move(callback).Run(LibrarySnapshotJson());
 }
 
+void SeoulCanvasPageHandler::RenameBoard(const std::string& board_id,
+                                         const std::string& name,
+                                         RenameBoardCallback callback) {
+  if (!runtime_ || !runtime_->library()) {
+    std::move(callback).Run(ErrorJson("library_unavailable"));
+    return;
+  }
+  if (!ResolveBoundWindow().has_value()) {
+    std::move(callback).Run(ErrorJson("window_unbound"));
+    return;
+  }
+  const LibraryStatusResult result = runtime_->library()->RenameBoard(
+      BoardId::FromString(board_id), name);
+  if (!result.has_value()) {
+    std::move(callback).Run(ErrorJson(LibraryErrorToString(result.error())));
+    return;
+  }
+  std::move(callback).Run(LibrarySnapshotJson());
+}
+
 void SeoulCanvasPageHandler::SetBoardArchived(
     const std::string& board_id,
     bool archived,
@@ -463,6 +579,307 @@ void SeoulCanvasPageHandler::DeleteBoard(const std::string& board_id,
   std::move(callback).Run(LibrarySnapshotJson());
 }
 
+namespace {
+
+std::optional<BoardElementKind> BoardElementKindFromWire(
+    const std::string& kind) {
+  if (kind == "text") {
+    return BoardElementKind::kText;
+  }
+  if (kind == "link") {
+    return BoardElementKind::kLink;
+  }
+  if (kind == "image_reference") {
+    return BoardElementKind::kImageReference;
+  }
+  if (kind == "capture_reference") {
+    return BoardElementKind::kCaptureReference;
+  }
+  if (kind == "surface_reference") {
+    return BoardElementKind::kSurfaceReference;
+  }
+  return std::nullopt;
+}
+
+std::optional<BoardElement> BoardElementFromWire(
+    const std::string& element_id,
+    const std::string& kind,
+    const std::string& title,
+    const std::string& text,
+    const std::string& reference,
+    const std::string& origin,
+    double x,
+    double y,
+    double width,
+    double height,
+    int32_t z_index) {
+  const std::optional<BoardElementKind> parsed_kind =
+      BoardElementKindFromWire(kind);
+  if (!parsed_kind.has_value()) {
+    return std::nullopt;
+  }
+  BoardElement element;
+  if (!element_id.empty()) {
+    element.id = BoardElementId::FromString(element_id);
+    if (!element.id.is_valid()) {
+      return std::nullopt;
+    }
+  }
+  element.kind = *parsed_kind;
+  element.title = title;
+  element.text = text;
+  element.reference = reference;
+  element.origin = origin;
+  element.x = x;
+  element.y = y;
+  element.width = width;
+  element.height = height;
+  element.z_index = z_index;
+  return element;
+}
+
+}  // namespace
+
+void SeoulCanvasPageHandler::AddBoardElement(
+    const std::string& board_id,
+    const std::string& element_id,
+    const std::string& kind,
+    const std::string& title,
+    const std::string& text,
+    const std::string& reference,
+    const std::string& origin,
+    double x,
+    double y,
+    double width,
+    double height,
+    int32_t z_index,
+    AddBoardElementCallback callback) {
+  if (!runtime_ || !runtime_->library()) {
+    std::move(callback).Run(ErrorJson("library_unavailable"));
+    return;
+  }
+  if (!ResolveBoundWindow().has_value()) {
+    std::move(callback).Run(ErrorJson("window_unbound"));
+    return;
+  }
+  std::optional<BoardElement> element = BoardElementFromWire(
+      element_id, kind, title, text, reference, origin, x, y, width, height,
+      z_index);
+  if (!element.has_value()) {
+    std::move(callback).Run(ErrorJson("invalid_element"));
+    return;
+  }
+  const LibraryResult<BoardElementId> result =
+      runtime_->library()->AddBoardElement(BoardId::FromString(board_id),
+                                           std::move(*element));
+  if (!result.has_value()) {
+    std::move(callback).Run(ErrorJson(LibraryErrorToString(result.error())));
+    return;
+  }
+  std::move(callback).Run(LibrarySnapshotJson());
+}
+
+void SeoulCanvasPageHandler::UpdateBoardElement(
+    const std::string& board_id,
+    const std::string& element_id,
+    const std::string& kind,
+    const std::string& title,
+    const std::string& text,
+    const std::string& reference,
+    const std::string& origin,
+    double x,
+    double y,
+    double width,
+    double height,
+    int32_t z_index,
+    UpdateBoardElementCallback callback) {
+  if (!runtime_ || !runtime_->library()) {
+    std::move(callback).Run(ErrorJson("library_unavailable"));
+    return;
+  }
+  if (!ResolveBoundWindow().has_value()) {
+    std::move(callback).Run(ErrorJson("window_unbound"));
+    return;
+  }
+  std::optional<BoardElement> element = BoardElementFromWire(
+      element_id, kind, title, text, reference, origin, x, y, width, height,
+      z_index);
+  if (!element.has_value()) {
+    std::move(callback).Run(ErrorJson("invalid_element"));
+    return;
+  }
+  const LibraryStatusResult result = runtime_->library()->UpdateBoardElement(
+      BoardId::FromString(board_id), std::move(*element));
+  if (!result.has_value()) {
+    std::move(callback).Run(ErrorJson(LibraryErrorToString(result.error())));
+    return;
+  }
+  std::move(callback).Run(LibrarySnapshotJson());
+}
+
+void SeoulCanvasPageHandler::RemoveBoardElement(
+    const std::string& board_id,
+    const std::string& element_id,
+    RemoveBoardElementCallback callback) {
+  if (!runtime_ || !runtime_->library()) {
+    std::move(callback).Run(ErrorJson("library_unavailable"));
+    return;
+  }
+  if (!ResolveBoundWindow().has_value()) {
+    std::move(callback).Run(ErrorJson("window_unbound"));
+    return;
+  }
+  const LibraryStatusResult result = runtime_->library()->RemoveBoardElement(
+      BoardId::FromString(board_id),
+      BoardElementId::FromString(element_id));
+  if (!result.has_value()) {
+    std::move(callback).Run(ErrorJson(LibraryErrorToString(result.error())));
+    return;
+  }
+  std::move(callback).Run(LibrarySnapshotJson());
+}
+
+std::string SeoulCanvasPageHandler::SiteLayerSnapshotJson() const {
+  if (!runtime_ || !runtime_->site_layers()) {
+    return ErrorJson("site_layers_unavailable");
+  }
+  const std::optional<LiveWindowKey> window = ResolveBoundWindow();
+  if (!window.has_value()) {
+    return ErrorJson("window_unbound");
+  }
+
+  base::DictValue active_page;
+  std::optional<LiveTabDescriptor> active =
+      runtime_->ActiveTabDescriptor(window.value());
+  if (active.has_value()) {
+    active_page.Set("tab_id", active->tab.value());
+    active_page.Set("title", active->title);
+    active_page.Set("origin", active->origin);
+    active_page.Set("customizable",
+                    IsValidOriginPattern(active->origin));
+  } else {
+    active_page.Set("tab_id", "");
+    active_page.Set("title", "");
+    active_page.Set("origin", "");
+    active_page.Set("customizable", false);
+  }
+
+  base::ListValue layers;
+  int matching_enabled_count = 0;
+  for (const SiteLayer* layer : runtime_->site_layers()->List()) {
+    base::DictValue value = SiteLayerToValue(*layer);
+    const bool matches_active =
+        active.has_value() && !active->origin.empty() &&
+        SiteLayerMatchesOrigin(*layer, active->origin);
+    value.Set("matches_active_page", matches_active);
+    if (matches_active && layer->enabled && layer->scene_scope.empty()) {
+      ++matching_enabled_count;
+    }
+    layers.Append(std::move(value));
+  }
+
+  base::DictValue snapshot;
+  snapshot.Set("status", "ready");
+  snapshot.Set("schema_version", 1);
+  snapshot.Set("active_page", std::move(active_page));
+  snapshot.Set("matching_enabled_count", matching_enabled_count);
+  snapshot.Set("layers", std::move(layers));
+  return WriteJson(std::move(snapshot));
+}
+
+void SeoulCanvasPageHandler::GetSiteLayerSnapshot(
+    GetSiteLayerSnapshotCallback callback) {
+  std::move(callback).Run(SiteLayerSnapshotJson());
+}
+
+void SeoulCanvasPageHandler::UpsertSiteLayer(
+    const std::string& layer_id,
+    const std::string& name,
+    const std::string& origin_pattern,
+    const std::string& scene_scope,
+    bool enabled,
+    std::vector<canvas::mojom::SiteLayerAdjustmentInputPtr> adjustments,
+    UpsertSiteLayerCallback callback) {
+  if (!runtime_ || !ResolveBoundWindow().has_value()) {
+    std::move(callback).Run(ErrorJson("window_unbound"));
+    return;
+  }
+  if (adjustments.empty() || adjustments.size() > kMaxLayerRules) {
+    std::move(callback).Run(ErrorJson("invalid_adjustments"));
+    return;
+  }
+
+  SiteLayer layer;
+  layer.id = layer_id.empty()
+                 ? "boost-" +
+                       base::Uuid::GenerateRandomV4().AsLowercaseString()
+                 : layer_id;
+  layer.name = name;
+  layer.origin_pattern = origin_pattern;
+  layer.scene_scope = scene_scope;
+  layer.enabled = enabled;
+  layer.adjustments.reserve(adjustments.size());
+  for (const canvas::mojom::SiteLayerAdjustmentInputPtr& input :
+       adjustments) {
+    std::optional<SiteAdjustment> adjustment =
+        SiteAdjustmentFromMojo(input);
+    if (!adjustment.has_value()) {
+      std::move(callback).Run(ErrorJson("invalid_adjustment"));
+      return;
+    }
+    layer.adjustments.push_back(std::move(adjustment.value()));
+  }
+
+  const SiteLayerStatusResult result =
+      runtime_->UpsertSiteLayer(std::move(layer));
+  if (!result.has_value()) {
+    std::move(callback).Run(ErrorJson(SiteLayerErrorToString(result.error())));
+    return;
+  }
+  std::move(callback).Run(SiteLayerSnapshotJson());
+}
+
+void SeoulCanvasPageHandler::SetSiteLayerEnabled(
+    const std::string& layer_id,
+    bool enabled,
+    SetSiteLayerEnabledCallback callback) {
+  if (!runtime_ || !runtime_->site_layers() ||
+      !ResolveBoundWindow().has_value()) {
+    std::move(callback).Run(ErrorJson("window_unbound"));
+    return;
+  }
+  const SiteLayer* stored = runtime_->site_layers()->Find(layer_id);
+  if (!stored) {
+    std::move(callback).Run(ErrorJson("unknown_layer"));
+    return;
+  }
+  SiteLayer updated = *stored;
+  updated.enabled = enabled;
+  const SiteLayerStatusResult result =
+      runtime_->UpsertSiteLayer(std::move(updated));
+  if (!result.has_value()) {
+    std::move(callback).Run(ErrorJson(SiteLayerErrorToString(result.error())));
+    return;
+  }
+  std::move(callback).Run(SiteLayerSnapshotJson());
+}
+
+void SeoulCanvasPageHandler::DeleteSiteLayer(
+    const std::string& layer_id,
+    DeleteSiteLayerCallback callback) {
+  if (!runtime_ || !ResolveBoundWindow().has_value()) {
+    std::move(callback).Run(ErrorJson("window_unbound"));
+    return;
+  }
+  const SiteLayerStatusResult result =
+      runtime_->RemoveSiteLayer(layer_id);
+  if (!result.has_value()) {
+    std::move(callback).Run(ErrorJson(SiteLayerErrorToString(result.error())));
+    return;
+  }
+  std::move(callback).Run(SiteLayerSnapshotJson());
+}
+
 std::string SeoulCanvasPageHandler::StudioSnapshotJson() const {
   if (!runtime_ || !runtime_->providers() || !runtime_->scenes() ||
       !runtime_->themes() || !runtime_->site_layers()) {
@@ -477,6 +894,7 @@ std::string SeoulCanvasPageHandler::StudioSnapshotJson() const {
   local.Set("configured", providers.local_configured);
   local.Set("healthy", providers.local_healthy);
   local.Set("model_configured", !providers.local_model.empty());
+  local.Set("model", providers.local_model);
   local.Set("discovered_model_count",
             static_cast<int>(providers.local_models_discovered.size()));
   base::DictValue cloud;
@@ -484,6 +902,9 @@ std::string SeoulCanvasPageHandler::StudioSnapshotJson() const {
   cloud.Set("enabled", providers.cloud_enabled);
   cloud.Set("available", runtime_->providers()->cloud_available());
   cloud.Set("model_configured", !providers.cloud_model.empty());
+  cloud.Set("model", providers.cloud_model);
+  cloud.Set("voice_configured",
+            runtime_->RealtimeVoiceSnapshot().configured);
 
   base::DictValue provider_routes;
   provider_routes.Set("local", std::move(local));
@@ -554,6 +975,86 @@ void SeoulCanvasPageHandler::GetStudioSnapshot(
   std::move(callback).Run(StudioSnapshotJson());
 }
 
+void SeoulCanvasPageHandler::SaveLocalProvider(
+    const std::string& endpoint_url,
+    const std::string& model_id,
+    SaveLocalProviderCallback callback) {
+  if (!runtime_ || !ResolveBoundWindow().has_value()) {
+    std::move(callback).Run(ErrorJson("window_unbound"));
+    return;
+  }
+  if (endpoint_url.empty() ||
+      endpoint_url.size() > kMaxProviderEndpointBytes || model_id.empty() ||
+      model_id.size() > kMaxProviderModelBytes ||
+      !runtime_->ConfigureLocalProvider(endpoint_url, model_id)) {
+    std::move(callback).Run(ErrorJson("invalid_local_provider"));
+    return;
+  }
+  std::move(callback).Run(StudioSnapshotJson());
+}
+
+void SeoulCanvasPageHandler::ClearLocalProvider(
+    ClearLocalProviderCallback callback) {
+  if (!runtime_ || !ResolveBoundWindow().has_value()) {
+    std::move(callback).Run(ErrorJson("window_unbound"));
+    return;
+  }
+  runtime_->ClearLocalProvider();
+  std::move(callback).Run(StudioSnapshotJson());
+}
+
+void SeoulCanvasPageHandler::CheckLocalProvider(
+    CheckLocalProviderCallback callback) {
+  if (!runtime_ || !runtime_->providers() ||
+      !ResolveBoundWindow().has_value()) {
+    std::move(callback).Run(ErrorJson("window_unbound"));
+    return;
+  }
+  runtime_->providers()->CheckLocalHealth(base::BindOnce(
+      &SeoulCanvasPageHandler::OnLocalProviderChecked,
+      weak_factory_.GetWeakPtr(), std::move(callback)));
+}
+
+void SeoulCanvasPageHandler::OnLocalProviderChecked(
+    CheckLocalProviderCallback callback,
+    bool /*healthy*/) {
+  std::move(callback).Run(StudioSnapshotJson());
+}
+
+void SeoulCanvasPageHandler::SaveCloudProvider(
+    const std::string& model_id,
+    bool enabled,
+    const std::string& reasoning_secret,
+    const std::string& voice_secret,
+    SaveCloudProviderCallback callback) {
+  if (!runtime_ || !ResolveBoundWindow().has_value()) {
+    std::move(callback).Run(ErrorJson("window_unbound"));
+    return;
+  }
+  if (model_id.empty() || model_id.size() > kMaxProviderModelBytes ||
+      reasoning_secret.size() > kMaxProviderSecretBytes ||
+      voice_secret.size() > kMaxProviderSecretBytes ||
+      !runtime_->ConfigureCloudProvider(model_id, enabled, reasoning_secret,
+                                        voice_secret)) {
+    std::move(callback).Run(ErrorJson("cloud_provider_save_failed"));
+    return;
+  }
+  std::move(callback).Run(StudioSnapshotJson());
+}
+
+void SeoulCanvasPageHandler::ClearCloudProvider(
+    ClearCloudProviderCallback callback) {
+  if (!runtime_ || !ResolveBoundWindow().has_value()) {
+    std::move(callback).Run(ErrorJson("window_unbound"));
+    return;
+  }
+  if (!runtime_->ClearCloudProviderAndCredentials()) {
+    std::move(callback).Run(ErrorJson("credential_store_unavailable"));
+    return;
+  }
+  std::move(callback).Run(StudioSnapshotJson());
+}
+
 void SeoulCanvasPageHandler::OnSurfaceUpdated(const SurfaceId& id,
                                               const std::string& surface_json) {
   if (page_) {
@@ -577,6 +1078,21 @@ void SeoulCanvasPageHandler::OnTaskNeedsApproval(const TaskId& task_id,
 
 void SeoulCanvasPageHandler::OnTaskFinished(const TaskId& task_id) {
   PushTaskSnapshot(task_id);
+}
+
+void SeoulCanvasPageHandler::OnLiveWindowSnapshotChanged(
+    const LiveWindowSnapshot& snapshot) {
+  const std::optional<LiveWindowKey> bound = ResolveBoundWindow();
+  if (bound.has_value() && snapshot.window == bound.value()) {
+    PushPageContext();
+  }
+}
+
+void SeoulCanvasPageHandler::OnLiveWindowRemoved(LiveWindowKey window) {
+  const std::optional<LiveWindowKey> bound = ResolveBoundWindow();
+  if (!bound.has_value() || window == bound.value()) {
+    PushPageContext();
+  }
 }
 
 void SeoulCanvasPageHandler::PushTaskSnapshot(const TaskId& task_id) {
@@ -701,6 +1217,34 @@ void SeoulCanvasPageHandler::PushStatus(const std::string& detail) {
   std::string json;
   base::JSONWriter::Write(status, &json);
   page_->SetStatus(json);
+}
+
+void SeoulCanvasPageHandler::PushPageContext() {
+  if (!page_) {
+    return;
+  }
+  base::DictValue context;
+  context.Set("status", "unavailable");
+  context.Set("tab_id", "");
+  context.Set("title", "");
+  context.Set("origin", "");
+  context.Set("customizable", false);
+  if (runtime_) {
+    const std::optional<LiveWindowKey> window = ResolveBoundWindow();
+    if (window.has_value()) {
+      const std::optional<LiveTabDescriptor> active =
+          runtime_->ActiveTabDescriptor(window.value());
+      if (active.has_value()) {
+        const bool is_web_page = IsValidOriginPattern(active->origin);
+        context.Set("status", is_web_page ? "ready" : "unavailable");
+        context.Set("tab_id", active->tab.value());
+        context.Set("title", active->title);
+        context.Set("origin", active->origin);
+        context.Set("customizable", is_web_page);
+      }
+    }
+  }
+  page_->SetPageContext(WriteJson(std::move(context)));
 }
 
 std::optional<LiveWindowKey> SeoulCanvasPageHandler::ResolveBoundWindow()

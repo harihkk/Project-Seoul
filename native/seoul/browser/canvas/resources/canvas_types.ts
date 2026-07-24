@@ -56,14 +56,43 @@ export interface TaskSnapshotDoc {
   id: string;
   goal: string;
   state: string;
+  failure?: string;
+  has_semantic_result?: boolean;
   pending_approval_step?: string;
   pending_approval_prompt?: string;
   pending_user_input?: boolean;
   receipts?: Array<{
     step_id: string;
     status: string;
-    verification?: {verified: boolean};
+    observed_summary?: string;
+    verification?: {
+      verified: boolean;
+      method?: string;
+      detail?: string;
+    };
   }>;
+}
+
+export interface PageContextDoc {
+  status: 'ready'|'unavailable';
+  tab_id: string;
+  title: string;
+  origin: string;
+  customizable: boolean;
+}
+
+export interface LibraryBoardElementDoc {
+  id: string;
+  kind: 'text'|'link'|'image_reference'|'capture_reference'|'surface_reference';
+  title: string;
+  text: string;
+  reference: string;
+  origin: string;
+  x: number;
+  y: number;
+  width: number;
+  height: number;
+  z_index: number;
 }
 
 export interface LibraryBoardDoc {
@@ -72,7 +101,7 @@ export interface LibraryBoardDoc {
   archived: boolean;
   created_at?: unknown;
   modified_at?: unknown;
-  elements?: Array<{id: string, kind: string, title?: string}>;
+  elements?: LibraryBoardElementDoc[];
 }
 
 export interface LibraryArtifactDoc {
@@ -117,6 +146,8 @@ export interface StudioProviderRouteDoc {
   available?: boolean;
   model_configured: boolean;
   discovered_model_count?: number;
+  model?: string;
+  voice_configured?: boolean;
 }
 
 export interface StudioSceneDoc {
@@ -160,6 +191,40 @@ export interface StudioSnapshotDoc {
   scenes?: StudioSceneDoc[];
   themes?: StudioThemeDoc[];
   site_layers?: StudioSiteLayerDoc[];
+}
+
+export interface SiteLayerAdjustmentDoc {
+  kind: string;
+  selectors?: string[];
+  color_value?: string;
+  font_family?: string;
+  numeric_value?: number;
+  density?: 'compact'|'comfortable'|'spacious';
+}
+
+export interface SiteLayerDoc {
+  schema_version: number;
+  id: string;
+  name: string;
+  origin_pattern: string;
+  scene_scope: string;
+  enabled: boolean;
+  adjustments: SiteLayerAdjustmentDoc[];
+  matches_active_page?: boolean;
+}
+
+export interface SiteLayerSnapshotDoc {
+  status?: string;
+  detail?: string;
+  schema_version?: number;
+  active_page?: {
+    tab_id: string;
+    title: string;
+    origin: string;
+    customizable: boolean;
+  };
+  matching_enabled_count?: number;
+  layers?: SiteLayerDoc[];
 }
 
 export function safeHexColor(value: unknown): string {

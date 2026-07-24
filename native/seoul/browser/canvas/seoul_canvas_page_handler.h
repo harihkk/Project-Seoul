@@ -20,11 +20,14 @@
 #ifndef SEOUL_BROWSER_CANVAS_SEOUL_CANVAS_PAGE_HANDLER_H_
 #define SEOUL_BROWSER_CANVAS_SEOUL_CANVAS_PAGE_HANDLER_H_
 
+#include <cstdint>
 #include <optional>
 #include <string>
+#include <vector>
 
 #include "base/memory/raw_ptr.h"
 #include "base/memory/weak_ptr.h"
+#include "base/scoped_observation.h"
 #include "base/unguessable_token.h"
 #include "mojo/public/cpp/bindings/pending_receiver.h"
 #include "mojo/public/cpp/bindings/pending_remote.h"
@@ -35,6 +38,7 @@
 #include "seoul/browser/product/task_service.h"
 #include "seoul/browser/product/realtime_voice_agent.h"
 #include "seoul/browser/lifecycle/lifecycle_identity.h"
+#include "seoul/browser/lifecycle/live_window_state.h"
 #include "seoul/browser/tasks/task_types.h"
 
 class Profile;
@@ -46,7 +50,8 @@ class SeoulRuntimeService;
 
 class SeoulCanvasPageHandler : public canvas::mojom::PageHandler,
                                public SurfaceServiceObserver,
-                               public TaskServiceObserver {
+                               public TaskServiceObserver,
+                               public LiveWindowStateObserver {
  public:
   SeoulCanvasPageHandler(
       mojo::PendingReceiver<canvas::mojom::PageHandler> receiver,
@@ -86,12 +91,70 @@ class SeoulCanvasPageHandler : public canvas::mojom::PageHandler,
   void GetLibrarySnapshot(GetLibrarySnapshotCallback callback) override;
   void CreateBoard(const std::string& name,
                    CreateBoardCallback callback) override;
+  void RenameBoard(const std::string& board_id,
+                   const std::string& name,
+                   RenameBoardCallback callback) override;
   void SetBoardArchived(const std::string& board_id,
                         bool archived,
                         SetBoardArchivedCallback callback) override;
   void DeleteBoard(const std::string& board_id,
                    DeleteBoardCallback callback) override;
+  void AddBoardElement(const std::string& board_id,
+                       const std::string& element_id,
+                       const std::string& kind,
+                       const std::string& title,
+                       const std::string& text,
+                       const std::string& reference,
+                       const std::string& origin,
+                       double x,
+                       double y,
+                       double width,
+                       double height,
+                       int32_t z_index,
+                       AddBoardElementCallback callback) override;
+  void UpdateBoardElement(const std::string& board_id,
+                          const std::string& element_id,
+                          const std::string& kind,
+                          const std::string& title,
+                          const std::string& text,
+                          const std::string& reference,
+                          const std::string& origin,
+                          double x,
+                          double y,
+                          double width,
+                          double height,
+                          int32_t z_index,
+                          UpdateBoardElementCallback callback) override;
+  void RemoveBoardElement(const std::string& board_id,
+                          const std::string& element_id,
+                          RemoveBoardElementCallback callback) override;
+  void GetSiteLayerSnapshot(GetSiteLayerSnapshotCallback callback) override;
+  void UpsertSiteLayer(
+      const std::string& layer_id,
+      const std::string& name,
+      const std::string& origin_pattern,
+      const std::string& scene_scope,
+      bool enabled,
+      std::vector<canvas::mojom::SiteLayerAdjustmentInputPtr> adjustments,
+      UpsertSiteLayerCallback callback) override;
+  void SetSiteLayerEnabled(
+      const std::string& layer_id,
+      bool enabled,
+      SetSiteLayerEnabledCallback callback) override;
+  void DeleteSiteLayer(const std::string& layer_id,
+                       DeleteSiteLayerCallback callback) override;
   void GetStudioSnapshot(GetStudioSnapshotCallback callback) override;
+  void SaveLocalProvider(const std::string& endpoint_url,
+                         const std::string& model_id,
+                         SaveLocalProviderCallback callback) override;
+  void ClearLocalProvider(ClearLocalProviderCallback callback) override;
+  void CheckLocalProvider(CheckLocalProviderCallback callback) override;
+  void SaveCloudProvider(const std::string& model_id,
+                         bool enabled,
+                         const std::string& reasoning_secret,
+                         const std::string& voice_secret,
+                         SaveCloudProviderCallback callback) override;
+  void ClearCloudProvider(ClearCloudProviderCallback callback) override;
 
   // SurfaceServiceObserver:
   void OnSurfaceUpdated(const SurfaceId& id,
@@ -104,6 +167,11 @@ class SeoulCanvasPageHandler : public canvas::mojom::PageHandler,
                            const std::string& step_id,
                            const std::string& prompt) override;
   void OnTaskFinished(const TaskId& task_id) override;
+
+  // LiveWindowStateObserver:
+  void OnLiveWindowSnapshotChanged(
+      const LiveWindowSnapshot& snapshot) override;
+  void OnLiveWindowRemoved(LiveWindowKey window) override;
 
  private:
   // Pushes the canonical task-snapshot JSON for `task_id` when it belongs to
@@ -118,13 +186,17 @@ class SeoulCanvasPageHandler : public canvas::mojom::PageHandler,
   void OnRealtimeVoiceSessionCreated(
       CreateRealtimeVoiceSessionCallback callback,
       RealtimeVoiceAgent::CreateSessionResult result);
+  void OnLocalProviderChecked(CheckLocalProviderCallback callback,
+                              bool healthy);
 
   // Pushes a compact status document (provider/voice/task state) to the
   // renderer so it never shows a blank page when the runtime is initializing.
   void PushStatus(const std::string& detail);
+  void PushPageContext();
   std::optional<LiveWindowKey> ResolveBoundWindow() const;
   TaskId StartBoundGoal(const std::string& goal);
   std::string LibrarySnapshotJson() const;
+  std::string SiteLayerSnapshotJson() const;
   std::string StudioSnapshotJson() const;
 
   mojo::Receiver<canvas::mojom::PageHandler> receiver_;
@@ -133,6 +205,8 @@ class SeoulCanvasPageHandler : public canvas::mojom::PageHandler,
   raw_ptr<SeoulRuntimeService> runtime_;  // null when the profile is ineligible
   base::UnguessableToken window_binding_token_;
   bool observing_ = false;
+  base::ScopedObservation<LiveWindowStateProvider, LiveWindowStateObserver>
+      live_window_observation_{this};
   base::WeakPtrFactory<SeoulCanvasPageHandler> weak_factory_{this};
 };
 

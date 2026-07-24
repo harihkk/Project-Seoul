@@ -7,24 +7,30 @@ import type {SeoulCanvasAppElement} from './canvas.js';
 
 export function getHtml(this: SeoulCanvasAppElement) {
   const activeTasks = this.activeTasks_();
-  const voiceActive = this.voiceState_ === 'connecting' ||
-      this.voiceState_ === 'listening' || this.voiceState_ === 'microphone_requesting';
+  const voiceActive = [
+    'connecting', 'microphone_requesting', 'listening', 'hearing', 'thinking',
+    'speaking', 'working',
+  ].includes(this.voiceState_);
   return html`<!--_html_template_start_-->
     <main id="canvas-root" aria-live="polite">
       <header class="canvas-header">
         <div><span class="eyebrow">SEOUL CANVAS</span>
           <h1>${this.selectedView_ === 'canvas' ?
               this.surface_?.title || 'Ask, act, understand.' :
-              this.selectedView_ === 'studio' ? 'Shape how Seoul works.' :
+          this.selectedView_ === 'boosts' ? 'Make the web fit you.' :
+          this.selectedView_ === 'studio' ? 'Shape how Seoul works.' :
               'Your thinking space'}</h1></div>
-        <span class="route" aria-live="polite">${this.routeLabel_}</span>
+        <span class="route" data-voice-configured="${this.voiceConfigured_}"
+            aria-live="polite"><span aria-hidden="true"></span>${this.routeLabel_}</span>
       </header>
 
       <nav class="view-switcher" aria-label="Canvas views">
-        ${(['canvas', 'library', 'boards', 'studio'] as const).map(view => html`
+        ${(['canvas', 'boosts', 'library', 'boards', 'studio'] as const).map(view => html`
           <button type="button" aria-current="${this.selectedView_ === view ? 'page' : 'false'}"
               @click="${() => this.selectView_(view)}">${view[0]!.toUpperCase() + view.slice(1)}</button>`)}
       </nav>
+
+      ${this.selectedView_ === 'canvas' ? this.renderPageContext_() : nothing}
 
       ${this.selectedView_ === 'canvas' && activeTasks.length ? html`<section class="task-ribbon" aria-label="Live tasks">
         ${activeTasks.map(task => html`<article class="task-row">
@@ -51,18 +57,87 @@ export function getHtml(this: SeoulCanvasAppElement) {
       </section>` : nothing}
 
       <section class="canvas-content" aria-label="Result surface">
-        ${this.selectedView_ === 'library' ? this.renderLibrary_() :
+        ${this.selectedView_ === 'boosts' ? this.renderBoosts_() :
+          this.selectedView_ === 'library' ? this.renderLibrary_() :
           this.selectedView_ === 'boards' ? this.renderBoards_() :
           this.selectedView_ === 'studio' ? this.renderStudio_() :
           this.surface_ ? html`<div class="saui-surface">
             ${this.surface_.components.map(component => this.renderComponent_(component))}
           </div>` : html`<div class="idle">
-            <div class="idle-orb" aria-hidden="true"></div>
-            <h2>What should we do?</h2>
-            <p>Ask a question, compare information, or tell Seoul to work in this browser.</p>
+            <section class="idle-lede">
+              <div class="idle-signal" aria-hidden="true">
+                <span class="signal-orbit orbit-outer"></span>
+                <span class="signal-orbit orbit-inner"></span>
+                <span class="signal-core"></span>
+              </div>
+              <span class="idle-kicker">BROWSER-NATIVE INTELLIGENCE</span>
+              <h2>Turn intent into visible work.</h2>
+              <p>Seoul reads the browser context you choose, shows its plan, asks before
+                impactful actions, and leaves a receipt.</p>
+              <div class="prompt-list" aria-label="Starter commands">
+                <button type="button"
+                    @click="${() => this.usePrompt_('List the open tabs in this window')}">
+                  <span class="prompt-index">01</span>
+                  <span><strong>Inventory this window</strong>
+                    <small>See the live tab set as structured context</small></span>
+                  <span class="prompt-arrow" aria-hidden="true">↗</span>
+                </button>
+                <button type="button"
+                    @click="${() => this.usePrompt_('Read the current page')}">
+                  <span class="prompt-index">02</span>
+                  <span><strong>Understand this page</strong>
+                    <small>Observe its semantic structure, not raw pixels</small></span>
+                  <span class="prompt-arrow" aria-hidden="true">↗</span>
+                </button>
+                <button type="button"
+                    @click="${() => this.usePrompt_('Open https://example.com in a new tab')}">
+                  <span class="prompt-index">03</span>
+                  <span><strong>Try a browser action</strong>
+                    <small>Preview a typed mutation before it runs</small></span>
+                  <span class="prompt-arrow" aria-hidden="true">↗</span>
+                </button>
+              </div>
+            </section>
+
+            <aside class="control-card" aria-label="How Seoul works">
+              <header>
+                <span>THE CONTROL LOOP</span>
+                <span class="control-status"><i></i> Ready</span>
+              </header>
+              <ol>
+                <li>
+                  <span class="control-number">01</span>
+                  <div><strong>Observe</strong>
+                    <p>Bounded page and tab context enters the Canvas.</p></div>
+                </li>
+                <li>
+                  <span class="control-number">02</span>
+                  <div><strong>Plan</strong>
+                    <p>Typed capabilities make every proposed step inspectable.</p></div>
+                </li>
+                <li>
+                  <span class="control-number">03</span>
+                  <div><strong>Approve</strong>
+                    <p>Impactful changes stop for a clear decision.</p></div>
+                </li>
+                <li>
+                  <span class="control-number">04</span>
+                  <div><strong>Verify</strong>
+                    <p>Observed outcomes return as durable receipts.</p></div>
+                </li>
+              </ol>
+              <footer><span aria-hidden="true">◇</span>
+                Your browser remains the source of truth.</footer>
+            </aside>
           </div>`}
       </section>
     </main>
+
+    ${this.voiceError_ ? html`<div class="voice-error" role="alert">
+      <span>${this.voiceError_}</span>
+      <button type="button" aria-label="Dismiss voice error"
+          @click="${() => this.voiceError_ = ''}">×</button>
+    </div>` : nothing}
 
     <footer class="composer">
       <button class="voice-button" type="button" aria-label="Toggle voice input"

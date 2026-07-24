@@ -32,9 +32,11 @@ void SetUpDataSource(content::WebUIDataSource* source) {
   // trusted-types CSP for a first-party WebUI.
   webui::SetupWebUIDataSource(source, kSeoulCanvasResources,
                               IDR_SEOUL_CANVAS_CANVAS_HTML);
-  // Tighten beyond the defaults: no remote scripts, no eval, no objects.
+  // Tighten beyond the defaults: allow only this WebUI and Chromium's
+  // packaged component library. No remote scripts, inline scripts, or eval.
   source->OverrideContentSecurityPolicy(
-      network::mojom::CSPDirectiveName::ScriptSrc, "script-src 'self';");
+      network::mojom::CSPDirectiveName::ScriptSrc,
+      "script-src chrome://resources 'self';");
   const std::string realtime_origin =
       std::string("https://api.") + "open" + "ai.com";
   source->OverrideContentSecurityPolicy(
@@ -49,8 +51,7 @@ void SetUpDataSource(content::WebUIDataSource* source) {
 }  // namespace
 
 SeoulCanvasUIConfig::SeoulCanvasUIConfig()
-    : DefaultTopChromeWebUIConfig(content::kChromeUIScheme,
-                                  kSeoulCanvasHost) {}
+    : DefaultTopChromeWebUIConfig(content::kChromeUIScheme, kSeoulCanvasHost) {}
 SeoulCanvasUIConfig::~SeoulCanvasUIConfig() = default;
 
 bool SeoulCanvasUIConfig::IsWebUIEnabled(

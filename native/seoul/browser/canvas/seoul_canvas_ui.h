@@ -2,10 +2,11 @@
 //
 // Serves the first-party Canvas WebUI at chrome://seoul-canvas inside a native
 // Views side panel and binds the Mojo PageHandlerFactory. The data source is
-// packaged, in-process resources with a strict CSP: no remote scripts, no
-// eval, script-src 'self' only. This is Chromium-facing glue; it compiles only
-// on a capable host. The integration patch registers the WebUIConfig and one
-// kSeoulCanvas SidePanelEntry per regular browser window; the native Shell
+// packaged, in-process resources with a strict CSP: scripts are limited to
+// this WebUI and Chromium's packaged component library, with no remote
+// scripts, inline scripts, or eval. This is Chromium-facing glue; it compiles
+// only on a capable host. The integration patch registers the WebUIConfig and
+// one kSeoulCanvas SidePanelEntry per regular browser window; the native Shell
 // command launcher opens that exact window-bound entry.
 
 #ifndef SEOUL_BROWSER_CANVAS_SEOUL_CANVAS_UI_H_
@@ -29,8 +30,7 @@ class SeoulCanvasUI;
 inline constexpr char kSeoulCanvasHost[] = "seoul-canvas";
 
 // WebUIConfig so the WebUI system can construct the controller for the host.
-class SeoulCanvasUIConfig
-    : public DefaultTopChromeWebUIConfig<SeoulCanvasUI> {
+class SeoulCanvasUIConfig : public DefaultTopChromeWebUIConfig<SeoulCanvasUI> {
  public:
   SeoulCanvasUIConfig();
   ~SeoulCanvasUIConfig() override;
